@@ -1,12 +1,36 @@
+# Python
 __pycache__/
-*.pyc
-chain.json
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+*.egg
+
+# Wallets & keys — NEVER commit these
+*.json
+hsm_keys/
 wallets/
+smoke_wallets/
+smoke_wallets2/
+
+# Chain data
 node_data/
 node_a_data/
 node_b_data/
+node_data_jito/
+node_data_tmp/
 data_local/
+smoke_data*/
+tmp_test_data*/
+scan-smoke*/
+
+# Logs
 *.log
-.venv/
-hsm_keys/
-tmp/
+
+# Env
+.env
+.env.*
+
+# OS
+.DS_Store

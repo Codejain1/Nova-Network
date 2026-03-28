@@ -1,0 +1,4 @@
+include jito_agent/README.md
+include LICENSE
+recursive-include jito_agent *.py
+recursive-include jito_agent/examples *.py

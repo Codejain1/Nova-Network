@@ -1,0 +1,1266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JITO RWA Market</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #fff;
+      --ink: #0f172a;
+      --muted: #475569;
+      --accent: #0b5fff;
+      --ok: #0f9d58;
+      --warn: #b45309;
+      --border: #dce3ec;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Segoe UI", "Helvetica Neue", sans-serif; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 18px; }
+    .hero {
+      border-radius: 16px;
+      padding: 20px;
+      color: #fff;
+      background: linear-gradient(135deg, #021b4f, #0644b7);
+      margin-bottom: 12px;
+    }
+    .hero h1 { margin: 0 0 6px; }
+    .hero p { margin: 0; opacity: .92; }
+    .pill { margin-top: 10px; display: inline-block; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.12); }
+    .grid { display: grid; grid-template-columns: repeat(12, minmax(0,1fr)); gap: 12px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+    .span-12 { grid-column: span 12; }
+    .span-8 { grid-column: span 8; }
+    .span-6 { grid-column: span 6; }
+    .span-4 { grid-column: span 4; }
+    .span-3 { grid-column: span 3; }
+    label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 4px; color: #334155; }
+    input, select, textarea {
+      width: 100%; border: 1px solid #c9d4e2; border-radius: 9px; padding: 9px; font-size: 14px; color: #0f172a; background: #fff;
+    }
+    textarea { min-height: 78px; resize: vertical; }
+    button { border: 0; border-radius: 9px; padding: 10px 12px; background: var(--accent); color: #fff; font-weight: 700; cursor: pointer; }
+    button.ghost { background: #e5ecf8; color: #0f172a; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .small { font-size: 12px; color: var(--muted); }
+    .ok { color: var(--ok); font-weight: 700; }
+    .warn { color: var(--warn); font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px; border-bottom: 1px solid #e6ecf3; text-align: left; vertical-align: top; }
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #64748b; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    pre { margin: 0; background: #0b1220; color: #d8e7ff; border-radius: 10px; padding: 10px; max-height: 280px; overflow: auto; font-size: 12px; }
+    @media (max-width: 920px) {
+      .span-8,.span-6,.span-4,.span-3 { grid-column: span 12; }
+    }
+    .mode-indicator {
+      font-size: 12px;
+      font-weight: 700;
+      color: #163f6f;
+      background: #e9f2ff;
+      border: 1px solid #c8dbf7;
+      padding: 6px 10px;
+      border-radius: 999px;
+    }
+    .advanced-zone { display: block; }
+    body.quick-mode .advanced-zone { display: none !important; }
+    .quick-note {
+      font-size: 12px;
+      color: #35557b;
+      background: #edf5ff;
+      border: 1px solid #c9dbf6;
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+  </style>
+  <link rel="stylesheet" href="/assets/ui-refresh.css" />
+</head>
+<body class="quick-mode">
+  <div class="wrap">
+    <section class="hero">
+      <h1>JITO Private RWA Market</h1>
+      <p>List tokenized assets, share access IDs with investors, and settle trades instantly on private chain.</p>
+      <div class="pill">Gas Model: 0 gas on private chain</div>
+      <div class="top-nav">
+        <a href="/app">App Hub</a>
+        <a href="/community">Community</a>
+        <a href="/rwa">Tokenize New Asset</a>
+        <a href="/rwa-dashboard">Portfolio Dashboard</a>
+        <a href="/explorer">Explorer</a>
+        <a href="/scanner">Scanner</a>
+      </div>
+      <div style="margin-top:10px; max-width:520px;"><input id="jwt" placeholder="JWT token (if auth enabled)" /></div>
+    </section>
+
+    <section class="grid">
+      <div class="card span-12">
+        <div class="actions" style="justify-content:space-between; align-items:center;">
+          <div class="small">Tokenize new assets at <a href="/rwa">/rwa</a></div>
+          <div class="actions">
+            <button class="ghost" id="refreshListingsBtn">Refresh Listings</button>
+            <button class="ghost" id="refreshWalletsBtn">Refresh Wallets</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card span-12">
+        <div class="friendly-tip">
+          <strong>Trade flow:</strong> 1) log in or onboard user, 2) fund buyer with settlement token (JITO), 3) create listing,
+          4) buy listing directly or with Access ID for invite-only sales.
+        </div>
+      </div>
+
+      <div class="card span-12">
+        <div class="actions" style="justify-content:space-between;align-items:center;">
+          <div class="mode-indicator" id="marketModeLabel">Mode: Quick (Consumer)</div>
+          <div class="actions">
+            <button id="quickModeBtn" type="button">Quick Mode</button>
+            <button class="ghost" id="advancedModeBtn" type="button">Advanced Mode</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card span-12">
+        <h2 style="margin:0 0 8px;">Quick Buy (Consumer Flow)</h2>
+        <div class="quick-note">Pick wallet + listing + quantity. Use <strong>Fund Buyer</strong> if balance is low, then click <strong>Buy Now</strong>.</div>
+        <div class="grid" style="margin-top:8px;">
+          <div class="span-3">
+            <label>Buyer Wallet</label>
+            <select id="quickBuyerWallet"></select>
+          </div>
+          <div class="span-5">
+            <label>Listing</label>
+            <select id="quickListingId"></select>
+          </div>
+          <div class="span-2">
+            <label>Quantity</label>
+            <input id="quickQuantity" type="number" min="0" step="0.000001" value="1" />
+          </div>
+          <div class="span-2">
+            <label>Access ID (optional)</label>
+            <input id="quickAccessCode" placeholder="JITO-..." />
+          </div>
+          <div class="span-12">
+            <div id="quickPreview" class="small">Choose listing to see settlement amount.</div>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px;">
+          <button id="quickFundBtn">Fund Buyer</button>
+          <button id="quickBuyBtn">Buy Now</button>
+        </div>
+        <div id="quickStatus" class="small" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="card span-12 advanced-zone">
+        <h2 style="margin:0 0 8px;">Step 1: Login / Access</h2>
+        <div class="grid">
+          <div class="span-3">
+            <label>Username</label>
+            <input id="portalUser" placeholder="trader1" />
+          </div>
+          <div class="span-3">
+            <label>Password</label>
+            <input id="portalPass" type="password" placeholder="min 8 chars" />
+          </div>
+          <div class="span-3">
+            <label>Wallet Access (on register)</label>
+            <input id="portalWallets" placeholder="buyer1,owner1" />
+          </div>
+          <div class="span-3">
+            <label>Link Wallet (logged-in user)</label>
+            <select id="linkWalletSelect"></select>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px;">
+          <button id="portalRegisterBtn">Register</button>
+          <button id="portalLoginBtn">Login</button>
+          <button class="ghost" id="portalLogoutBtn">Logout</button>
+          <button class="ghost" id="portalLinkWalletBtn">Link Wallet</button>
+          <button class="ghost" id="portalRefreshBtn">Refresh Dashboard</button>
+        </div>
+        <div id="portalStatus" class="small" style="margin-top:8px;">Not logged in.</div>
+      </div>
+
+      <div class="card span-12 advanced-zone">
+        <h2 style="margin:0 0 8px;">Step 2: Onboard New User</h2>
+        <div class="grid">
+          <div class="span-3">
+            <label>Wallet Name</label>
+            <input id="onboardWalletName" placeholder="newbuyer1" />
+          </div>
+          <div class="span-3">
+            <label>Portal Username (optional)</label>
+            <input id="onboardUsername" placeholder="newbuyer1" />
+          </div>
+          <div class="span-3">
+            <label>Portal Password (optional)</label>
+            <input id="onboardPassword" type="password" placeholder="min 8 chars" />
+          </div>
+          <div class="span-3">
+            <label>Wallet Role (private register)</label>
+            <input id="onboardRole" value="participant" />
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px;">
+          <button id="onboardWalletBtn">Create Wallet</button>
+          <button id="onboardFullBtn">Create Wallet + Portal User</button>
+        </div>
+        <div id="onboardStatus" class="small" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="card span-12 advanced-zone">
+        <h2 style="margin:0 0 8px;">My Portfolio Dashboard</h2>
+        <div class="grid">
+          <div class="span-3"><label>Wallets</label><input id="dashWalletCount" readonly /></div>
+          <div class="span-3"><label>Units Held</label><input id="dashUnits" readonly /></div>
+          <div class="span-3"><label>Open Listings</label><input id="dashOpenListings" readonly /></div>
+          <div class="span-3"><label>Bought Trades</label><input id="dashBoughtTrades" readonly /></div>
+        </div>
+        <div class="grid" style="margin-top:10px;">
+          <div class="span-6">
+            <h3 style="margin:0 0 8px;">Holdings</h3>
+            <div style="overflow:auto;">
+              <table>
+                <thead><tr><th>Wallet</th><th>Asset</th><th>Amount</th></tr></thead>
+                <tbody id="dashHoldingsRows"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="span-6">
+            <h3 style="margin:0 0 8px;">My Listings</h3>
+            <div style="overflow:auto;">
+              <table>
+                <thead><tr><th>ID</th><th>Asset</th><th>Avail</th><th>Price</th><th>Status</th></tr></thead>
+                <tbody id="dashListingsRows"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="span-6">
+            <h3 style="margin:0 0 8px;">Bought</h3>
+            <div style="overflow:auto;">
+              <table>
+                <thead><tr><th>Listing</th><th>Asset</th><th>Qty</th><th>Total</th><th>Seller</th></tr></thead>
+                <tbody id="dashBoughtRows"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="span-6">
+            <h3 style="margin:0 0 8px;">Sold</h3>
+            <div style="overflow:auto;">
+              <table>
+                <thead><tr><th>Listing</th><th>Asset</th><th>Qty</th><th>Total</th><th>Buyer</th></tr></thead>
+                <tbody id="dashSoldRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card span-12 advanced-zone">
+        <h2 style="margin:0 0 8px;">Wallet Actions</h2>
+        <div class="grid">
+          <div class="span-3">
+            <label>Wallet</label>
+            <select id="walletPanelWallet"></select>
+          </div>
+          <div class="span-3">
+            <label>Address</label>
+            <input id="walletPanelAddress" readonly />
+          </div>
+          <div class="span-3">
+            <label>Public JITO Balance</label>
+            <input id="walletPanelPublicBalance" readonly />
+          </div>
+          <div class="span-3">
+            <label>Private Holdings</label>
+            <input id="walletPanelHoldingCount" readonly />
+          </div>
+          <div class="span-12 actions">
+            <button class="ghost" id="walletPanelRefreshBtn">Refresh Wallet</button>
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top:10px;">
+          <div class="span-6">
+            <h3 style="margin:0 0 8px;">Private Holdings</h3>
+            <div style="overflow:auto;">
+              <table>
+                <thead><tr><th>Asset</th><th>Token</th><th>Amount</th><th>Contract</th></tr></thead>
+                <tbody id="walletHoldingsRows"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="span-6">
+            <h3 style="margin:0 0 8px;">Private Transfer History</h3>
+            <div style="overflow:auto;">
+              <table>
+                <thead><tr><th>Tx</th><th>Type</th><th>Asset</th><th>Amount</th><th>From/To</th></tr></thead>
+                <tbody id="walletTxRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top:10px;">
+          <div class="span-6">
+            <h3 style="margin:0 0 8px;">Send Private Asset (0 Gas)</h3>
+            <div class="grid">
+              <div class="span-6">
+                <label>To (address or @wallet)</label>
+                <input id="walletSendTo" placeholder="@buyer1 or W..." />
+              </div>
+              <div class="span-3">
+                <label>Asset ID</label>
+                <input id="walletSendAssetId" placeholder="RE-IN-..." />
+              </div>
+              <div class="span-3">
+                <label>Amount</label>
+                <input id="walletSendAmount" type="number" min="0" step="0.000001" value="1" />
+              </div>
+              <div class="span-3">
+                <label>Validator Wallet</label>
+                <select id="walletSendValidatorWallet"></select>
+              </div>
+              <div class="span-3">
+                <label>Notary Wallet</label>
+                <select id="walletSendNotaryWallet"></select>
+              </div>
+              <div class="span-6">
+                <label>Visibility (optional)</label>
+                <input id="walletSendVisibility" placeholder="@sender,@recipient" />
+              </div>
+            </div>
+            <div class="actions" style="margin-top:10px;"><button id="walletSendPrivateBtn">Send Private Asset</button></div>
+            <div id="walletSendPrivateStatus" class="small" style="margin-top:8px;"></div>
+          </div>
+
+          <div class="span-6">
+            <h3 style="margin:0 0 8px;">Send Public JITO</h3>
+            <div class="grid">
+              <div class="span-8">
+                <label>To (address or EVM:0x...)</label>
+                <input id="walletPublicTo" placeholder="EVM:0x..." />
+              </div>
+              <div class="span-4">
+                <label>Amount</label>
+                <input id="walletPublicAmount" type="number" min="0" step="0.000001" value="1" />
+              </div>
+            </div>
+            <div class="actions" style="margin-top:10px;"><button id="walletSendPublicBtn">Send Public Tx</button></div>
+            <div class="small" style="margin-top:6px;">If auto-mining is enabled, tx confirms automatically.</div>
+            <div id="walletSendPublicStatus" class="small" style="margin-top:8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card span-8">
+        <h2 style="margin:0 0 8px;">Step 3: Open Listings</h2>
+        <div class="small" id="listingInfo">Loading...</div>
+        <div style="overflow:auto; margin-top:8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Asset</th>
+                <th>Seller</th>
+                <th>Available</th>
+                <th>Price/Unit</th>
+                <th>Access</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="listingRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card span-4">
+        <h2 style="margin:0 0 8px;">Policy</h2>
+        <div id="policyOut" class="small">Loading...</div>
+      </div>
+
+      <div class="card span-6">
+        <h2 style="margin:0 0 8px;">Step 4: Create Listing</h2>
+        <div class="grid">
+          <div class="span-6">
+            <label>Seller Wallet</label>
+            <select id="sellerWallet"></select>
+          </div>
+          <div class="span-6">
+            <label>Asset ID</label>
+            <input id="listAssetId" placeholder="asset id" />
+          </div>
+          <div class="span-6">
+            <label>Quantity</label>
+            <input id="listQuantity" type="number" min="0" step="0.000001" value="10" />
+          </div>
+          <div class="span-6">
+            <label>Price Per Unit</label>
+            <input id="listPrice" type="number" min="0" step="0.000001" value="1" />
+          </div>
+          <div class="span-6">
+            <label>Currency</label>
+            <input id="listCurrency" value="JITO" />
+          </div>
+          <div class="span-6">
+            <label>Access Mode</label>
+            <select id="listAccessMode">
+              <option value="open">open</option>
+              <option value="access_id">access_id (invite code required)</option>
+            </select>
+          </div>
+          <div class="span-6">
+            <label>Title</label>
+            <input id="listTitle" placeholder="listing title" />
+          </div>
+          <div class="span-12">
+            <label>Description</label>
+            <textarea id="listDescription"></textarea>
+          </div>
+          <div class="span-12">
+            <label>Visibility (comma addresses or @wallet aliases)</label>
+            <input id="listVisibility" placeholder="@issuer,@buyer" />
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px;"><button id="createListingBtn">Create Listing</button></div>
+        <div id="createStatus" class="small" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="card span-6">
+        <h2 style="margin:0 0 8px;">Step 5: Buy Listing</h2>
+        <div class="grid">
+          <div class="span-6">
+            <label>Listing ID</label>
+            <input id="buyListingId" placeholder="LST-..." />
+          </div>
+          <div class="span-6">
+            <label>Buyer Wallet</label>
+            <select id="buyerWallet"></select>
+          </div>
+          <div class="span-6">
+            <label>Quantity</label>
+            <input id="buyQuantity" type="number" min="0" step="0.000001" value="1" />
+          </div>
+          <div class="span-6">
+            <label>Validator Wallet</label>
+            <select id="buyValidatorWallet"></select>
+          </div>
+          <div class="span-6">
+            <label>Notary Wallet</label>
+            <select id="buyNotaryWallet"></select>
+          </div>
+          <div class="span-12">
+            <label>Access ID (required when listing access mode is access_id)</label>
+            <input id="buyAccessCode" placeholder="JITO-..." />
+          </div>
+          <div class="span-12">
+            <label>Visibility (optional)</label>
+            <input id="buyVisibility" placeholder="@buyer,@seller" />
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px;"><button id="buyListingBtn">Buy Listing</button></div>
+        <div id="buyStatus" class="small" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="card span-12 advanced-zone">
+        <h2 style="margin:0 0 8px;">Access IDs (Invite Codes)</h2>
+        <div class="grid">
+          <div class="span-3">
+            <label>Creator Wallet</label>
+            <select id="accessCreatorWallet"></select>
+          </div>
+          <div class="span-3">
+            <label>Listing ID</label>
+            <input id="accessListingId" placeholder="LST-..." />
+          </div>
+          <div class="span-2">
+            <label>Max Uses</label>
+            <input id="accessMaxUses" type="number" min="1" step="1" value="1" />
+          </div>
+          <div class="span-2">
+            <label>Max Units (0 = unlimited)</label>
+            <input id="accessMaxUnits" type="number" min="0" step="0.000001" value="0" />
+          </div>
+          <div class="span-2">
+            <label>Expire In (hours, 0 = no expiry)</label>
+            <input id="accessExpireHours" type="number" min="0" step="1" value="72" />
+          </div>
+          <div class="span-12">
+            <label>Note (optional)</label>
+            <input id="accessNote" placeholder="Investor invite tranche A" />
+          </div>
+          <div class="span-12">
+            <label>Generated Access ID</label>
+            <input id="accessGeneratedCode" readonly placeholder="Generated code appears here (copy and share securely)." />
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px;">
+          <button id="createAccessBtn">Create Access ID</button>
+        </div>
+        <div id="accessStatus" class="small" style="margin-top:8px;"></div>
+
+        <hr style="margin:14px 0; border:none; border-top:1px solid #e5e7eb;" />
+
+        <div class="grid">
+          <div class="span-3">
+            <label>Redeem Access ID</label>
+            <input id="redeemAccessCode" placeholder="JITO-..." />
+          </div>
+          <div class="span-3">
+            <label>Buyer Wallet</label>
+            <select id="redeemBuyerWallet"></select>
+          </div>
+          <div class="span-3">
+            <label>Validator Wallet</label>
+            <select id="redeemValidatorWallet"></select>
+          </div>
+          <div class="span-3">
+            <label>Notary Wallet</label>
+            <select id="redeemNotaryWallet"></select>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px;">
+          <button id="redeemAccessBtn">Redeem Access ID</button>
+        </div>
+        <div id="redeemStatus" class="small" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="card span-12 advanced-zone">
+        <h2 style="margin:0 0 8px;">Fund Buyer With JITO (Settlement Token)</h2>
+        <div class="grid">
+          <div class="span-3">
+            <label>Issuer/Treasury Wallet</label>
+            <select id="fundIssuerWallet"></select>
+          </div>
+          <div class="span-3">
+            <label>Recipient Wallet</label>
+            <select id="fundRecipientWallet"></select>
+          </div>
+          <div class="span-3">
+            <label>Validator Wallet</label>
+            <select id="fundValidatorWallet"></select>
+          </div>
+          <div class="span-3">
+            <label>Notary Wallet</label>
+            <select id="fundNotaryWallet"></select>
+          </div>
+          <div class="span-3">
+            <label>Amount (JITO)</label>
+            <input id="fundAmount" type="number" min="0" step="0.000001" value="1000" />
+          </div>
+          <div class="span-3">
+            <label>Asset ID</label>
+            <input id="fundAssetId" value="JITO" />
+          </div>
+          <div class="span-3">
+            <label>Domain</label>
+            <input id="fundDomain" value="jito-settlement" />
+          </div>
+          <div class="span-3">
+            <label>Contract</label>
+            <input id="fundContractId" value="jito-settlement-v1" />
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px;"><button id="fundWalletBtn">Fund Wallet</button></div>
+        <div id="fundStatus" class="small" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="card span-12">
+        <h2 style="margin:0 0 8px;">Result</h2>
+        <pre id="resultOut">Ready.</pre>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const pretty = (v) => JSON.stringify(v, null, 2);
+    const SESSION_KEY = 'rwa.portal.session';
+    const USER_KEY = 'rwa.portal.user';
+    let walletsCache = [];
+    let listingsCache = [];
+    let marketMode = 'quick';
+    let eventSeq = 0;
+    let eventPollTimer = null;
+    let eventSource = null;
+    let refreshQueued = { listings: false, dashboard: false, wallet: false };
+    let refreshTimer = null;
+
+    async function api(path, method = 'GET', body = null) {
+      const opts = { method, headers: {} };
+      const token = $('jwt').value.trim() || localStorage.getItem('dual.jwt') || '';
+      if (token) opts.headers['Authorization'] = `Bearer ${token}`;
+      const portalSession = localStorage.getItem(SESSION_KEY) || '';
+      if (portalSession) opts.headers['X-Portal-Session'] = portalSession;
+      if (body !== null) {
+        opts.headers['content-type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+      }
+      const res = await fetch(path, opts);
+      const text = await res.text();
+      let data = {};
+      try { data = text ? JSON.parse(text) : {}; } catch (_) { data = { raw: text }; }
+      if (!res.ok || data.ok === false) throw new Error(data.error || `${res.status} ${res.statusText}`);
+      return data;
+    }
+
+    function humanizeError(err) {
+      const raw = String(err && err.message ? err.message : err || 'Unknown error');
+      const text = raw.toLowerCase();
+      if (text.includes('invalid settlement transfer transaction')) {
+        return 'Payment could not be validated. Fund buyer with JITO and confirm the buyer can use this listing.';
+      }
+      if (text.includes('invalid asset delivery transaction')) {
+        return 'Asset delivery failed. Check seller holdings and listing quantity.';
+      }
+      if (text.includes('insufficient')) {
+        return raw.replace(/^error:\s*/i, '').replace(/^valueerror:\s*/i, '');
+      }
+      if (text.includes('access id') || text.includes('access code')) {
+        return 'Access ID is missing/invalid/expired, or bound to a different wallet.';
+      }
+      if (text.includes('listing not found')) {
+        return 'Listing ID was not found. Refresh listings and choose an active one.';
+      }
+      return raw.replace(/^error:\s*/i, '').replace(/^valueerror:\s*/i, '');
+    }
+
+    function setWarn(elId, err) {
+      $(elId).innerHTML = `<span class="warn">${humanizeError(err)}</span>`;
+    }
+
+    function queueRefresh(partial = {}) {
+      refreshQueued = {
+        listings: refreshQueued.listings || !!partial.listings,
+        dashboard: refreshQueued.dashboard || !!partial.dashboard,
+        wallet: refreshQueued.wallet || !!partial.wallet,
+      };
+      if (refreshTimer) return;
+      refreshTimer = setTimeout(async () => {
+        const work = refreshQueued;
+        refreshQueued = { listings: false, dashboard: false, wallet: false };
+        refreshTimer = null;
+        try {
+          if (work.listings) await refreshListings();
+          if (work.dashboard) await refreshDashboard();
+          if (work.wallet) await refreshWalletPanel();
+        } catch (_) {}
+      }, 550);
+    }
+
+    function handleEventRow(row) {
+      if (!row || typeof row !== 'object') return;
+      const seq = Number(row.seq || 0);
+      if (Number.isFinite(seq) && seq > eventSeq) eventSeq = seq;
+      const type = String(row.type || '');
+      if (type.startsWith('rwa.')) {
+        queueRefresh({ listings: true, dashboard: true, wallet: true });
+      } else if (type.startsWith('public.')) {
+        queueRefresh({ wallet: true });
+      }
+      if (type === 'rwa.trade.finalized') {
+        const payload = row.payload || {};
+        $('quickStatus').innerHTML = `<span class="ok">Trade finalized in block ${payload.block_index || '-'}.</span>`;
+      }
+    }
+
+    async function pollEventsOnce() {
+      try {
+        const out = await api(`/events?since=${encodeURIComponent(eventSeq)}&limit=200`);
+        const events = out.events || [];
+        for (const row of events) handleEventRow(row);
+        const latest = Number(out.latest_seq || 0);
+        if (Number.isFinite(latest) && latest > eventSeq) eventSeq = latest;
+      } catch (_) {
+        // Ignore transient poll failures; UI keeps manual refresh actions.
+      } finally {
+        eventPollTimer = setTimeout(pollEventsOnce, 3000);
+      }
+    }
+
+    function startEventBridge() {
+      if (eventPollTimer) {
+        clearTimeout(eventPollTimer);
+        eventPollTimer = null;
+      }
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+
+      const jwt = $('jwt').value.trim() || localStorage.getItem('dual.jwt') || '';
+      if (jwt || typeof EventSource === 'undefined') {
+        pollEventsOnce();
+        return;
+      }
+
+      try {
+        eventSource = new EventSource(`/stream/events?since=${encodeURIComponent(eventSeq)}&timeout=20`);
+        eventSource.onmessage = (ev) => {
+          try { handleEventRow(JSON.parse(ev.data || '{}')); } catch (_) {}
+        };
+        eventSource.onerror = () => {
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          pollEventsOnce();
+        };
+      } catch (_) {
+        pollEventsOnce();
+      }
+    }
+
+    function toCsvList(raw) {
+      return String(raw || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+
+    function fmt(n, d = 6) {
+      const v = Number(n || 0);
+      if (!Number.isFinite(v)) return '0';
+      return v.toFixed(d);
+    }
+
+    function fillRows(tbodyId, rowsHtml, colspan, emptyText) {
+      $(tbodyId).innerHTML = rowsHtml || `<tr><td colspan="${colspan}" class="small">${emptyText}</td></tr>`;
+    }
+
+    function setWalletOptions(id, wallets) {
+      const el = $(id);
+      const old = el.value;
+      el.innerHTML = wallets.map((w) => `<option value="${w.name}">${w.name} (${w.address.slice(0, 10)}...)</option>`).join('');
+      if (old && wallets.some((w) => w.name === old)) el.value = old;
+    }
+
+    function setListingOptions(id, listings) {
+      const el = $(id);
+      const old = el.value;
+      el.innerHTML = listings.map((l) => {
+        const amount = fmt(l.quantity_available || 0, 2);
+        const price = fmt(l.price_per_unit || 0, 4);
+        return `<option value="${l.id}">${l.id} | ${l.asset_id} | ${amount} avail | ${price} ${l.currency || ''}</option>`;
+      }).join('');
+      if (old && listings.some((l) => l.id === old)) {
+        el.value = old;
+      }
+    }
+
+    async function refreshWallets() {
+      const out = await api('/ui/wallets');
+      const wallets = out.wallets || [];
+      if (!wallets.length) throw new Error('No wallets available. Create wallets first.');
+      walletsCache = wallets.slice();
+      ['sellerWallet', 'buyerWallet', 'buyValidatorWallet', 'buyNotaryWallet'].forEach((id) => setWalletOptions(id, wallets));
+      setWalletOptions('quickBuyerWallet', wallets);
+      ['fundIssuerWallet', 'fundRecipientWallet', 'fundValidatorWallet', 'fundNotaryWallet'].forEach((id) => setWalletOptions(id, wallets));
+      ['walletPanelWallet', 'walletSendValidatorWallet', 'walletSendNotaryWallet'].forEach((id) => setWalletOptions(id, wallets));
+      ['accessCreatorWallet', 'redeemBuyerWallet', 'redeemValidatorWallet', 'redeemNotaryWallet'].forEach((id) => setWalletOptions(id, wallets));
+      setWalletOptions('linkWalletSelect', wallets);
+      renderQuickPreview();
+    }
+
+    function rowHtml(row) {
+      return `<tr>
+        <td><code>${row.id || ''}</code></td>
+        <td><code>${row.asset_id || ''}</code><br><span class="small">${row.title || ''}</span></td>
+        <td><code>${row.seller_wallet_name || ''}</code></td>
+        <td>${Number(row.quantity_available || 0).toFixed(6)}</td>
+        <td>${Number(row.price_per_unit || 0).toFixed(6)} ${row.currency || ''}</td>
+        <td><code>${row.access_mode || 'open'}</code></td>
+        <td>${row.status || ''}</td>
+      </tr>`;
+    }
+
+    async function refreshListings() {
+      const out = await api('/private/rwa/listings');
+      const rows = out.listings || [];
+      listingsCache = rows.slice();
+      setListingOptions('quickListingId', rows);
+      $('listingRows').innerHTML = rows.map(rowHtml).join('') || '<tr><td colspan="7" class="small">No open listings.</td></tr>';
+      $('listingInfo').textContent = `Open listings: ${rows.length}`;
+      renderQuickPreview();
+    }
+
+    function setMarketMode(mode) {
+      marketMode = mode === 'advanced' ? 'advanced' : 'quick';
+      const quick = marketMode === 'quick';
+      document.body.classList.toggle('quick-mode', quick);
+      $('marketModeLabel').textContent = `Mode: ${quick ? 'Quick (Consumer)' : 'Advanced (Operator)'}`;
+      if (quick) {
+        $('quickStatus').textContent = 'Quick mode enabled: only buyer-safe actions are shown.';
+      } else {
+        $('quickStatus').textContent = 'Advanced mode enabled: all operational controls are visible.';
+      }
+    }
+
+    function findListingById(id) {
+      if (!id) return null;
+      return listingsCache.find((l) => l.id === id) || null;
+    }
+
+    function renderQuickPreview() {
+      const listingId = $('quickListingId').value;
+      const listing = findListingById(listingId);
+      const qty = Number($('quickQuantity').value || 0);
+      if (!listing) {
+        $('quickPreview').textContent = 'Choose listing to see settlement amount.';
+        return;
+      }
+      const price = Number(listing.price_per_unit || 0);
+      const total = price * Math.max(0, qty);
+      const accessMode = listing.access_mode || 'open';
+      const accessCode = $('quickAccessCode').value.trim();
+      const needsCode = accessMode === 'access_id';
+      const accessHint = needsCode
+        ? (accessCode ? 'Access ID provided.' : 'Access ID required for this listing.')
+        : 'No access ID needed.';
+      $('quickPreview').innerHTML = [
+        `<strong>Asset:</strong> ${listing.asset_id || '-'}`,
+        `<strong>Unit price:</strong> ${fmt(price, 6)} ${listing.currency || ''}`,
+        `<strong>Estimated total:</strong> ${fmt(total, 6)} ${listing.currency || ''}`,
+        `<strong>Available:</strong> ${fmt(listing.quantity_available || 0, 6)}`,
+        `<strong>Access:</strong> ${accessMode} (${accessHint})`,
+      ].join('<br>');
+    }
+
+    function resolveWalletName(preferred, fallback) {
+      if (walletsCache.some((w) => w.name === preferred)) return preferred;
+      return fallback;
+    }
+
+    async function quickFundBuyer() {
+      const buyer = $('quickBuyerWallet').value;
+      const listing = findListingById($('quickListingId').value);
+      const qty = Number($('quickQuantity').value || 0);
+      if (!buyer || !listing) throw new Error('Select buyer wallet and listing.');
+      if (!Number.isFinite(qty) || qty <= 0) throw new Error('Quantity must be greater than 0.');
+      const amount = Number(listing.price_per_unit || 0) * qty;
+      if (!Number.isFinite(amount) || amount <= 0) throw new Error('Invalid listing price or quantity.');
+
+      $('fundRecipientWallet').value = buyer;
+      $('fundAmount').value = String(Number((amount * 1.1).toFixed(6))); // keep small buffer for repeated trades
+      $('fundAssetId').value = 'JITO';
+      $('fundDomain').value = 'jito-settlement';
+      $('fundContractId').value = 'jito-settlement-v1';
+      $('fundIssuerWallet').value = resolveWalletName('issuer1', resolveWalletName('validator1', $('fundIssuerWallet').value));
+      $('fundValidatorWallet').value = resolveWalletName('validator1', $('fundValidatorWallet').value);
+      $('fundNotaryWallet').value = resolveWalletName('validator2', $('fundNotaryWallet').value);
+
+      $('quickStatus').textContent = 'Funding buyer wallet...';
+      await fundWallet();
+      $('quickStatus').innerHTML = '<span class="ok">Buyer funded for this trade.</span>';
+      await refreshWalletPanel();
+      await refreshDashboard();
+    }
+
+    async function quickBuyNow() {
+      const buyer = $('quickBuyerWallet').value;
+      const listing = findListingById($('quickListingId').value);
+      const qty = Number($('quickQuantity').value || 0);
+      const access = $('quickAccessCode').value.trim();
+      if (!buyer || !listing) throw new Error('Select buyer wallet and listing.');
+      if (!Number.isFinite(qty) || qty <= 0) throw new Error('Quantity must be greater than 0.');
+      if ((listing.access_mode || 'open') === 'access_id' && !access) {
+        throw new Error('This listing needs an Access ID.');
+      }
+
+      $('buyListingId').value = listing.id;
+      $('buyerWallet').value = buyer;
+      $('buyQuantity').value = String(qty);
+      $('buyValidatorWallet').value = resolveWalletName('validator1', $('buyValidatorWallet').value);
+      $('buyNotaryWallet').value = resolveWalletName('validator2', $('buyNotaryWallet').value);
+      $('buyAccessCode').value = access;
+      $('buyVisibility').value = '@buyer,@seller';
+
+      $('quickStatus').textContent = 'Executing buy + settlement...';
+      await buyListing();
+      $('quickStatus').innerHTML = '<span class="ok">Trade finalized and portfolio updated.</span>';
+      await Promise.all([refreshListings(), refreshWalletPanel(), refreshDashboard()]);
+      renderQuickPreview();
+    }
+
+    async function loadPolicy() {
+      const policy = await api('/private/rwa/policy');
+      const settlement = policy.settlement_token || {};
+      $('policyOut').innerHTML = [
+        `Gas model: <strong class="ok">${policy.gas_model}</strong>`,
+        `Gas / tx: <strong class="ok">${policy.gas_fee_per_tx}</strong>`,
+        `Settlement fee / tx: <strong class="ok">${policy.settlement_fee_per_tx}</strong>`,
+        `Settlement token: <strong class="ok">${settlement.asset_id || 'JITO'}</strong>`,
+        `JITO price: <strong class="ok">${fmt(settlement.price_usd || 1, 4)} USD</strong>`,
+      ].join('<br>');
+    }
+
+    function renderDashboard(dash) {
+      const summary = dash.summary || {};
+      $('dashWalletCount').value = String(summary.wallet_count || 0);
+      $('dashUnits').value = fmt(summary.total_units_held || 0, 6);
+      $('dashOpenListings').value = String(summary.open_listing_count || 0);
+      $('dashBoughtTrades').value = String(summary.bought_trade_count || 0);
+
+      fillRows(
+        'dashHoldingsRows',
+        (dash.holdings || []).map((h) => `<tr><td>${h.wallet_name}</td><td><code>${h.asset_id}</code></td><td>${fmt(h.amount, 6)}</td></tr>`).join(''),
+        3,
+        'No holdings yet.'
+      );
+      fillRows(
+        'dashListingsRows',
+        (dash.listed || []).map((r) => `<tr><td><code>${r.id || ''}</code></td><td><code>${r.asset_id || ''}</code></td><td>${fmt(r.quantity_available || 0, 6)}</td><td>${fmt(r.price_per_unit || 0, 6)} ${r.currency || ''}</td><td>${r.status || ''}</td></tr>`).join(''),
+        5,
+        'No listings yet.'
+      );
+      fillRows(
+        'dashBoughtRows',
+        (dash.bought || []).map((r) => {
+          const t = r.trade || {};
+          return `<tr><td><code>${r.listing_id || ''}</code></td><td><code>${r.asset_id || ''}</code></td><td>${fmt(t.amount || 0, 6)}</td><td>${fmt(t.total_price || 0, 6)} ${t.currency || r.currency || ''}</td><td>${r.seller_wallet_name || ''}</td></tr>`;
+        }).join(''),
+        5,
+        'No buy trades yet.'
+      );
+      fillRows(
+        'dashSoldRows',
+        (dash.sold || []).map((r) => {
+          const t = r.trade || {};
+          return `<tr><td><code>${r.listing_id || ''}</code></td><td><code>${r.asset_id || ''}</code></td><td>${fmt(t.amount || 0, 6)}</td><td>${fmt(t.total_price || 0, 6)} ${t.currency || r.currency || ''}</td><td>${t.buyer_wallet_name || ''}</td></tr>`;
+        }).join(''),
+        5,
+        'No sell trades yet.'
+      );
+    }
+
+    async function refreshDashboard() {
+      const session = localStorage.getItem(SESSION_KEY) || '';
+      if (!session) {
+        $('portalStatus').textContent = 'Not logged in.';
+        renderDashboard({ summary: {}, holdings: [], listed: [], bought: [], sold: [] });
+        return;
+      }
+      const out = await api('/private/rwa/dashboard');
+      const dash = out.dashboard || {};
+      const user = dash.user || {};
+      localStorage.setItem(USER_KEY, user.username || '');
+      $('portalUser').value = user.username || $('portalUser').value;
+      $('portalStatus').innerHTML = `<span class="ok">Logged in as ${user.username || 'user'}</span> | wallets: ${(user.wallet_names || []).join(', ') || 'none'}`;
+      renderDashboard(dash);
+    }
+
+    async function portalRegister() {
+      const username = $('portalUser').value.trim();
+      const password = $('portalPass').value;
+      const wallet_names = toCsvList($('portalWallets').value.trim());
+      const out = await api('/ui/private/auth/register', 'POST', { username, password, wallet_names });
+      $('portalStatus').innerHTML = `<span class="ok">User registered:</span> ${out.user.username}`;
+      $('resultOut').textContent = pretty(out);
+    }
+
+    async function portalLogin() {
+      const username = $('portalUser').value.trim();
+      const password = $('portalPass').value;
+      const out = await api('/ui/private/auth/login', 'POST', { username, password });
+      localStorage.setItem(SESSION_KEY, out.token || '');
+      localStorage.setItem(USER_KEY, (out.user || {}).username || username);
+      $('portalStatus').innerHTML = `<span class="ok">Login successful.</span> Session expires at ${new Date((out.expires_at || 0) * 1000).toLocaleString()}`;
+      $('resultOut').textContent = pretty(out);
+      await refreshDashboard();
+    }
+
+    async function portalLogout() {
+      try { await api('/ui/private/auth/logout', 'POST', {}); } catch (_) {}
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(USER_KEY);
+      $('portalStatus').textContent = 'Logged out.';
+      renderDashboard({ summary: {}, holdings: [], listed: [], bought: [], sold: [] });
+    }
+
+    async function portalLinkWallet() {
+      const wallet_name = $('linkWalletSelect').value;
+      if (!wallet_name) throw new Error('Select wallet to link.');
+      const out = await api('/ui/private/auth/link-wallet', 'POST', { wallet_name });
+      $('portalStatus').innerHTML = `<span class="ok">Wallet linked.</span> ${(out.user.wallet_names || []).join(', ')}`;
+      $('resultOut').textContent = pretty(out);
+      await refreshDashboard();
+    }
+
+    async function createWalletOnboard(walletName) {
+      const clean = String(walletName || '').trim();
+      if (!clean) throw new Error('Wallet name is required.');
+      const out = await api('/ui/wallets/create', 'POST', {
+        name: clean,
+        scheme: 'ed25519',
+        use_hsm: true,
+        key_ref: clean,
+      });
+      const role = $('onboardRole').value.trim() || 'participant';
+      try {
+        await api('/ui/private/register', 'POST', {
+          wallet_name: clean,
+          roles: [role],
+          domains: [],
+          attributes: { service: 'rwa-onboarding' },
+        });
+      } catch (_) {
+        // Safe fallback: trading flow can still register/add domains lazily.
+      }
+      await refreshWallets();
+      return out;
+    }
+
+    async function onboardWalletOnly() {
+      $('onboardStatus').textContent = 'Creating wallet...';
+      const walletName = $('onboardWalletName').value.trim();
+      const out = await createWalletOnboard(walletName);
+      $('onboardStatus').innerHTML = `<span class="ok">Wallet created:</span> ${(out.wallet || {}).address || walletName}`;
+      $('resultOut').textContent = pretty(out);
+      if ($('walletPanelWallet')) $('walletPanelWallet').value = walletName;
+      await refreshWalletPanel();
+    }
+
+    async function onboardWalletAndUser() {
+      $('onboardStatus').textContent = 'Creating wallet and portal user...';
+      const walletName = $('onboardWalletName').value.trim();
+      const username = $('onboardUsername').value.trim();
+      const password = $('onboardPassword').value;
+      if (!username) throw new Error('Portal username is required for full onboarding.');
+      if (!password) throw new Error('Portal password is required for full onboarding.');
+
+      const outWallet = await createWalletOnboard(walletName);
+      const outUser = await api('/ui/private/auth/register', 'POST', {
+        username,
+        password,
+        wallet_names: [walletName],
+      });
+      $('onboardStatus').innerHTML = `<span class="ok">Onboarded:</span> ${username} + ${walletName}`;
+      $('resultOut').textContent = pretty({ wallet: outWallet, user: outUser });
+      $('portalUser').value = username;
+      await refreshWalletPanel();
+    }
+
+    async function refreshWalletPanel() {
+      const walletName = $('walletPanelWallet').value;
+      if (!walletName) return;
+      const data = await api(`/private/rwa/wallet?wallet_name=${encodeURIComponent(walletName)}`);
+      const wallet = walletsCache.find((w) => w.name === walletName) || {};
+      $('walletPanelAddress').value = data.address || wallet.address || '';
+      $('walletPanelPublicBalance').value = fmt(data.public_balance || 0, 6);
+      $('walletPanelHoldingCount').value = String(data.holding_count || 0);
+
+      fillRows(
+        'walletHoldingsRows',
+        (data.holdings || []).map((h) => (
+          `<tr>
+            <td><code>${h.asset_id || ''}</code></td>
+            <td>${h.token_symbol || ''}<br><span class="small">${h.token_name || ''}</span></td>
+            <td>${fmt(h.amount || 0, 6)}</td>
+            <td><code>${(h.contract_address || '').slice(0, 18)}${h.contract_address ? '...' : ''}</code></td>
+          </tr>`
+        )).join(''),
+        4,
+        'No private holdings.'
+      );
+
+      fillRows(
+        'walletTxRows',
+        (data.transactions || []).slice(0, 20).map((tx) => (
+          `<tr>
+            <td><code>${(tx.tx_id || '').slice(0, 16)}</code></td>
+            <td>${tx.type || ''}</td>
+            <td><code>${tx.asset_id || ''}</code></td>
+            <td>${fmt(tx.amount || 0, 6)}</td>
+            <td><div class="small"><code>${(tx.from || '').slice(0, 12)}</code> → <code>${(tx.to || '').slice(0, 12)}</code></div></td>
+          </tr>`
+        )).join(''),
+        5,
+        'No private transactions.'
+      );
+
+      const firstHolding = (data.holdings || [])[0] || {};
+      if (!$('walletSendAssetId').value.trim() && firstHolding.asset_id) {
+        $('walletSendAssetId').value = firstHolding.asset_id;
+      }
+    }
+
+    async function sendPrivateFromWallet() {
+      $('walletSendPrivateStatus').textContent = 'Submitting private transfer...';
+      const body = {
+        from_wallet_name: $('walletPanelWallet').value,
+        to: $('walletSendTo').value.trim(),
+        asset_id: $('walletSendAssetId').value.trim(),
+        amount: Number($('walletSendAmount').value),
+        validator_wallet_name: $('walletSendValidatorWallet').value,
+        notary_wallet_name: $('walletSendNotaryWallet').value,
+        visibility: $('walletSendVisibility').value.trim(),
+      };
+      const out = await api('/ui/private/rwa/wallet/send', 'POST', body);
+      $('walletSendPrivateStatus').innerHTML = '<span class="ok">Private transfer finalized.</span>';
+      $('resultOut').textContent = pretty(out);
+      await Promise.all([refreshWalletPanel(), refreshListings(), refreshDashboard()]);
+    }
+
+    async function sendPublicFromWallet() {
+      $('walletSendPublicStatus').textContent = 'Submitting public transaction...';
+      const body = {
+        wallet_name: $('walletPanelWallet').value,
+        to: $('walletPublicTo').value.trim(),
+        amount: Number($('walletPublicAmount').value),
+      };
+      const out = await api('/ui/public/tx', 'POST', body);
+      $('walletSendPublicStatus').innerHTML = `<span class="ok">Public tx submitted:</span> ${out.tx?.id || out.tx?.tx_id || ''}`;
+      $('resultOut').textContent = pretty(out);
+      await refreshWalletPanel();
+    }
+
+    async function createListing() {
+      $('createStatus').textContent = 'Creating listing...';
+      const body = {
+        seller_wallet_name: $('sellerWallet').value,
+        asset_id: $('listAssetId').value.trim(),
+        quantity: Number($('listQuantity').value),
+        price_per_unit: Number($('listPrice').value),
+        currency: $('listCurrency').value.trim(),
+        access_mode: $('listAccessMode').value,
+        title: $('listTitle').value.trim(),
+        description: $('listDescription').value.trim(),
+        visibility: $('listVisibility').value.trim(),
+      };
+      const out = await api('/ui/private/rwa/listings/create', 'POST', body);
+      $('createStatus').innerHTML = '<span class="ok">Listing created.</span>';
+      $('buyListingId').value = out.listing.id || '';
+      $('resultOut').textContent = pretty(out);
+      await refreshListings();
+      await refreshDashboard();
+    }
+
+    async function buyListing() {
+      $('buyStatus').textContent = 'Executing buy + finalize...';
+      const body = {
+        listing_id: $('buyListingId').value.trim(),
+        buyer_wallet_name: $('buyerWallet').value,
+        quantity: Number($('buyQuantity').value),
+        validator_wallet_name: $('buyValidatorWallet').value,
+        notary_wallet_name: $('buyNotaryWallet').value,
+        access_code: $('buyAccessCode').value.trim(),
+        visibility: $('buyVisibility').value.trim(),
+      };
+      const out = await api('/ui/private/rwa/listings/buy', 'POST', body);
+      $('buyStatus').innerHTML = '<span class="ok">Trade finalized on private chain.</span>';
+      $('resultOut').textContent = pretty(out);
+      await refreshListings();
+      await refreshDashboard();
+    }
+
+    async function createAccessId() {
+      $('accessStatus').textContent = 'Creating access ID...';
+      const hours = Number($('accessExpireHours').value || 0);
+      const body = {
+        creator_wallet_name: $('accessCreatorWallet').value,
+        listing_id: $('accessListingId').value.trim(),
+        max_uses: Number($('accessMaxUses').value || 1),
+        max_units: Number($('accessMaxUnits').value || 0),
+        expires_in_seconds: Math.max(0, hours) * 3600,
+        note: $('accessNote').value.trim(),
+        bind_on_first_use: true,
+      };
+      const out = await api('/ui/private/rwa/access/create', 'POST', body);
+      $('accessGeneratedCode').value = out.access_code || '';
+      $('accessStatus').innerHTML = `<span class="ok">Access ID created:</span> ${out.pass?.id || ''}`;
+      $('resultOut').textContent = pretty(out);
+    }
+
+    async function redeemAccessId() {
+      $('redeemStatus').textContent = 'Redeeming access ID...';
+      const body = {
+        access_code: $('redeemAccessCode').value.trim(),
+        buyer_wallet_name: $('redeemBuyerWallet').value,
+        validator_wallet_name: $('redeemValidatorWallet').value,
+        notary_wallet_name: $('redeemNotaryWallet').value,
+      };
+      const out = await api('/ui/private/rwa/access/redeem', 'POST', body);
+      $('redeemStatus').innerHTML = `<span class="ok">Access ID redeemed for wallet:</span> ${out.buyer_wallet_name || ''}`;
+      $('resultOut').textContent = pretty(out);
+      await refreshWalletPanel();
+    }
+
+    async function fundWallet() {
+      $('fundStatus').textContent = 'Funding wallet with JITO...';
+      const body = {
+        issuer_wallet_name: $('fundIssuerWallet').value,
+        recipient_wallet_name: $('fundRecipientWallet').value,
+        validator_wallet_name: $('fundValidatorWallet').value,
+        notary_wallet_name: $('fundNotaryWallet').value,
+        amount: Number($('fundAmount').value),
+        asset_id: $('fundAssetId').value.trim() || 'JITO',
+        domain: $('fundDomain').value.trim() || 'jito-settlement',
+        contract_id: $('fundContractId').value.trim() || 'jito-settlement-v1',
+      };
+      const out = await api('/ui/private/rwa/fund', 'POST', body);
+      $('fundStatus').innerHTML = '<span class="ok">Wallet funded with JITO on private chain.</span>';
+      $('resultOut').textContent = pretty(out);
+      await refreshDashboard();
+    }
+
+    async function boot() {
+      try {
+        $('jwt').value = localStorage.getItem('dual.jwt') || '';
+        $('portalUser').value = localStorage.getItem(USER_KEY) || '';
+        await Promise.all([refreshWallets(), refreshListings(), loadPolicy()]);
+        setMarketMode('quick');
+        renderQuickPreview();
+        await refreshDashboard();
+        await refreshWalletPanel();
+        startEventBridge();
+      } catch (err) {
+        $('resultOut').textContent = humanizeError(err);
+      }
+    }
+
+    $('jwt').onchange = () => {
+      localStorage.setItem('dual.jwt', $('jwt').value.trim());
+      startEventBridge();
+    };
+    $('refreshListingsBtn').onclick = async () => { try { await refreshListings(); } catch (err) { $('resultOut').textContent = humanizeError(err); } };
+    $('refreshWalletsBtn').onclick = async () => { try { await refreshWallets(); await refreshWalletPanel(); } catch (err) { $('resultOut').textContent = humanizeError(err); } };
+    $('quickModeBtn').onclick = () => setMarketMode('quick');
+    $('advancedModeBtn').onclick = () => setMarketMode('advanced');
+    $('quickListingId').onchange = () => renderQuickPreview();
+    $('quickBuyerWallet').onchange = () => renderQuickPreview();
+    $('quickQuantity').oninput = () => renderQuickPreview();
+    $('quickAccessCode').oninput = () => renderQuickPreview();
+    $('quickFundBtn').onclick = async () => {
+      try { await quickFundBuyer(); } catch (err) {
+        setWarn('quickStatus', err);
+        $('resultOut').textContent = humanizeError(err);
+      }
+    };
+    $('quickBuyBtn').onclick = async () => {
+      try { await quickBuyNow(); } catch (err) {
+        setWarn('quickStatus', err);
+        $('resultOut').textContent = humanizeError(err);
+      }
+    };
+    $('walletPanelRefreshBtn').onclick = async () => { try { await refreshWalletPanel(); } catch (err) { setWarn('walletSendPrivateStatus', err); } };
+    $('walletPanelWallet').onchange = async () => { try { await refreshWalletPanel(); } catch (err) { setWarn('walletSendPrivateStatus', err); } };
+    $('walletSendPrivateBtn').onclick = async () => { try { await sendPrivateFromWallet(); } catch (err) { setWarn('walletSendPrivateStatus', err); $('resultOut').textContent = humanizeError(err); } };
+    $('walletSendPublicBtn').onclick = async () => { try { await sendPublicFromWallet(); } catch (err) { setWarn('walletSendPublicStatus', err); $('resultOut').textContent = humanizeError(err); } };
+    $('createListingBtn').onclick = async () => { try { await createListing(); } catch (err) { setWarn('createStatus', err); $('resultOut').textContent = humanizeError(err); } };
+    $('buyListingBtn').onclick = async () => { try { await buyListing(); } catch (err) { setWarn('buyStatus', err); $('resultOut').textContent = humanizeError(err); } };
+    $('createAccessBtn').onclick = async () => { try { await createAccessId(); } catch (err) { setWarn('accessStatus', err); $('resultOut').textContent = humanizeError(err); } };
+    $('redeemAccessBtn').onclick = async () => { try { await redeemAccessId(); } catch (err) { setWarn('redeemStatus', err); $('resultOut').textContent = humanizeError(err); } };
+    $('fundWalletBtn').onclick = async () => { try { await fundWallet(); } catch (err) { setWarn('fundStatus', err); $('resultOut').textContent = humanizeError(err); } };
+    $('portalRegisterBtn').onclick = async () => { try { await portalRegister(); } catch (err) { setWarn('portalStatus', err); } };
+    $('portalLoginBtn').onclick = async () => { try { await portalLogin(); } catch (err) { setWarn('portalStatus', err); } };
+    $('portalLogoutBtn').onclick = async () => { try { await portalLogout(); } catch (err) { setWarn('portalStatus', err); } };
+    $('portalLinkWalletBtn').onclick = async () => { try { await portalLinkWallet(); } catch (err) { setWarn('portalStatus', err); } };
+    $('portalRefreshBtn').onclick = async () => { try { await refreshDashboard(); } catch (err) { setWarn('portalStatus', err); } };
+    $('onboardWalletBtn').onclick = async () => { try { await onboardWalletOnly(); } catch (err) { setWarn('onboardStatus', err); } };
+    $('onboardFullBtn').onclick = async () => { try { await onboardWalletAndUser(); } catch (err) { setWarn('onboardStatus', err); } };
+
+    boot();
+  </script>
+</body>
+</html>

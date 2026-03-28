@@ -1,0 +1,17 @@
+{
+  "name": "bob",
+  "address": "W096400e5949c82711fb6e7cda8671f3df6a1e53a",
+  "scheme": "ed25519",
+  "public_key": {
+    "kty": "ed25519",
+    "key": "nmiJwFFJItmch/ujMVBz8l7NyFBDf1I+DqsYwjObeho="
+  },
+  "private_key": {
+    "kty": "ed25519",
+    "key": "+h7Qp9hOW47C/fdoFCbMs9V/02EvrcdOX9bDOn70jlk="
+  },
+  "signer": {
+    "type": "local"
+  },
+  "created_at": 1772905258.1032588
+}

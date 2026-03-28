@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+chain.json
+wallets/
+node_data/
+node_a_data/
+node_b_data/
+data_local/
+*.log
+.venv/
+hsm_keys/
+tmp/

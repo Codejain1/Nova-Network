@@ -1,0 +1,694 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JITO Operator Console</title>
+  <style>
+    :root {
+      --bg: #071321;
+      --bg2: #10243a;
+      --card: #f7fbff;
+      --ink: #0f1d33;
+      --accent: #0075ff;
+      --danger: #c62828;
+      --ok: #0e8c53;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #fff;
+      background:
+        radial-gradient(1200px 500px at -10% -20%, #1b4b8f 0%, transparent 68%),
+        radial-gradient(700px 400px at 100% 10%, #156844 0%, transparent 72%),
+        linear-gradient(145deg, var(--bg), var(--bg2));
+      min-height: 100vh;
+      padding: 14px;
+    }
+    h1 { margin: 0 0 12px; font-size: 22px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      background: var(--card);
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 8px 22px rgba(0,0,0,.22);
+    }
+    .title {
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #355280;
+      margin-bottom: 8px;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      font-family: inherit;
+      font-size: 12px;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #c4d6ef;
+      margin-bottom: 8px;
+      background: #fff;
+      color: #0e1e35;
+    }
+    textarea { min-height: 92px; resize: vertical; }
+    button {
+      border: 0;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-danger { background: var(--danger); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    pre {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.4;
+      background: #deebff;
+      border-radius: 8px;
+      padding: 8px;
+      max-height: 320px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .ok { color: var(--ok); font-weight: 700; }
+    .warn { color: var(--danger); font-weight: 700; }
+    .small { font-size: 11px; opacity: .85; }
+  </style>
+  <link rel="stylesheet" href="/assets/ui-refresh.css" />
+</head>
+<body>
+  <h1 id="pageTitle">JITO Operator Console</h1>
+  <div class="small" id="pageSub">Advanced operations panel for node admins, validators, and protocol operators.</div>
+  <div class="top-nav">
+    <a href="/app">App Hub</a>
+    <a href="/community">Community</a>
+    <a href="/app/investor">Investor App</a>
+    <a href="/app/issuer">Issuer App</a>
+    <a href="/rwa">RWA Tokenization</a>
+    <a href="/rwa-market">RWA Market</a>
+    <a href="/rwa-dashboard">Portfolio Dashboard</a>
+    <a href="/explorer">Explorer</a>
+    <a href="/scanner">Scanner</a>
+  </div>
+  <div class="friendly-tip" style="margin-top:10px;">
+    <strong>Operator Mode:</strong> this page exposes low-level chain controls. For day-to-day users, use <strong>RWA Tokenization</strong> and <strong>RWA Market</strong>.
+  </div>
+
+  <div class="grid" style="margin-top:12px;">
+    <div class="card">
+      <div class="title">Auth</div>
+      <input id="jwt" placeholder="JWT token (optional unless node requires it)" />
+      <button id="saveJwt">Save Token</button>
+      <button id="refreshAll">Refresh</button>
+      <pre id="status"></pre>
+    </div>
+
+    <div class="card">
+      <div class="title">Wallets</div>
+      <input id="walletName" placeholder="wallet name (e.g. alice)" />
+      <div class="row">
+        <select id="walletScheme">
+          <option value="ed25519">ed25519</option>
+          <option value="rsa-legacy">rsa-legacy</option>
+        </select>
+        <select id="walletHsm">
+          <option value="false">local key</option>
+          <option value="true">file-hsm key</option>
+        </select>
+      </div>
+      <button id="createWallet">Create Wallet</button>
+      <pre id="wallets"></pre>
+    </div>
+
+    <div class="card">
+      <div class="title">Public Chain</div>
+      <select id="pubFrom"></select>
+      <input id="pubTo" placeholder="to address or @walletName" />
+      <input id="pubAmount" type="number" step="0.0001" placeholder="amount" />
+      <button id="sendPublic">Send Public Tx</button>
+      <select id="pubMiner"></select>
+      <button id="minePublic">Mine Public Block</button>
+      <div class="small">Auto-Mining (fixed block interval)</div>
+      <div class="row">
+        <select id="autoMinerWallet"></select>
+        <input id="autoMineInterval" type="number" step="0.1" value="8" />
+      </div>
+      <div class="row">
+        <select id="autoMineAllowEmpty">
+          <option value="false">skip empty blocks</option>
+          <option value="true">allow empty blocks</option>
+        </select>
+        <button id="autoMineStatus">Auto Status</button>
+      </div>
+      <div class="row">
+        <button id="autoMineStart">Start Auto-Mine</button>
+        <button id="autoMineStop" class="btn-danger">Stop Auto-Mine</button>
+      </div>
+      <div class="small">On-chain price oracle</div>
+      <select id="oracleWallet"></select>
+      <button id="registerOracle">Register Oracle Wallet</button>
+      <div class="row">
+        <input id="priceSymbol" placeholder="symbol (e.g. JCN)" value="JCN" />
+        <input id="priceValue" type="number" step="0.0001" placeholder="price" value="1.00" />
+      </div>
+      <input id="priceSource" placeholder="source" value="manual-ui" />
+      <button id="pushPrice">Push On-chain Price</button>
+      <button id="loadPrices">Load Latest Prices</button>
+      <div class="small">Branding (logos for explorer/scanner)</div>
+      <input id="chainLogoUrl" placeholder="chain logo URL (https://...)" />
+      <input id="tokenLogoUrl" placeholder="token logo URL (https://...)" />
+      <button id="setBranding">Set Branding</button>
+      <div class="small"><a href="/explorer" target="_blank">Open Explorer</a> | <a href="/scanner" target="_blank">Open Scanner</a></div>
+      <pre id="publicOut"></pre>
+    </div>
+
+    <div class="card">
+      <div class="title">Private Register</div>
+      <select id="privRegWallet"></select>
+      <input id="privRoles" placeholder="roles: participant,issuer,validator,notary" value="participant" />
+      <input id="privDomains" placeholder="domains csv (optional)" />
+      <textarea id="privAttrs" placeholder='attributes json, e.g. {"kyc":true}'>{}</textarea>
+      <button id="registerPrivate">Register Wallet</button>
+      <pre id="registerOut"></pre>
+    </div>
+
+    <div class="card">
+      <div class="title">Governance</div>
+      <select id="govWallet"></select>
+      <input id="govAction" placeholder="action (create_domain, deploy_contract, etc.)" value="create_domain" />
+      <textarea id="govPayload" placeholder="proposal payload json">{"domain_id":"rwa-us","members":["@issuer","@alice","@bob"]}</textarea>
+      <button id="proposeGov">Propose</button>
+      <input id="govProposalId" placeholder="proposal id" />
+      <select id="govApproveWallet"></select>
+      <button id="approveGov">Approve</button>
+      <pre id="govOut"></pre>
+    </div>
+
+    <div class="card">
+      <div class="title">Private Asset Ops</div>
+      <div class="small">Issue</div>
+      <select id="issueWallet"></select>
+      <input id="issueAsset" placeholder="asset id" value="RWA-TEST-1" />
+      <input id="issueOwner" placeholder="owner address or @walletName" value="@alice" />
+      <input id="issueDomain" placeholder="domain" value="rwa-us" />
+      <input id="issueContract" placeholder="contract id" value="" />
+      <input id="issueAmount" type="number" step="0.0001" value="1000" />
+      <input id="issueVisibility" placeholder="visibility csv @alice,@bob" value="@alice,@bob" />
+      <button id="issueAssetBtn">Issue Asset</button>
+
+      <div class="small">Transfer</div>
+      <select id="transferWallet"></select>
+      <input id="transferAsset" placeholder="asset id" value="RWA-TEST-1" />
+      <input id="transferTo" placeholder="to address or @walletName" value="@bob" />
+      <input id="transferAmount" type="number" step="0.0001" value="50" />
+      <input id="transferVisibility" placeholder="visibility csv @alice,@bob" value="@alice,@bob" />
+      <button id="transferAssetBtn">Transfer Asset</button>
+
+      <div class="row">
+        <select id="sealWallet"></select>
+        <select id="attestWallet"></select>
+      </div>
+      <button id="sealBtn">Seal Pending</button>
+      <input id="attestBlockHash" placeholder="block hash (optional: first pending)" />
+      <button id="attestBtn">Attest + Finalize</button>
+      <pre id="privateOpsOut"></pre>
+    </div>
+
+    <div class="card">
+      <div class="title">RWA Quickstart</div>
+      <div class="small">Guided one-shot flow: register roles -> create domain -> deploy contract -> issue -> seal -> attest</div>
+      <div class="row">
+        <select id="qsValidator1"></select>
+        <select id="qsValidator2"></select>
+      </div>
+      <div class="row">
+        <select id="qsIssuer"></select>
+        <select id="qsOwner"></select>
+      </div>
+      <input id="qsDomain" placeholder="domain id (unique)" />
+      <input id="qsContract" placeholder="contract id" />
+      <input id="qsAsset" placeholder="asset id" />
+      <input id="qsAmount" type="number" step="0.0001" value="1000" />
+      <button id="runRwaQuickstart">Run RWA Tokenization</button>
+      <pre id="quickstartOut"></pre>
+    </div>
+
+    <div class="card">
+      <div class="title">State</div>
+      <button id="loadGov">Load Governance</button>
+      <button id="loadPending">Load Pending Blocks</button>
+      <button id="loadChains">Load Chains</button>
+      <input id="viewer" placeholder="viewer address for private-view" />
+      <button id="loadViewer">Load Viewer View</button>
+      <pre id="stateOut"></pre>
+    </div>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+function token() {
+  return $('jwt').value.trim();
+}
+
+function headers(withJson=true) {
+  const h = {};
+  if (withJson) h['Content-Type'] = 'application/json';
+  const t = token();
+  if (t) h['Authorization'] = `Bearer ${t}`;
+  return h;
+}
+
+async function api(path, method='GET', body=null) {
+  const opts = { method, headers: headers(body !== null) };
+  if (body !== null) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  const text = await r.text();
+  let data;
+  try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
+  if (!r.ok) throw new Error(JSON.stringify(data));
+  return data;
+}
+
+function pretty(x) {
+  return JSON.stringify(x, null, 2);
+}
+
+function resolveAliases(payload, walletMap) {
+  if (typeof payload === 'string') {
+    if (payload.startsWith('@')) {
+      const name = payload.slice(1);
+      return walletMap[name]?.address || payload;
+    }
+    return payload;
+  }
+  if (Array.isArray(payload)) return payload.map(v => resolveAliases(v, walletMap));
+  if (payload && typeof payload === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(payload)) out[k] = resolveAliases(v, walletMap);
+    return out;
+  }
+  return payload;
+}
+
+let walletsByName = {};
+
+async function loadWallets() {
+  const data = await api('/ui/wallets');
+  walletsByName = {};
+  for (const w of data.wallets) walletsByName[w.name] = w;
+  const names = Object.keys(walletsByName);
+  const selects = ['pubFrom','pubMiner','autoMinerWallet','oracleWallet','privRegWallet','govWallet','govApproveWallet','issueWallet','transferWallet','sealWallet','attestWallet','qsValidator1','qsValidator2','qsIssuer','qsOwner'];
+  for (const id of selects) {
+    const s = $(id);
+    s.innerHTML = '';
+    for (const n of names) {
+      const o = document.createElement('option');
+      o.value = n;
+      o.textContent = `${n} (${walletsByName[n].address.slice(0,10)}...)`;
+      s.appendChild(o);
+    }
+  }
+  $('wallets').textContent = pretty(data);
+}
+
+async function refreshStatus() {
+  const s = await api('/status');
+  $('status').textContent = pretty(s);
+  const info = s.chain_info || {};
+  const pub = info.public_chain || {};
+  const token = pub.native_token || {};
+  $('pageTitle').textContent = `${pub.name || 'JITO'} Control Panel`;
+  $('pageSub').textContent = `${token.name || 'Native token'} (${token.symbol || '-'}) powers public chain gas + transfers`;
+  const branding = info.branding || {};
+  if (!$('chainLogoUrl').value) $('chainLogoUrl').value = branding.chain_logo_url || '';
+  if (!$('tokenLogoUrl').value) $('tokenLogoUrl').value = branding.token_logo_url || '';
+}
+
+$('saveJwt').onclick = () => {
+  localStorage.setItem('dual.jwt', $('jwt').value.trim());
+  refreshAll().catch(showErr);
+};
+
+$('refreshAll').onclick = () => refreshAll().catch(showErr);
+
+async function refreshAll() {
+  await loadWallets();
+  await refreshStatus();
+}
+
+$('createWallet').onclick = async () => {
+  try {
+    const body = {
+      name: $('walletName').value.trim(),
+      scheme: $('walletScheme').value,
+      use_hsm: $('walletHsm').value === 'true'
+    };
+    const out = await api('/ui/wallets/create', 'POST', body);
+    $('wallets').textContent = pretty(out);
+    await refreshAll();
+  } catch (e) { showErr(e); }
+};
+
+$('sendPublic').onclick = async () => {
+  try {
+    const out = await api('/ui/public/tx', 'POST', {
+      wallet_name: $('pubFrom').value,
+      to: $('pubTo').value.trim(),
+      amount: Number($('pubAmount').value)
+    });
+    $('publicOut').textContent = pretty(out);
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('minePublic').onclick = async () => {
+  try {
+    const out = await api('/ui/public/mine', 'POST', {
+      miner_wallet_name: $('pubMiner').value
+    });
+    $('publicOut').textContent = pretty(out);
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('autoMineStatus').onclick = async () => {
+  try {
+    const out = await api('/public/auto-mine');
+    $('publicOut').textContent = pretty(out);
+  } catch (e) { showErr(e); }
+};
+
+$('autoMineStart').onclick = async () => {
+  try {
+    const walletName = $('autoMinerWallet').value;
+    const miner = walletsByName[walletName]?.address || '';
+    const out = await api('/public/auto-mine/start', 'POST', {
+      miner,
+      interval_seconds: Number($('autoMineInterval').value || 8),
+      allow_empty_blocks: $('autoMineAllowEmpty').value === 'true'
+    });
+    $('publicOut').textContent = pretty(out);
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('autoMineStop').onclick = async () => {
+  try {
+    const out = await api('/public/auto-mine/stop', 'POST', {});
+    $('publicOut').textContent = pretty(out);
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('registerOracle').onclick = async () => {
+  try {
+    const out = await api('/ui/public/oracle/register', 'POST', {
+      wallet_name: $('oracleWallet').value
+    });
+    $('publicOut').textContent = pretty(out);
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('pushPrice').onclick = async () => {
+  try {
+    const out = await api('/ui/public/price/update', 'POST', {
+      wallet_name: $('oracleWallet').value,
+      symbol: $('priceSymbol').value.trim(),
+      price: Number($('priceValue').value),
+      source: $('priceSource').value.trim() || 'manual-ui'
+    });
+    $('publicOut').textContent = pretty(out);
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('loadPrices').onclick = async () => {
+  try {
+    const out = await api('/public/prices');
+    $('publicOut').textContent = pretty(out);
+  } catch (e) { showErr(e); }
+};
+
+$('setBranding').onclick = async () => {
+  try {
+    const out = await api('/chain/branding', 'POST', {
+      chain_logo_url: $('chainLogoUrl').value.trim(),
+      token_logo_url: $('tokenLogoUrl').value.trim(),
+    });
+    $('publicOut').textContent = pretty(out);
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('registerPrivate').onclick = async () => {
+  try {
+    const out = await api('/ui/private/register', 'POST', {
+      wallet_name: $('privRegWallet').value,
+      roles: $('privRoles').value.split(',').map(x => x.trim()).filter(Boolean),
+      domains: $('privDomains').value.split(',').map(x => x.trim()).filter(Boolean),
+      attributes: JSON.parse($('privAttrs').value || '{}')
+    });
+    $('registerOut').textContent = pretty(out);
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('proposeGov').onclick = async () => {
+  try {
+    const payloadRaw = JSON.parse($('govPayload').value || '{}');
+    const payload = resolveAliases(payloadRaw, walletsByName);
+    const out = await api('/ui/private/propose', 'POST', {
+      wallet_name: $('govWallet').value,
+      action: $('govAction').value.trim(),
+      payload
+    });
+    $('govOut').textContent = pretty(out);
+    $('govProposalId').value = out.proposal?.id || '';
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('approveGov').onclick = async () => {
+  try {
+    const out = await api('/ui/private/approve', 'POST', {
+      wallet_name: $('govApproveWallet').value,
+      proposal_id: $('govProposalId').value.trim()
+    });
+    $('govOut').textContent = pretty(out);
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('issueAssetBtn').onclick = async () => {
+  try {
+    const out = await api('/ui/private/issue', 'POST', {
+      wallet_name: $('issueWallet').value,
+      asset_id: $('issueAsset').value.trim(),
+      amount: Number($('issueAmount').value),
+      owner: $('issueOwner').value.trim(),
+      domain: $('issueDomain').value.trim(),
+      contract_id: $('issueContract').value.trim(),
+      visibility: $('issueVisibility').value.split(',').map(x => x.trim()).filter(Boolean)
+    });
+    $('privateOpsOut').textContent = pretty(out);
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('transferAssetBtn').onclick = async () => {
+  try {
+    const out = await api('/ui/private/transfer', 'POST', {
+      wallet_name: $('transferWallet').value,
+      asset_id: $('transferAsset').value.trim(),
+      amount: Number($('transferAmount').value),
+      to: $('transferTo').value.trim(),
+      visibility: $('transferVisibility').value.split(',').map(x => x.trim()).filter(Boolean)
+    });
+    $('privateOpsOut').textContent = pretty(out);
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('sealBtn').onclick = async () => {
+  try {
+    const out = await api('/ui/private/seal', 'POST', {
+      wallet_name: $('sealWallet').value
+    });
+    $('privateOpsOut').textContent = pretty(out);
+    $('attestBlockHash').value = out.block?.hash || '';
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('attestBtn').onclick = async () => {
+  try {
+    const out = await api('/ui/private/attest', 'POST', {
+      wallet_name: $('attestWallet').value,
+      block_hash: $('attestBlockHash').value.trim()
+    });
+    $('privateOpsOut').textContent = pretty(out);
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('runRwaQuickstart').onclick = async () => {
+  try {
+    const val1 = $('qsValidator1').value;
+    const val2 = $('qsValidator2').value;
+    const issuer = $('qsIssuer').value;
+    const owner = $('qsOwner').value;
+    const domain = $('qsDomain').value.trim();
+    const contractId = $('qsContract').value.trim();
+    const assetId = $('qsAsset').value.trim();
+    const amount = Number($('qsAmount').value || 0);
+
+    if (!val1 || !val2 || !issuer || !owner) throw new Error('Select validator1, validator2, issuer, and owner wallets.');
+    if (!domain || !contractId || !assetId || amount <= 0) throw new Error('Provide valid domain/contract/asset/amount.');
+
+    const val1Addr = walletsByName[val1]?.address || '';
+    const val2Addr = walletsByName[val2]?.address || '';
+    const issuerAddr = walletsByName[issuer]?.address || '';
+    const ownerAddr = walletsByName[owner]?.address || '';
+    if (!val1Addr || !val2Addr || !issuerAddr || !ownerAddr) throw new Error('Wallet address resolution failed.');
+
+    const steps = [];
+    const mark = (name, data) => steps.push({ step: name, ok: true, data });
+
+    mark('register validator1', await api('/ui/private/register', 'POST', {
+      wallet_name: val1,
+      roles: ['participant', 'validator', 'notary'],
+      domains: [domain],
+      attributes: { tier: 'validator-1' }
+    }));
+    mark('register validator2', await api('/ui/private/register', 'POST', {
+      wallet_name: val2,
+      roles: ['participant', 'validator', 'notary'],
+      domains: [domain],
+      attributes: { tier: 'validator-2' }
+    }));
+    mark('register issuer', await api('/ui/private/register', 'POST', {
+      wallet_name: issuer,
+      roles: ['participant', 'issuer'],
+      domains: [domain],
+      attributes: { org: 'issuer' }
+    }));
+    mark('register owner', await api('/ui/private/register', 'POST', {
+      wallet_name: owner,
+      roles: ['participant'],
+      domains: [domain],
+      attributes: { org: 'holder' }
+    }));
+
+    const p1 = await api('/ui/private/propose', 'POST', {
+      wallet_name: val1,
+      action: 'create_domain',
+      payload: { domain_id: domain, members: [issuerAddr, ownerAddr, val1Addr, val2Addr] }
+    });
+    mark('propose create_domain', p1);
+    mark('approve create_domain', await api('/ui/private/approve', 'POST', {
+      wallet_name: val2,
+      proposal_id: p1.proposal?.id || ''
+    }));
+
+    const p2 = await api('/ui/private/propose', 'POST', {
+      wallet_name: val1,
+      action: 'deploy_contract',
+      payload: {
+        domain_id: domain,
+        contract_id: contractId,
+        rules: {
+          allowed_recipients: [ownerAddr],
+          max_transfer_amount: amount
+        }
+      }
+    });
+    mark('propose deploy_contract', p2);
+    mark('approve deploy_contract', await api('/ui/private/approve', 'POST', {
+      wallet_name: val2,
+      proposal_id: p2.proposal?.id || ''
+    }));
+
+    mark('issue asset', await api('/ui/private/issue', 'POST', {
+      wallet_name: issuer,
+      asset_id: assetId,
+      amount,
+      owner: ownerAddr,
+      domain,
+      contract_id: contractId,
+      visibility: [issuerAddr, ownerAddr]
+    }));
+
+    const sealed = await api('/ui/private/seal', 'POST', { wallet_name: val1 });
+    mark('seal pending', sealed);
+    mark('attest + finalize', await api('/ui/private/attest', 'POST', {
+      wallet_name: val2,
+      block_hash: sealed.block?.hash || ''
+    }));
+
+    const holdings = await api(`/private/assets?address=${encodeURIComponent(ownerAddr)}&include_pending=true`);
+    mark('owner holdings', holdings);
+
+    $('quickstartOut').textContent = pretty({
+      ok: true,
+      summary: {
+        domain,
+        contract_id: contractId,
+        asset_id: assetId,
+        owner: ownerAddr,
+        amount
+      },
+      steps
+    });
+    await refreshStatus();
+  } catch (e) { showErr(e); }
+};
+
+$('loadGov').onclick = async () => {
+  try { $('stateOut').textContent = pretty(await api('/private/governance')); }
+  catch (e) { showErr(e); }
+};
+$('loadPending').onclick = async () => {
+  try { $('stateOut').textContent = pretty(await api('/private/pending-blocks')); }
+  catch (e) { showErr(e); }
+};
+$('loadChains').onclick = async () => {
+  try {
+    const [pub, prv] = await Promise.all([api('/public/chain'), api('/private/chain')]);
+    $('stateOut').textContent = pretty({ public: pub, private: prv });
+  } catch (e) { showErr(e); }
+};
+$('loadViewer').onclick = async () => {
+  try {
+    const v = encodeURIComponent($('viewer').value.trim());
+    $('stateOut').textContent = pretty(await api(`/private/view?viewer=${v}`));
+  } catch (e) { showErr(e); }
+};
+
+function showErr(err) {
+  const msg = err?.message || String(err);
+  $('stateOut').textContent = msg;
+}
+
+(function init() {
+  $('jwt').value = localStorage.getItem('dual.jwt') || '';
+  const seed = String(Date.now()).slice(-6);
+  if (!$('qsDomain').value) $('qsDomain').value = `rwa-demo-${seed}`;
+  if (!$('qsContract').value) $('qsContract').value = `contract-${seed}`;
+  if (!$('qsAsset').value) $('qsAsset').value = `RWA-DEMO-${seed}`;
+  refreshAll().catch(showErr);
+})();
+</script>
+</body>
+</html>

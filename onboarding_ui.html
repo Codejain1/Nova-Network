@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JITO — Get Started</title>
+  <style>
+    :root {
+      --bg:       #0a0a0f;
+      --bg2:      #0e0e16;
+      --card:     #12121a;
+      --card2:    #1a1a26;
+      --border:   #1e1e2e;
+      --border2:  #2a2a3e;
+      --text:     #e0e0ff;
+      --muted:    #7070a0;
+      --cyan:     #00d4ff;
+      --blue:     #0088ff;
+      --green:    #00c896;
+      --red:      #ff4466;
+      --yellow:   #ffcc00;
+      --purple:   #a855f7;
+      --gradient: linear-gradient(135deg, #00d4ff 0%, #0088ff 100%);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ══ Navbar ══ */
+    .navbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,10,15,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex; align-items: center; gap: 16px; height: 56px;
+    }
+    .navbar-brand {
+      font-size: 16px; font-weight: 800; letter-spacing: -0.02em;
+      background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .navbar-links { margin-left: auto; display: flex; gap: 8px; }
+    .navbar-link {
+      font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px;
+      color: var(--muted); border: 1px solid var(--border); text-decoration: none;
+      transition: all 0.15s;
+    }
+    .navbar-link:hover { color: var(--cyan); border-color: var(--cyan); }
+
+    /* ══ Page wrapper ══ */
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+
+    /* ══ Hero ══ */
+    .hero {
+      text-align: center;
+      margin-bottom: 40px;
+      padding: 40px 24px 36px;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,212,255,0.10) 0%, transparent 70%),
+                  linear-gradient(180deg, rgba(0,136,255,0.06) 0%, transparent 100%);
+      border: 1px solid rgba(0,212,255,0.12);
+      border-radius: 16px;
+    }
+    .hero-title {
+      font-size: 36px; font-weight: 800; letter-spacing: -0.03em;
+      background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin-bottom: 10px;
+    }
+    .hero-sub {
+      font-size: 15px; color: var(--muted); max-width: 480px; margin: 0 auto;
+    }
+
+    /* ══ Step indicators ══ */
+    .step-indicators {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0; margin-bottom: 40px; position: relative;
+    }
+    .step-indicator {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      position: relative; z-index: 1;
+    }
+    .step-bubble {
+      width: 40px; height: 40px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800;
+      background: var(--card2); border: 2px solid var(--border2);
+      color: var(--muted); transition: all 0.3s;
+    }
+    .step-bubble.active {
+      background: var(--gradient); color: #000;
+      border-color: transparent;
+      box-shadow: 0 0 20px rgba(0,212,255,0.35);
+    }
+    .step-bubble.done {
+      background: rgba(0,200,150,0.15); color: var(--green);
+      border-color: rgba(0,200,150,0.4);
+    }
+    .step-label {
+      font-size: 10px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+    .step-label.active { color: var(--cyan); }
+    .step-label.done   { color: var(--green); }
+    .step-connector {
+      width: 80px; height: 2px;
+      background: var(--border2);
+      margin-bottom: 22px;
+      transition: background 0.3s;
+    }
+    .step-connector.done { background: rgba(0,200,150,0.4); }
+
+    /* ══ Step panels ══ */
+    .step-panel { display: none; }
+    .step-panel.active { display: block; }
+
+    /* ══ Card ══ */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;
+    }
+    .card h2 {
+      font-size: 20px; font-weight: 800; margin-bottom: 8px;
+    }
+    .card-desc {
+      font-size: 13px; color: var(--muted); margin-bottom: 22px; line-height: 1.6;
+    }
+
+    /* ══ Divider ══ */
+    .divider {
+      border: 0; border-top: 1px solid var(--border);
+      margin: 22px 0;
+    }
+
+    /* ══ Forms ══ */
+    .form-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+    .form-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .form-control {
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: 8px; padding: 10px 12px;
+      font-size: 13px; color: var(--text); font-family: inherit;
+      width: 100%; transition: border-color 0.15s; outline: none;
+    }
+    .form-control:focus { border-color: var(--cyan); }
+    .form-control::placeholder { color: var(--muted); }
+    textarea.form-control { resize: vertical; min-height: 80px; }
+    .form-hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .form-msg {
+      font-size: 12px; font-weight: 700; min-height: 18px;
+      margin-top: 10px; padding: 10px 12px; border-radius: 8px;
+      display: none;
+    }
+    .form-msg.show { display: block; }
+    .form-msg.ok  { background: rgba(0,200,150,0.1); color: var(--green); border: 1px solid rgba(0,200,150,0.3); }
+    .form-msg.err { background: rgba(255,68,102,0.1); color: var(--red); border: 1px solid rgba(255,68,102,0.3); }
+
+    /* ══ Warning box ══ */
+    .warning-box {
+      background: rgba(255,204,0,0.08);
+      border: 1px solid rgba(255,204,0,0.3);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin: 16px 0;
+    }
+    .warning-box-title {
+      font-size: 12px; font-weight: 800; color: var(--yellow);
+      margin-bottom: 4px; display: flex; align-items: center; gap: 6px;
+    }
+    .warning-box-body { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    /* ══ Wallet result box ══ */
+    .wallet-result {
+      background: var(--card2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 16px;
+      margin: 16px 0;
+      display: none;
+    }
+    .wallet-result.show { display: block; }
+    .wallet-field { margin-bottom: 10px; }
+    .wallet-field-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+    .wallet-field-value {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 12px; color: var(--cyan);
+      background: rgba(0,212,255,0.06);
+      border: 1px solid rgba(0,212,255,0.15);
+      border-radius: 6px; padding: 6px 10px;
+      word-break: break-all;
+    }
+
+    /* ══ Buttons ══ */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      border: none; border-radius: 8px; padding: 10px 18px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      transition: all 0.15s; text-decoration: none;
+    }
+    .btn-primary { background: var(--gradient); color: #000; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+    .btn-ghost {
+      background: var(--card2); color: var(--text);
+      border: 1px solid var(--border2);
+    }
+    .btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+    .btn-success { background: var(--green); color: #000; }
+    .btn-success:hover { opacity: 0.9; }
+    .btn-download {
+      background: rgba(0,200,150,0.1); color: var(--green);
+      border: 1px solid rgba(0,200,150,0.3);
+    }
+    .btn-download:hover { background: rgba(0,200,150,0.2); }
+    .btn-sm { padding: 7px 14px; font-size: 12px; }
+    .w-full { width: 100%; }
+
+    /* ══ Navigation buttons ══ */
+    .step-nav {
+      display: flex; justify-content: flex-end; margin-top: 24px;
+    }
+    .step-nav.has-back {
+      justify-content: space-between;
+    }
+
+    /* ══ Balance box ══ */
+    .balance-box {
+      background: rgba(0,212,255,0.06);
+      border: 1px solid rgba(0,212,255,0.2);
+      border-radius: 10px;
+      padding: 16px;
+      margin: 14px 0;
+      display: none;
+    }
+    .balance-box.show { display: flex; align-items: center; justify-content: space-between; }
+    .balance-label { font-size: 12px; color: var(--muted); }
+    .balance-value { font-size: 22px; font-weight: 800; color: var(--cyan); }
+
+    /* ══ Summary card (Step 4) ══ */
+    .summary-card {
+      background: var(--card2);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .summary-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .summary-row:last-child { border-bottom: 0; }
+    .summary-label { color: var(--muted); font-size: 12px; }
+    .summary-value { font-weight: 700; font-family: "SF Mono", Consolas, monospace; font-size: 12px; color: var(--cyan); word-break: break-all; max-width: 60%; text-align: right; }
+
+    /* ══ What can you do cards ══ */
+    .action-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+      margin-bottom: 24px;
+    }
+    .action-card {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .action-card:hover { border-color: rgba(0,212,255,0.3); transform: translateY(-1px); }
+    .action-icon { font-size: 24px; margin-bottom: 8px; }
+    .action-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .action-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+    /* ══ Quick links ══ */
+    .quick-links { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
+    .quick-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--card2); border: 1px solid var(--border2);
+      border-radius: 8px; padding: 10px 16px;
+      font-size: 13px; font-weight: 700; color: var(--text);
+      text-decoration: none; transition: all 0.15s;
+    }
+    .quick-link:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ══ Section divider label ══ */
+    .section-label {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 12px; margin-top: 4px;
+    }
+
+    /* ══ Spinner ══ */
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid var(--border2); border-top-color: var(--cyan);
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 4px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ══ Responsive ══ */
+    @media (max-width: 600px) {
+      .step-connector { width: 40px; }
+      .action-grid { grid-template-columns: 1fr; }
+      .card { padding: 20px; }
+      .hero-title { font-size: 24px; }
+      .step-bubble { width: 34px; height: 34px; font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ NAVBAR ═══════════════════ -->
+<nav class="navbar">
+  <div class="navbar-brand">JITO Blockchain</div>
+  <div class="navbar-links">
+    <a href="/community" class="navbar-link">Community Hub</a>
+    <a href="/explorer" class="navbar-link">Explorer</a>
+    <a href="/rwa-market" class="navbar-link">RWA Market</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- ═══════════════════ HERO ═══════════════════ -->
+  <div class="hero">
+    <div class="hero-title">Get Started with JITO</div>
+    <p class="hero-sub">Follow four simple steps to create your wallet, claim tokens, and join the community.</p>
+  </div>
+
+  <!-- ═══════════════════ STEP INDICATORS ═══════════════════ -->
+  <div class="step-indicators">
+    <div class="step-indicator">
+      <div class="step-bubble active" id="bubble-1">1</div>
+      <div class="step-label active" id="label-1">Wallet</div>
+    </div>
+    <div class="step-connector" id="conn-1"></div>
+    <div class="step-indicator">
+      <div class="step-bubble" id="bubble-2">2</div>
+      <div class="step-label" id="label-2">Faucet</div>
+    </div>
+    <div class="step-connector" id="conn-2"></div>
+    <div class="step-indicator">
+      <div class="step-bubble" id="bubble-3">3</div>
+      <div class="step-label" id="label-3">Identity</div>
+    </div>
+    <div class="step-connector" id="conn-3"></div>
+    <div class="step-indicator">
+      <div class="step-bubble" id="bubble-4">4</div>
+      <div class="step-label" id="label-4">Ready!</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       STEP 1 — CREATE YOUR WALLET
+  ══════════════════════════════════════ -->
+  <div id="step-1" class="step-panel active">
+    <div class="card">
+      <div class="card-title">Step 1 of 4</div>
+      <h2>Create Your Wallet</h2>
+      <p class="card-desc">Generate a new JITO wallet or import one you already own. Your wallet is your identity on the blockchain.</p>
+
+      <!-- Generate new wallet -->
+      <button class="btn btn-primary w-full" id="generateBtn" onclick="doGenerateWallet()">
+        Generate New Wallet
+      </button>
+      <div class="form-msg" id="genMsg"></div>
+
+      <!-- Wallet result display -->
+      <div class="wallet-result" id="walletResult">
+        <div class="wallet-field">
+          <div class="wallet-field-label">Address
+            <button onclick="copyToClipboard('genAddress', this)" style="margin-left:8px;font-size:10px;padding:2px 8px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);border-radius:4px;color:var(--cyan);cursor:pointer;">Copy</button>
+          </div>
+          <div class="wallet-field-value" id="genAddress">—</div>
+        </div>
+        <div class="wallet-field">
+          <div class="wallet-field-label">Public Key</div>
+          <div class="wallet-field-value" id="genPublicKey">—</div>
+        </div>
+        <div class="warning-box">
+          <div class="warning-box-title">⚠ Save Your Private Key</div>
+          <div class="warning-box-body">
+            Your private key is shown below. <strong>Copy it now and store it securely.</strong>
+            It cannot be recovered if lost — anyone with this key controls your wallet.
+          </div>
+        </div>
+        <div class="wallet-field">
+          <div class="wallet-field-label">Private Key</div>
+          <div class="wallet-field-value" id="genPrivateKey" style="color: var(--yellow);">—</div>
+        </div>
+        <button class="btn btn-download w-full" style="margin-top:12px;" onclick="downloadWallet()">
+          Download Wallet as JSON
+        </button>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Import existing wallet -->
+      <div class="section-label">Or import an existing wallet</div>
+      <div class="form-group">
+        <label class="form-label">Wallet JSON</label>
+        <textarea class="form-control" id="importWalletInput" rows="4"
+          placeholder='{"address":"...","private_key":"...","public_key":"..."}'
+          oninput="onImportChange()"></textarea>
+        <div class="form-hint">Paste your wallet JSON object</div>
+      </div>
+      <div class="form-msg" id="importMsg"></div>
+    </div>
+
+    <div class="step-nav">
+      <button class="btn btn-primary" id="nextBtn1" onclick="goToStep(2)" disabled>
+        Next: Claim Tokens &rarr;
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       STEP 2 — FAUCET
+  ══════════════════════════════════════ -->
+  <div id="step-2" class="step-panel">
+    <div class="card">
+      <div class="card-title">Step 2 of 4</div>
+      <h2>Claim Free Tokens</h2>
+      <p class="card-desc">The JITO faucet gives new users 100 JITO tokens to get started. You can only claim once per address.</p>
+
+      <div class="form-group">
+        <label class="form-label">Wallet Address</label>
+        <input class="form-control" id="faucetAddress" placeholder="Your wallet address…" oninput="onFaucetAddressChange()" />
+        <div class="form-hint">Auto-filled from Step 1 if you created a wallet</div>
+      </div>
+      <button class="btn btn-primary w-full" onclick="doClaimFaucet()">Claim 100 JITO</button>
+      <div class="form-msg" id="faucetMsg"></div>
+
+      <hr class="divider" />
+
+      <div class="section-label">Check Balance</div>
+      <div style="display:flex;gap:8px;align-items:flex-start;">
+        <input class="form-control" id="balanceAddress" placeholder="Address to check…" style="flex:1;" />
+        <button class="btn btn-ghost btn-sm" style="white-space:nowrap;margin-top:0;" onclick="doCheckBalance()">Check</button>
+      </div>
+      <div class="balance-box" id="balanceBox">
+        <div>
+          <div class="balance-label">Current Balance</div>
+          <div style="font-size:11px;color:var(--muted);font-family:'SF Mono',Consolas,monospace;" id="balanceAddr">—</div>
+        </div>
+        <div class="balance-value" id="balanceValue">— JITO</div>
+      </div>
+      <div class="form-msg" id="balanceMsg"></div>
+    </div>
+
+    <div class="step-nav has-back">
+      <button class="btn btn-ghost" onclick="goToStep(1)">&larr; Back</button>
+      <button class="btn btn-primary" id="nextBtn2" onclick="goToStep(3)" disabled>
+        Next: Claim Identity &rarr;
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       STEP 3 — CLAIM IDENTITY
+  ══════════════════════════════════════ -->
+  <div id="step-3" class="step-panel">
+    <div class="card">
+      <div class="card-title">Step 3 of 4</div>
+      <h2>Claim Your Identity</h2>
+      <p class="card-desc">Register a human-readable handle on-chain. Your handle is permanent and linked to your wallet address.</p>
+
+      <div class="form-group">
+        <label class="form-label">Wallet JSON</label>
+        <textarea class="form-control" id="identityWallet" rows="3"
+          placeholder='{"address":"...","private_key":"...","public_key":"..."}'
+          oninput="onIdentityWalletChange()"></textarea>
+        <div class="form-hint">Auto-filled from Step 1 if you created a wallet</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Handle</label>
+        <input class="form-control" id="identityHandle" placeholder="e.g. alice_jito"
+          oninput="onIdentityFormChange()" />
+        <div class="form-hint">3–32 characters, lowercase letters, numbers and underscore only</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bio (optional)</label>
+        <textarea class="form-control" id="identityBio" rows="2" placeholder="Short bio about yourself…"></textarea>
+      </div>
+      <button class="btn btn-primary w-full" id="claimIdentityBtn" onclick="doClaimIdentityStep()" disabled>
+        Claim Identity On-Chain
+      </button>
+      <div class="form-msg" id="identityMsg"></div>
+    </div>
+
+    <div class="step-nav has-back">
+      <button class="btn btn-ghost" onclick="goToStep(2)">&larr; Back</button>
+      <button class="btn btn-primary" id="nextBtn3" onclick="goToStep(4)" disabled>
+        Next: You're Ready! &rarr;
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       STEP 4 — YOU'RE READY
+  ══════════════════════════════════════ -->
+  <div id="step-4" class="step-panel">
+    <div class="card">
+      <div class="card-title">Step 4 of 4</div>
+      <h2>You're Ready! 🎉</h2>
+      <p class="card-desc" style="margin-bottom:20px;">Your JITO account is set up. Here's a summary of your details.</p>
+
+      <div class="summary-card" id="summaryCard">
+        <div class="summary-row">
+          <span class="summary-label">Wallet Address</span>
+          <span class="summary-value" id="summaryAddress">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Handle</span>
+          <span class="summary-value" id="summaryHandle" style="font-family:inherit;font-size:14px;color:var(--cyan);">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Balance</span>
+          <span class="summary-value" id="summaryBalance" style="color:var(--green);">—</span>
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top:24px;">Explore JITO</div>
+      <div class="quick-links">
+        <a href="/community" class="quick-link">🌐 Community Hub</a>
+        <a href="/explorer" class="quick-link">🔍 Explorer</a>
+        <a href="/rwa-market" class="quick-link">📈 RWA Market</a>
+      </div>
+
+      <div class="section-label" style="margin-top:8px;">What can you do?</div>
+      <div class="action-grid">
+        <div class="action-card">
+          <div class="action-icon">📋</div>
+          <div class="action-title">Post a Task</div>
+          <div class="action-desc">Create tasks with JITO rewards for AI agents to complete. Build your on-chain track record.</div>
+        </div>
+        <div class="action-card">
+          <div class="action-icon">🗳️</div>
+          <div class="action-title">Vote on Governance</div>
+          <div class="action-desc">Participate in community proposals that shape the future of the JITO protocol.</div>
+        </div>
+        <div class="action-card">
+          <div class="action-icon">🤖</div>
+          <div class="action-title">Register an AI Agent</div>
+          <div class="action-desc">Deploy and register your AI agent with verifiable capabilities on-chain.</div>
+        </div>
+        <div class="action-card">
+          <div class="action-icon">📈</div>
+          <div class="action-title">Trade RWA Assets</div>
+          <div class="action-desc">Buy and sell tokenized real-world assets in the permissionless RWA marketplace.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-nav has-back">
+      <button class="btn btn-ghost" onclick="goToStep(3)">&larr; Back</button>
+      <a href="/community" class="btn btn-primary">Enter Community Hub &rarr;</a>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+"use strict";
+
+const API = window.location.origin;
+
+/* ══════════════════════════════════════
+   STATE
+══════════════════════════════════════ */
+let _currentStep = 1;
+let _wallet = null;         // generated or imported wallet object
+let _handle = "";           // handle claimed in step 3
+let _balance = null;        // last known balance
+
+/* ══════════════════════════════════════
+   UTILITIES
+══════════════════════════════════════ */
+function esc(v) {
+  return String(v ?? "").replace(/[&<>'"]/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c])
+  );
+}
+
+async function getJSON(path) {
+  const res = await fetch(API + path, { headers: { accept: "application/json" } });
+  const text = await res.text();
+  let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch(_) {}
+  if (!res.ok) throw new Error(data.error || data.detail || res.statusText || "Request failed");
+  return data;
+}
+
+async function postJSON(path, body) {
+  const res = await fetch(API + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", accept: "application/json" },
+    body: JSON.stringify(body)
+  });
+  const text = await res.text();
+  let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch(_) {}
+  if (!res.ok) throw new Error(data.error || data.detail || res.statusText || "Request failed");
+  return data;
+}
+
+function showMsg(id, msg, ok) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = "form-msg show " + (ok ? "ok" : "err");
+}
+
+function clearMsg(id) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = ""; el.className = "form-msg"; }
+}
+
+/* ══════════════════════════════════════
+   STEP NAVIGATION
+══════════════════════════════════════ */
+function goToStep(n) {
+  // Hide all panels
+  document.querySelectorAll(".step-panel").forEach(p => p.classList.remove("active"));
+  document.getElementById("step-" + n).classList.add("active");
+  _currentStep = n;
+  updateStepIndicators();
+
+  // Populate auto-fill fields when entering a step
+  if (n === 2) populateFaucetStep();
+  if (n === 3) populateIdentityStep();
+  if (n === 4) populateSummaryStep();
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function updateStepIndicators() {
+  for (let i = 1; i <= 4; i++) {
+    const bubble = document.getElementById("bubble-" + i);
+    const label  = document.getElementById("label-" + i);
+    bubble.classList.remove("active", "done");
+    label.classList.remove("active", "done");
+    if (i < _currentStep) {
+      bubble.classList.add("done");
+      bubble.textContent = "✓";
+      label.classList.add("done");
+    } else if (i === _currentStep) {
+      bubble.classList.add("active");
+      bubble.textContent = i;
+      label.classList.add("active");
+    } else {
+      bubble.textContent = i;
+    }
+    // Update connector
+    if (i < 4) {
+      const conn = document.getElementById("conn-" + i);
+      conn.classList.toggle("done", i < _currentStep);
+    }
+  }
+}
+
+/* ══════════════════════════════════════
+   STEP 1: WALLET
+══════════════════════════════════════ */
+async function doGenerateWallet() {
+  const btn = document.getElementById("generateBtn");
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span>Generating…`;
+  clearMsg("genMsg");
+  try {
+    const data = await getJSON("/wallet/create");
+    _wallet = data;
+    // Display result
+    document.getElementById("genAddress").textContent    = data.address    || "—";
+    document.getElementById("genPublicKey").textContent  = data.public_key || "—";
+    document.getElementById("genPrivateKey").textContent = data.private_key || "—";
+    document.getElementById("walletResult").classList.add("show");
+    // Enable Next
+    document.getElementById("nextBtn1").disabled = false;
+    showMsg("genMsg", "Wallet generated! Make sure to download or copy your private key before continuing.", true);
+  } catch(err) {
+    showMsg("genMsg", String(err), false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Generate New Wallet";
+  }
+}
+
+function downloadWallet() {
+  if (!_wallet) return;
+  const blob = new Blob([JSON.stringify(_wallet, null, 2)], { type: "application/json" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = "jito-wallet-" + (_wallet.address || "").slice(0, 8) + ".json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function onImportChange() {
+  const raw = document.getElementById("importWalletInput").value.trim();
+  clearMsg("importMsg");
+  if (!raw) return;
+  try {
+    const w = JSON.parse(raw);
+    if (!w.address) throw new Error("Wallet missing 'address' field");
+    _wallet = w;
+    document.getElementById("nextBtn1").disabled = false;
+    showMsg("importMsg", "Wallet imported: " + w.address.slice(0,12) + "…", true);
+  } catch(err) {
+    _wallet = null;
+    document.getElementById("nextBtn1").disabled = true;
+    showMsg("importMsg", "Invalid wallet JSON: " + String(err), false);
+  }
+}
+
+/* ══════════════════════════════════════
+   STEP 2: FAUCET
+══════════════════════════════════════ */
+function populateFaucetStep() {
+  if (_wallet && _wallet.address) {
+    document.getElementById("faucetAddress").value  = _wallet.address;
+    document.getElementById("balanceAddress").value = _wallet.address;
+  }
+  checkNextBtn2();
+}
+
+function onFaucetAddressChange() {
+  checkNextBtn2();
+}
+
+function checkNextBtn2() {
+  const addr = document.getElementById("faucetAddress").value.trim();
+  // Allow next if address is filled (user may skip faucet)
+  document.getElementById("nextBtn2").disabled = !addr;
+}
+
+async function doClaimFaucet() {
+  const address = document.getElementById("faucetAddress").value.trim();
+  if (!address) { showMsg("faucetMsg", "Please enter a wallet address.", false); return; }
+  clearMsg("faucetMsg");
+  showMsg("faucetMsg", "Claiming…", true);
+  try {
+    const data = await postJSON("/public/faucet", { address });
+    showMsg("faucetMsg", data.message || data.msg || "100 JITO claimed! Polling for balance…", true);
+    document.getElementById("balanceAddress").value = address;
+    document.getElementById("nextBtn2").disabled = false;
+    startBalancePolling(address);
+  } catch(err) {
+    showMsg("faucetMsg", String(err), false);
+  }
+}
+
+async function doCheckBalance() {
+  const address = document.getElementById("balanceAddress").value.trim();
+  if (!address) { showMsg("balanceMsg", "Enter an address to check.", false); return; }
+  clearMsg("balanceMsg");
+  try {
+    const data = await getJSON("/public/balance?address=" + encodeURIComponent(address));
+    const bal = data.balance ?? data.amount ?? "—";
+    _balance = bal;
+    document.getElementById("balanceAddr").textContent  = address.slice(0,12) + "…" + address.slice(-6);
+    document.getElementById("balanceValue").textContent = Number(bal).toLocaleString(undefined,{maximumFractionDigits:4}) + " JITO";
+    document.getElementById("balanceBox").classList.add("show");
+    document.getElementById("nextBtn2").disabled = false;
+  } catch(err) {
+    showMsg("balanceMsg", String(err), false);
+  }
+}
+
+/* ══════════════════════════════════════
+   STEP 3: IDENTITY
+══════════════════════════════════════ */
+function populateIdentityStep() {
+  if (_wallet) {
+    document.getElementById("identityWallet").value = JSON.stringify(_wallet, null, 2);
+  }
+  onIdentityFormChange();
+}
+
+function onIdentityWalletChange() {
+  onIdentityFormChange();
+}
+
+let _handleCheckTimer = null;
+let _handleAvailable = false;
+
+function onIdentityFormChange() {
+  const walletRaw = document.getElementById("identityWallet").value.trim();
+  const handle    = document.getElementById("identityHandle").value.trim();
+  let walletOk = false;
+  try {
+    const w = JSON.parse(walletRaw);
+    walletOk = !!w.address;
+  } catch(_) {}
+  const handleOk = /^[a-z0-9_]{3,32}$/.test(handle);
+  document.getElementById("claimIdentityBtn").disabled = !(walletOk && handleOk && _handleAvailable);
+
+  // Debounced handle availability check
+  if (handleOk) {
+    clearTimeout(_handleCheckTimer);
+    const hint = document.querySelector("#identityHandle + .form-hint") || document.createElement("span");
+    hint.textContent = "Checking…";
+    hint.style.color = "var(--muted)";
+    _handleCheckTimer = setTimeout(() => checkHandleAvailability(handle), 500);
+  }
+}
+
+async function checkHandleAvailability(handle) {
+  const hint = document.querySelector("#identityHandle + .form-hint");
+  if (!hint) return;
+  try {
+    await getJSON("/identity/handle/" + encodeURIComponent(handle));
+    // 200 = exists = taken
+    hint.textContent = "✗ @" + handle + " is already taken";
+    hint.style.color = "var(--red)";
+    _handleAvailable = false;
+  } catch(err) {
+    if (String(err).includes("404") || String(err).toLowerCase().includes("not found")) {
+      hint.textContent = "✓ @" + handle + " is available";
+      hint.style.color = "var(--green)";
+      _handleAvailable = true;
+    } else {
+      hint.textContent = "3–32 chars, lowercase letters, numbers and underscore only";
+      hint.style.color = "var(--muted)";
+    }
+  }
+  // Re-evaluate button
+  onIdentityFormChange();
+}
+
+async function doClaimIdentityStep() {
+  const msgId = "identityMsg";
+  clearMsg(msgId);
+  try {
+    const walletRaw = document.getElementById("identityWallet").value.trim();
+    const wallet    = JSON.parse(walletRaw);
+    if (!wallet.address) throw new Error("Wallet missing 'address' field");
+    const handle = document.getElementById("identityHandle").value.trim();
+    const bio    = document.getElementById("identityBio").value.trim();
+    if (!/^[a-z0-9_]{3,32}$/.test(handle)) {
+      throw new Error("Handle must be 3–32 chars, lowercase letters, numbers and underscore only.");
+    }
+    showMsg(msgId, "Submitting…", true);
+    await postJSON("/public/identity/claim", { wallet, handle, bio, links_json: "{}" });
+    _handle = handle;
+    // Update stored wallet from identity step (in case user pasted a different one)
+    _wallet = wallet;
+    showMsg(msgId, `Identity @${handle} claimed! It will confirm after the next mined block.`, true);
+    document.getElementById("nextBtn3").disabled = false;
+  } catch(err) {
+    showMsg(msgId, String(err), false);
+  }
+}
+
+/* ══════════════════════════════════════
+   STEP 4: SUMMARY
+══════════════════════════════════════ */
+async function populateSummaryStep() {
+  const address = _wallet ? _wallet.address : "—";
+  document.getElementById("summaryAddress").textContent = address;
+  document.getElementById("summaryHandle").textContent  = _handle ? "@" + _handle : "—";
+  document.getElementById("summaryBalance").textContent = "Loading…";
+
+  if (_wallet && _wallet.address) {
+    try {
+      const data = await getJSON("/public/balance?address=" + encodeURIComponent(_wallet.address));
+      const bal = data.balance ?? data.amount ?? "—";
+      document.getElementById("summaryBalance").textContent =
+        Number(bal).toLocaleString(undefined,{maximumFractionDigits:4}) + " JITO";
+    } catch(_) {
+      document.getElementById("summaryBalance").textContent = _balance != null
+        ? Number(_balance).toLocaleString(undefined,{maximumFractionDigits:4}) + " JITO"
+        : "—";
+    }
+  } else {
+    document.getElementById("summaryBalance").textContent = "—";
+  }
+}
+
+/* ══════════════════════════════════════
+   UTILITIES
+══════════════════════════════════════ */
+function copyToClipboard(elId, btn) {
+  const text = document.getElementById(elId)?.textContent?.trim();
+  if (!text || text === "—") return;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = "Copied!";
+    btn.style.color = "var(--green)";
+    setTimeout(() => { btn.textContent = orig; btn.style.color = "var(--cyan)"; }, 1500);
+  });
+}
+
+let _balancePollTimer = null;
+function startBalancePolling(address) {
+  clearInterval(_balancePollTimer);
+  let attempts = 0;
+  const balVal = document.getElementById("balanceValue");
+  const balBox = document.getElementById("balanceBox");
+  const balAddr = document.getElementById("balanceAddr");
+  balVal.innerHTML = `<span class="spinner"></span> Waiting for block…`;
+  balBox.classList.add("show");
+  balAddr.textContent = address.slice(0,12) + "…" + address.slice(-6);
+  _balancePollTimer = setInterval(async () => {
+    attempts++;
+    try {
+      const data = await getJSON("/public/balance?address=" + encodeURIComponent(address));
+      const bal = parseFloat(data.balance ?? data.amount ?? 0);
+      _balance = bal;
+      balVal.textContent = bal.toLocaleString(undefined, {maximumFractionDigits: 4}) + " JITO";
+      if (bal > 0 || attempts > 20) clearInterval(_balancePollTimer);
+    } catch(_) {}
+    if (attempts > 30) clearInterval(_balancePollTimer);
+  }, 3000);
+}
+
+/* ══════════════════════════════════════
+   BOOT
+══════════════════════════════════════ */
+updateStepIndicators();
+</script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+{
+  "state_version": 4,
+  "difficulty": 3,
+  "mining_reward": 25.0,
+  "price_oracles": [],
+  "latest_prices": {},
+  "chain": [
+    {
+      "index": 0,
+      "timestamp": 1772907459.753611,
+      "transactions": [],
+      "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "nonce": 0,
+      "meta": {},
+      "hash": "96e244a148e8cc0ea8d7743b00000217deb6d6a1f1c6cc94cc95ab746a5ee669"
+    },
+    {
+      "index": 1,
+      "timestamp": 1772907485.112192,
+      "transactions": [
+        {
+          "type": "payment",
+          "sender": "SYSTEM",
+          "recipient": "EVM:0xb34a8e448d4d7ccb7c8b77b1839551f9c1be79c4",
+          "amount": 25.0,
+          "timestamp": 1772907485.1120949,
+          "id": "97cacb21af4babbecb00cae8e5a1b08320f8c98ef158af17cc6f912e3a14b9e0"
+        }
+      ],
+      "previous_hash": "96e244a148e8cc0ea8d7743b00000217deb6d6a1f1c6cc94cc95ab746a5ee669",
+      "nonce": 16816,
+      "meta": {},
+      "hash": "00063dc07bd8b63a2313c6ba5340b1359a37f162db10b3e261d9c2492c4b2677"
+    },
+    {
+      "index": 2,
+      "timestamp": 1772907485.763642,
+      "transactions": [
+        {
+          "id": "ef4fb5749f3c403d99979fca898be40a56f035751b6e0ca61419fc9717d6a276",
+          "type": "evm_payment",
+          "sender": "EVM:0xb34a8e448d4d7ccb7c8b77b1839551f9c1be79c4",
+          "recipient": "EVM:0x41e0d7079a57ad77251a69ecf1c2c903f5fdcf51",
+          "amount": 1.0,
+          "timestamp": 1772907485.359433,
+          "sender_evm": "0xb34a8e448d4d7ccb7c8b77b1839551f9c1be79c4",
+          "recipient_evm": "0x41e0d7079a57ad77251a69ecf1c2c903f5fdcf51",
+          "value_wei": "1000000000000000000",
+          "nonce": 0,
+          "gas_limit": 21000,
+          "gas_price_wei": 2000000000,
+          "input": "0x",
+          "raw_tx": "0x02f87583012cc980843b9aca0084773594008252089441e0d7079a57ad77251a69ecf1c2c903f5fdcf51880de0b6b3a764000080c080a0555446ff4543fe68ce1c141aad9e6d6097b82c59a7abc5107510b2a5ef231c2ea07dab584c3d9923cbd89414aaedf9d5aa960a2530a8343f546b89660e2e78c700",
+          "evm_type": 2,
+          "gas_fee_native": 4.2e-05
+        },
+        {
+          "type": "payment",
+          "sender": "SYSTEM",
+          "recipient": "EVM:0x56633f37cf8492bc9e958f3b4bdbd4d38196711d",
+          "amount": 25.000042,
+          "timestamp": 1772907485.7636108,
+          "id": "a7a73a267a5c56e877d4e88a727883f9535fbb806ee441dfab6727b9131812e3"
+        }
+      ],
+      "previous_hash": "00063dc07bd8b63a2313c6ba5340b1359a37f162db10b3e261d9c2492c4b2677",
+      "nonce": 14490,
+      "meta": {},
+      "hash": "000be85b843d9ab660dc6ce5da04fa6e912663542f8b5775a0e87b88946d6a11"
+    }
+  ],
+  "pending_transactions": []
+}

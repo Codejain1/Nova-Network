@@ -1,0 +1,13 @@
+.venv
+__pycache__
+*.pyc
+*.log
+node_data
+node_a_data
+node_b_data
+data_local
+smoke_data
+wallets
+hsm_keys
+.git
+.DS_Store

@@ -1,0 +1,858 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JITO Explorer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
+    :root {
+      --bg: #f3f7ff;
+      --ink: #0e2138;
+      --muted: #5a7698;
+      --line: #d6e2f2;
+      --brand: #0f79ff;
+      --brand2: #00a89b;
+      --card: #ffffff;
+      --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+      --sans: 'Sora', ui-sans-serif, system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 5% -10%, #9bc7ff 0%, transparent 30%),
+        radial-gradient(circle at 95% 10%, #b8f3ed 0%, transparent 28%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 1320px; margin: 0 auto; padding: 18px; }
+    .header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      object-fit: cover;
+      background: #fff;
+      display: none;
+    }
+    .title { margin: 0; font-size: 28px; font-weight: 800; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .row {
+      display: grid;
+      grid-template-columns: minmax(280px, 520px) minmax(180px, 300px) auto;
+      gap: 8px;
+      align-items: center;
+    }
+    input, select, button {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-family: var(--sans);
+      background: #fff;
+    }
+    button {
+      border: 0;
+      background: linear-gradient(120deg, var(--brand), #2b8fff);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    button.alt { background: #243b5d; }
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(100px, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .tab {
+      border: 1px solid #bfd2ea;
+      background: #e7f0ff;
+      color: #0f3d73;
+      border-radius: 999px;
+      padding: 8px 10px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .tab.active { background: #0f79ff; color: #fff; border-color: #0f79ff; }
+    .main {
+      display: grid;
+      grid-template-columns: 1.7fr 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid #e3ebf7;
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: 0 12px 30px rgba(17, 38, 68, 0.08);
+    }
+    .sectionTitle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 800;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid #ecf2fb; vertical-align: top; }
+    th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+    tr:last-child td { border-bottom: 0; }
+    .mono { font-family: var(--mono); }
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      background: #e6f2ff;
+      color: #0e4f94;
+    }
+    .pill.private { background: #ddf6f1; color: #0b6b60; }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .metric { border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+    .metric .k { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+    .metric .v { font-size: 24px; font-weight: 800; color: #0d3e72; margin-top: 4px; }
+    .link { color: #0f66c7; cursor: pointer; text-decoration: none; }
+    .pager { display: flex; gap: 8px; align-items: center; }
+    .pager button { width: auto; padding: 8px 10px; }
+    .small { font-size: 11px; color: var(--muted); }
+    .detail {
+      min-height: 660px;
+      max-height: 760px;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-family: var(--mono);
+      background: #0e2036;
+      color: #e8f2ff;
+      border-radius: 12px;
+      padding: 10px;
+      margin: 0;
+      font-size: 12px;
+    }
+    .bars {
+      display: grid;
+      grid-template-columns: repeat(24, 1fr);
+      gap: 5px;
+      align-items: end;
+      min-height: 120px;
+    }
+    .bar { background: linear-gradient(180deg, var(--brand), var(--brand2)); border-radius: 4px 4px 0 0; min-height: 3px; }
+    @media (max-width: 1080px) {
+      .header { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; }
+      .tabs { grid-template-columns: repeat(3, minmax(100px, 1fr)); }
+      .main { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .detail { min-height: 360px; }
+    }
+  </style>
+  <link rel="stylesheet" href="/assets/ui-refresh.css" />
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="brand">
+      <img id="chainLogo" class="logo" alt="Chain logo" />
+      <img id="tokenLogo" class="logo" alt="Token logo" />
+      <div>
+        <h1 class="title" id="chainTitle">JITO Explorer</h1>
+        <div class="sub" id="chainSub">Track blocks, transfers, tokenized assets, and AI workflow events in one place.</div>
+        <div class="top-nav">
+          <a href="/rwa">Tokenize Asset</a>
+          <a href="/rwa-market">Trade RWAs</a>
+          <a href="/scanner">Live Scanner</a>
+          <a href="/ui">Operator Console</a>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <input id="search" placeholder="Search tx hash, address, symbol, block number" />
+      <input id="jwt" placeholder="JWT token (optional)" />
+      <button id="saveJwt">Save</button>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="main">
+    <div class="card" id="contentCard">
+      <div class="sectionTitle"><span id="viewTitle">Dashboard</span><span class="small" id="viewMeta"></span></div>
+      <div id="content"></div>
+    </div>
+
+    <div class="card">
+      <div class="sectionTitle"><span>Details</span><button class="alt" id="refresh" style="width:auto;padding:8px 10px;">Refresh</button></div>
+      <pre class="detail" id="detail">Select an item or run a search.</pre>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+const ROUTES = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'blocks', label: 'Blocks' },
+  { id: 'transactions', label: 'Transactions' },
+  { id: 'address', label: 'Address' },
+  { id: 'prices', label: 'Prices' },
+  { id: 'analytics', label: 'Analytics' },
+  { id: 'validators', label: 'Validators' },
+  { id: 'zkproofs', label: 'ZK Proofs' },
+];
+
+let state = {
+  route: 'dashboard',
+  query: {},
+};
+let chainInfo = null;
+
+function short(v, n = 16) {
+  if (!v) return '-';
+  const s = String(v);
+  return s.length <= n ? s : `${s.slice(0, n)}...`;
+}
+
+function fmtTime(ts) {
+  if (!ts) return '-';
+  try { return new Date(Number(ts) * 1000).toLocaleString(); } catch { return '-'; }
+}
+
+function authHeaders() {
+  const token = $('jwt').value.trim();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function api(path) {
+  const res = await fetch(path, { headers: authHeaders() });
+  const raw = await res.text();
+  let data = {};
+  try { data = raw ? JSON.parse(raw) : {}; } catch { data = { raw }; }
+  if (!res.ok) throw new Error(data.error || raw || `HTTP ${res.status}`);
+  return data;
+}
+
+async function loadChainInfo() {
+  try {
+    chainInfo = await api('/chain/info');
+    const publicInfo = (chainInfo || {}).public_chain || {};
+    const token = publicInfo.native_token || {};
+    const branding = (chainInfo || {}).branding || {};
+    const chainLogo = publicInfo.logo_url || branding.chain_logo_url || '';
+    const tokenLogo = token.logo_url || branding.token_logo_url || '';
+    $('chainTitle').textContent = `${publicInfo.name || 'JITO'} Explorer`;
+    $('chainSub').textContent = `${token.name || 'Native token'} (${token.symbol || '-'}) powers transfers + gas on public chain.`;
+    if (chainLogo) {
+      $('chainLogo').src = chainLogo;
+      $('chainLogo').style.display = 'block';
+    } else {
+      $('chainLogo').style.display = 'none';
+    }
+    if (tokenLogo) {
+      $('tokenLogo').src = tokenLogo;
+      $('tokenLogo').style.display = 'block';
+    } else {
+      $('tokenLogo').style.display = 'none';
+    }
+  } catch {
+    chainInfo = null;
+  }
+}
+
+function setDetail(value) {
+  $('detail').textContent = JSON.stringify(value, null, 2);
+}
+
+function parseHash() {
+  const raw = location.hash.replace(/^#\/?/, '');
+  const [route = 'dashboard', q = ''] = raw.split('?');
+  const params = new URLSearchParams(q);
+  const query = {};
+  for (const [k, v] of params.entries()) query[k] = v;
+  return { route: route || 'dashboard', query };
+}
+
+function setHash(route, query = {}) {
+  const params = new URLSearchParams(query);
+  const qs = params.toString();
+  location.hash = `/${route}${qs ? `?${qs}` : ''}`;
+}
+
+function renderTabs() {
+  $('tabs').innerHTML = ROUTES.map((r) => `
+    <div class="tab ${state.route === r.id ? 'active' : ''}" data-route="${r.id}">${r.label}</div>
+  `).join('');
+}
+
+function renderMetrics(summary) {
+  return `
+    <div class="metrics">
+      <div class="metric"><div class="k">Public Height</div><div class="v">${summary.public_height}</div></div>
+      <div class="metric"><div class="k">Private Height</div><div class="v">${summary.private_height}</div></div>
+      <div class="metric"><div class="k">Public Tx</div><div class="v">${summary.public_tx_count}</div></div>
+      <div class="metric"><div class="k">Private Tx</div><div class="v">${summary.private_tx_count}</div></div>
+    </div>
+  `;
+}
+
+async function viewDashboard() {
+  const [summary, blocks, txs, supply] = await Promise.all([
+    api('/scan/summary'),
+    api('/scan/blocks?chain=public&page=1&page_size=8'),
+    api('/scan/transactions?chain=all&page=1&page_size=12'),
+    api('/public/supply').catch(() => ({})),
+  ]);
+  $('viewTitle').textContent = 'Dashboard';
+  $('viewMeta').textContent = 'Latest network state';
+  const supplyBar = supply.total_supply ? `
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+      <div class="statCard"><div class="statLabel">Total Supply</div><div class="statValue">${supply.total_supply.toLocaleString(undefined,{maximumFractionDigits:2})} JITO</div></div>
+      <div class="statCard"><div class="statLabel">Circulating</div><div class="statValue">${supply.circulating.toLocaleString(undefined,{maximumFractionDigits:2})} JITO</div></div>
+      <div class="statCard"><div class="statLabel">Treasury</div><div class="statValue">${supply.treasury.toLocaleString(undefined,{maximumFractionDigits:2})} JITO</div></div>
+      <div class="statCard"><div class="statLabel">Blocks Mined</div><div class="statValue">${supply.blocks_mined.toLocaleString()}</div></div>
+      <div class="statCard"><div class="statLabel">Reward / Block</div><div class="statValue">${supply.reward_per_block} JITO</div></div>
+    </div>` : '';
+  $('content').innerHTML = `
+    ${supplyBar}
+    ${renderMetrics(summary)}
+    <div class="sectionTitle"><span>Latest Blocks</span></div>
+    <table>
+      <thead><tr><th>Index</th><th>Hash</th><th>Tx</th><th>Time</th></tr></thead>
+      <tbody>
+        ${(blocks.blocks || []).map((b) => `
+          <tr>
+            <td><a class="link" data-open-block="${b.index}">${b.index}</a></td>
+            <td class="mono"><a class="link" data-open-block-hash="${b.hash}">${short(b.hash, 22)}</a></td>
+            <td>${b.tx_count}</td>
+            <td>${fmtTime(b.timestamp)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+
+    <div class="sectionTitle" style="margin-top:10px;"><span>Latest Transactions</span></div>
+    <table>
+      <thead><tr><th>Chain</th><th>Type</th><th>Tx</th><th>From</th><th>To</th><th>Amount</th></tr></thead>
+      <tbody>
+        ${(txs.transactions || []).map((t) => `
+          <tr>
+            <td><span class="pill ${t.chain === 'private' ? 'private' : ''}">${t.chain}</span></td>
+            <td>${t.type || '-'}</td>
+            <td class="mono"><a class="link" data-open-tx="${t.tx_id}">${short(t.tx_id, 18)}</a></td>
+            <td class="mono"><a class="link" data-open-address="${t.from}">${short(t.from, 14)}</a></td>
+            <td class="mono"><a class="link" data-open-address="${t.to}">${short(t.to, 14)}</a></td>
+            <td>${t.amount ?? t.price ?? '-'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function viewBlocks() {
+  const chain = state.query.chain || 'public';
+  const page = Number(state.query.page || 1);
+  const out = await api(`/scan/blocks?chain=${encodeURIComponent(chain)}&page=${page}&page_size=20`);
+  $('viewTitle').textContent = 'Blocks';
+  $('viewMeta').textContent = `${chain} chain`;
+  $('content').innerHTML = `
+    <div class="pager" style="margin-bottom:8px;">
+      <select id="blocksChain" style="max-width:140px;">
+        <option value="public" ${chain === 'public' ? 'selected' : ''}>Public</option>
+        <option value="private" ${chain === 'private' ? 'selected' : ''}>Private</option>
+      </select>
+      <button class="alt" data-page="${Math.max(1, page - 1)}">Prev</button>
+      <div class="small">Page ${out.page} of ${Math.max(1, out.total_pages || 1)} (${out.total} blocks)</div>
+      <button class="alt" data-page="${Math.min(Math.max(1, out.total_pages || 1), page + 1)}">Next</button>
+    </div>
+    <table>
+      <thead><tr><th>Index</th><th>Hash</th><th>Prev Hash</th><th>Tx</th><th>Time</th></tr></thead>
+      <tbody>
+        ${(out.blocks || []).map((b) => `
+          <tr>
+            <td><a class="link" data-open-block="${b.index}" data-open-chain="${chain}">${b.index}</a></td>
+            <td class="mono"><a class="link" data-open-block-hash="${b.hash}" data-open-chain="${chain}">${short(b.hash, 18)}</a></td>
+            <td class="mono">${short(b.previous_hash, 18)}</td>
+            <td>${b.tx_count}</td>
+            <td>${fmtTime(b.timestamp)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function viewTransactions() {
+  const chain = state.query.chain || 'all';
+  const page = Number(state.query.page || 1);
+  const type = state.query.type || '';
+  const q = new URLSearchParams({ chain, page: String(page), page_size: '30' });
+  if (type) q.set('type', type);
+  const out = await api(`/scan/transactions?${q}`);
+  $('viewTitle').textContent = 'Transactions';
+  $('viewMeta').textContent = `${chain}${type ? ` / ${type}` : ''}`;
+  $('content').innerHTML = `
+    <div class="pager" style="margin-bottom:8px;">
+      <select id="txChain" style="max-width:140px;">
+        <option value="all" ${chain === 'all' ? 'selected' : ''}>All</option>
+        <option value="public" ${chain === 'public' ? 'selected' : ''}>Public</option>
+        <option value="private" ${chain === 'private' ? 'selected' : ''}>Private</option>
+      </select>
+      <input id="txType" placeholder="type filter" value="${type}" style="max-width:180px;" />
+      <button class="alt" id="txFilter">Apply</button>
+      <button class="alt" data-tx-page="${Math.max(1, page - 1)}">Prev</button>
+      <div class="small">Page ${out.page} of ${Math.max(1, out.total_pages || 1)} (${out.total} tx)</div>
+      <button class="alt" data-tx-page="${Math.min(Math.max(1, out.total_pages || 1), page + 1)}">Next</button>
+    </div>
+    <table>
+      <thead><tr><th>Chain</th><th>Type</th><th>Tx</th><th>Block</th><th>From</th><th>To</th><th>Amount</th></tr></thead>
+      <tbody>
+        ${(out.transactions || []).map((t) => `
+          <tr>
+            <td><span class="pill ${t.chain === 'private' ? 'private' : ''}">${t.chain}</span></td>
+            <td>${t.type || '-'}</td>
+            <td class="mono"><a class="link" data-open-tx="${t.tx_id}">${short(t.tx_id, 18)}</a></td>
+            <td>${t.block_index}</td>
+            <td class="mono"><a class="link" data-open-address="${t.from}">${short(t.from, 12)}</a></td>
+            <td class="mono"><a class="link" data-open-address="${t.to}">${short(t.to, 12)}</a></td>
+            <td>${t.amount ?? t.price ?? '-'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function viewAddress() {
+  const address = state.query.address || '';
+  $('viewTitle').textContent = 'Address';
+  $('viewMeta').textContent = address ? short(address, 32) : 'Lookup';
+
+  if (!address) {
+    $('content').innerHTML = `
+      <div class="small" style="margin-bottom:8px;">Enter an address to inspect public/private activity.</div>
+      <div class="row" style="grid-template-columns:1fr auto;">
+        <input id="addressInput" placeholder="W... or EVM:0x..." />
+        <button id="addressGo" style="width:auto;padding:10px 14px;">Load</button>
+      </div>
+    `;
+    return;
+  }
+
+  const out = await api(`/scan/address?address=${encodeURIComponent(address)}&include_private=true&limit=200`);
+  $('content').innerHTML = `
+    <div class="row" style="grid-template-columns:1fr auto;margin-bottom:8px;">
+      <input id="addressInput" value="${address}" />
+      <button id="addressGo" style="width:auto;padding:10px 14px;">Load</button>
+    </div>
+
+    <div class="metrics">
+      <div class="metric"><div class="k">Public Balance</div><div class="v">${out.public_balance}</div></div>
+      <div class="metric"><div class="k">Pending Public Tx</div><div class="v">${out.pending_public_tx_count}</div></div>
+      <div class="metric"><div class="k">Tx Count</div><div class="v">${out.tx_count}</div></div>
+      <div class="metric"><div class="k">Private Assets</div><div class="v">${Object.keys(out.private_balances || {}).length}</div></div>
+    </div>
+
+    <div class="sectionTitle"><span>Transactions</span></div>
+    <table>
+      <thead><tr><th>Chain</th><th>Type</th><th>Tx</th><th>From</th><th>To</th><th>Amount</th></tr></thead>
+      <tbody>
+        ${(out.transactions || []).map((t) => `
+          <tr>
+            <td><span class="pill ${t.chain === 'private' ? 'private' : ''}">${t.chain}</span></td>
+            <td>${t.type || '-'}</td>
+            <td class="mono"><a class="link" data-open-tx="${t.tx_id}">${short(t.tx_id, 18)}</a></td>
+            <td class="mono">${short(t.from, 14)}</td>
+            <td class="mono">${short(t.to, 14)}</td>
+            <td>${t.amount ?? t.price ?? '-'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  setDetail(out);
+}
+
+async function viewPrices() {
+  const symbol = state.query.symbol || '';
+  const [latest, history] = await Promise.all([
+    api('/public/prices'),
+    api(`/scan/prices/history?symbol=${encodeURIComponent(symbol)}&limit=200`),
+  ]);
+  const rows = Object.entries(latest || {}).map(([k, v]) => ({ symbol: k, ...v }));
+  $('viewTitle').textContent = 'Prices';
+  $('viewMeta').textContent = symbol ? `History: ${symbol}` : 'All symbols';
+  $('content').innerHTML = `
+    <div class="row" style="grid-template-columns:1fr auto;margin-bottom:8px;">
+      <input id="symbolInput" placeholder="Symbol (example: JCN)" value="${symbol}" />
+      <button id="symbolGo" style="width:auto;padding:10px 14px;">Load</button>
+    </div>
+
+    <div class="sectionTitle"><span>Latest On-chain Prices</span></div>
+    <table>
+      <thead><tr><th>Symbol</th><th>Price</th><th>Oracle</th><th>Source</th><th>Updated</th></tr></thead>
+      <tbody>
+        ${rows.map((r) => `
+          <tr>
+            <td><a class="link" data-open-symbol="${r.symbol}">${r.symbol}</a></td>
+            <td>${r.price}</td>
+            <td class="mono">${short(r.oracle, 14)}</td>
+            <td>${r.source || '-'}</td>
+            <td>${fmtTime(r.timestamp)}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="5">No prices yet</td></tr>'}
+      </tbody>
+    </table>
+
+    <div class="sectionTitle" style="margin-top:10px;"><span>Price History</span><span>${history.count || 0} updates</span></div>
+    <table>
+      <thead><tr><th>Symbol</th><th>Price</th><th>Oracle</th><th>Block</th><th>Tx</th><th>Time</th></tr></thead>
+      <tbody>
+        ${(history.prices || []).map((r) => `
+          <tr>
+            <td>${r.symbol}</td>
+            <td>${r.price}</td>
+            <td class="mono">${short(r.oracle, 12)}</td>
+            <td>${r.block_index}</td>
+            <td class="mono"><a class="link" data-open-tx="${r.tx_id}">${short(r.tx_id, 16)}</a></td>
+            <td>${fmtTime(r.timestamp)}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="6">No history</td></tr>'}
+      </tbody>
+    </table>
+  `;
+}
+
+function bars(points) {
+  const max = Math.max(1, ...(points || []).map((x) => Number(x.tx_count || 0)));
+  return `<div class="bars">${(points || []).map((p) => {
+    const h = Math.max(3, Math.round((Number(p.tx_count || 0) / max) * 120));
+    return `<div class="bar" style="height:${h}px" title="Block ${p.index}: ${p.tx_count} tx"></div>`;
+  }).join('')}</div>`;
+}
+
+async function viewAnalytics() {
+  const [pub, priv, metrics] = await Promise.all([
+    api('/scan/activity?chain=public&window=24'),
+    api('/scan/activity?chain=private&window=24'),
+    fetch('/metrics', { headers: authHeaders() }).then((r) => r.text()),
+  ]);
+  $('viewTitle').textContent = 'Analytics';
+  $('viewMeta').textContent = 'Activity and node metrics';
+  $('content').innerHTML = `
+    <div class="sectionTitle"><span>Public Activity (24 blocks)</span></div>
+    ${bars(pub.points || [])}
+
+    <div class="sectionTitle" style="margin-top:10px;"><span>Private Activity (24 blocks)</span></div>
+    ${bars(priv.points || [])}
+
+    <div class="sectionTitle" style="margin-top:10px;"><span>Metrics</span></div>
+    <pre class="detail" style="min-height:180px;max-height:260px;">${metrics}</pre>
+  `;
+}
+
+async function viewValidators() {
+  $('viewTitle').textContent = 'Validators';
+  $('viewMeta').textContent = 'Active validators, treasury, and candidate pool';
+  const [stats, candidates, treasury] = await Promise.all([
+    api('/public/validator/stats'),
+    api('/public/validator/candidates').catch(() => ({ candidates: [] })),
+    api('/public/treasury').catch(() => ({})),
+  ]);
+  const vs = stats.validators || [];
+  const cs = candidates.candidates || [];
+
+  const rows = vs.map((v) => `
+    <tr>
+      <td><span class="mono">${v.address}</span></td>
+      <td>${v.blocks_mined ?? 0}</td>
+      <td>${(v.total_jito_earned ?? 0).toFixed(2)} JITO</td>
+      <td>${v.uptime_pct != null ? v.uptime_pct.toFixed(1) + '%' : '-'}</td>
+      <td>${v.last_active ? fmtTime(v.last_active) : '-'}</td>
+      <td>${v.validator_since ? fmtTime(v.validator_since) : '-'}</td>
+      <td>${(v.stake ?? 0).toFixed(2)}</td>
+      <td>${(v.badges || []).join(', ') || '-'}</td>
+    </tr>`).join('');
+
+  const candRows = cs.map((c) => `
+    <tr>
+      <td><span class="mono">${c.address}</span></td>
+      <td>${(c.stake ?? 0).toFixed(2)} JITO</td>
+      <td>${c.reputation ?? '-'}</td>
+      <td>${fmtTime(c.nominated_at)}</td>
+    </tr>`).join('');
+
+  const treasuryAddr = treasury.address
+    ? `<span class="mono">${treasury.address}</span>`
+    : `<span class="small" style="opacity:.6">Protocol-held — governed by on-chain proposals</span>`;
+
+  $('content').innerHTML = `
+    <div class="sectionTitle"><span>Treasury</span></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:4px;">
+      <div class="statCard"><div class="statLabel">Balance</div><div class="statValue">${(treasury.balance ?? 0).toFixed(2)} JITO</div></div>
+      <div class="statCard"><div class="statLabel">Fee per Block</div><div class="statValue">${((treasury.fee_pct ?? 0) * 100).toFixed(0)}% (${((treasury.fee_pct ?? 0) * (stats.block_reward_jito ?? 25)).toFixed(1)} JITO)</div></div>
+      <div class="statCard"><div class="statLabel">Managed By</div><div class="statValue">${treasury.managed_by ?? 'governance'}</div></div>
+    </div>
+    <div class="detail small" style="padding:8px 12px;margin-bottom:10px;">
+      <strong>Address:</strong> ${treasuryAddr}
+    </div>
+
+    <div class="sectionTitle"><span>Active Validators (${vs.length})</span></div>
+    <div class="tableWrap">
+      <table>
+        <thead><tr>
+          <th>Address</th><th>Blocks</th><th>Earned</th>
+          <th>Uptime</th><th>Last Active</th><th>Validator Since</th>
+          <th>Stake</th><th>Badges</th>
+        </tr></thead>
+        <tbody>${rows || '<tr><td colspan="8" class="small">No validators yet</td></tr>'}</tbody>
+      </table>
+    </div>
+    ${cs.length ? `
+    <div class="sectionTitle" style="margin-top:10px;"><span>Candidate Pool (${cs.length})</span></div>
+    <div class="tableWrap">
+      <table>
+        <thead><tr><th>Address</th><th>Stake</th><th>Reputation</th><th>Nominated</th></tr></thead>
+        <tbody>${candRows}</tbody>
+      </table>
+    </div>` : ''}
+  `;
+}
+
+async function viewZkProofs() {
+  $('viewTitle').textContent = 'ZK Proofs';
+  $('viewMeta').textContent = 'Zero-knowledge proof log and registered circuits';
+  const addrFilter = state.query.address || '';
+  const circFilter = state.query.circuit_id || '';
+  const qs = new URLSearchParams();
+  if (addrFilter) qs.set('address', addrFilter);
+  if (circFilter) qs.set('circuit_id', circFilter);
+
+  const [proofs, circuits] = await Promise.all([
+    api('/public/zk/proofs?' + qs.toString()),
+    api('/public/zk/circuits'),
+  ]);
+
+  const ps = proofs.proofs || [];
+  const cs = circuits.circuits || [];
+
+  const circRows = cs.map((c) => `
+    <tr>
+      <td><span class="mono small">${c.circuit_id}</span></td>
+      <td>${c.description || '-'}</td>
+      <td>${fmtTime(c.registered_at)}</td>
+      <td><span class="mono small">${c.registrar ? c.registrar.slice(0, 20) + '...' : '-'}</span></td>
+    </tr>`).join('');
+
+  const proofRows = ps.map((p) => `
+    <tr>
+      <td><span class="mono small">${p.circuit_id}</span></td>
+      <td><span class="mono small">${p.prover ? p.prover.slice(0, 20) + '...' : '-'}</span></td>
+      <td><span class="badge ${p.verified ? 'green' : 'red'}">${p.verified ? '✓ Valid' : '✗ Invalid'}</span></td>
+      <td>${fmtTime(p.timestamp)}</td>
+      <td>${p.block_index ?? '-'}</td>
+      <td class="small">${p.metadata ? JSON.stringify(p.metadata).slice(0, 60) : '-'}</td>
+    </tr>`).join('');
+
+  $('content').innerHTML = `
+    <div class="sectionTitle"><span>Registered Circuits (${cs.length})</span></div>
+    <div class="tableWrap">
+      <table>
+        <thead><tr><th>Circuit ID</th><th>Description</th><th>Registered</th><th>Registrar</th></tr></thead>
+        <tbody>${circRows || '<tr><td colspan="4" class="small">No circuits registered</td></tr>'}</tbody>
+      </table>
+    </div>
+    <div class="sectionTitle" style="margin-top:10px;"><span>Proof Log (${ps.length})</span></div>
+    <div class="tableWrap">
+      <table>
+        <thead><tr><th>Circuit</th><th>Prover</th><th>Status</th><th>Time</th><th>Block</th><th>Metadata</th></tr></thead>
+        <tbody>${proofRows || '<tr><td colspan="6" class="small">No proofs submitted yet</td></tr>'}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function openTx(id) {
+  const out = await api(`/scan/tx?id=${encodeURIComponent(id)}`);
+  setDetail(out);
+}
+
+async function openBlock(index, hash, chain) {
+  const c = chain || 'public';
+  const q = index !== '' ? `index=${encodeURIComponent(index)}` : `hash=${encodeURIComponent(hash)}`;
+  const out = await api(`/scan/block?chain=${c}&${q}`);
+  setDetail(out);
+}
+
+async function runSearch() {
+  const q = $('search').value.trim();
+  if (!q) return;
+  if (/^[0-9]+$/.test(q)) {
+    setHash('blocks', { chain: 'public', page: 1 });
+    await openBlock(q, '', 'public');
+    return;
+  }
+  if (q.startsWith('W') || q.startsWith('EVM:') || /^0x[a-fA-F0-9]{40}$/.test(q)) {
+    setHash('address', { address: q });
+    return;
+  }
+  if (/^[A-Za-z]{2,10}$/.test(q)) {
+    setHash('prices', { symbol: q.toUpperCase() });
+    return;
+  }
+  if (/^[a-fA-F0-9]{64}$/.test(q) || /^0x[a-fA-F0-9]{64}$/.test(q)) {
+    const id = q.startsWith('0x') ? q.slice(2) : q;
+    await openTx(id);
+    return;
+  }
+  const out = await api(`/scan/search?q=${encodeURIComponent(q)}&limit=100`);
+  setDetail(out);
+}
+
+async function render() {
+  state = parseHash();
+  if (!ROUTES.find((r) => r.id === state.route)) {
+    state.route = 'dashboard';
+  }
+  renderTabs();
+  if (!chainInfo) {
+    await loadChainInfo();
+  }
+  try {
+    if (state.route === 'dashboard') await viewDashboard();
+    if (state.route === 'blocks') await viewBlocks();
+    if (state.route === 'transactions') await viewTransactions();
+    if (state.route === 'address') await viewAddress();
+    if (state.route === 'prices') await viewPrices();
+    if (state.route === 'analytics') await viewAnalytics();
+    if (state.route === 'validators') await viewValidators();
+    if (state.route === 'zkproofs') await viewZkProofs();
+  } catch (e) {
+    setDetail({ ok: false, error: String(e.message || e) });
+    $('content').innerHTML = `<div class="small">Failed to load view: ${String(e.message || e)}</div>`;
+  }
+}
+
+document.addEventListener('click', async (event) => {
+  const t = event.target;
+  if (!(t instanceof HTMLElement)) return;
+
+  if (t.dataset.route) {
+    setHash(t.dataset.route, {});
+    return;
+  }
+
+  if (t.dataset.openTx) {
+    event.preventDefault();
+    await openTx(t.dataset.openTx);
+    return;
+  }
+
+  if (t.dataset.openBlock !== undefined || t.dataset.openBlockHash !== undefined) {
+    event.preventDefault();
+    const chain = t.dataset.openChain || 'public';
+    await openBlock(t.dataset.openBlock || '', t.dataset.openBlockHash || '', chain);
+    return;
+  }
+
+  if (t.dataset.openAddress) {
+    event.preventDefault();
+    const address = t.dataset.openAddress;
+    if (address) setHash('address', { address });
+    return;
+  }
+
+  if (t.dataset.openSymbol) {
+    event.preventDefault();
+    setHash('prices', { symbol: t.dataset.openSymbol });
+    return;
+  }
+
+  if (t.dataset.page) {
+    const chain = $('blocksChain') ? $('blocksChain').value : (state.query.chain || 'public');
+    setHash('blocks', { chain, page: t.dataset.page });
+    return;
+  }
+
+  if (t.dataset.txPage) {
+    const chain = $('txChain') ? $('txChain').value : (state.query.chain || 'all');
+    const type = $('txType') ? $('txType').value.trim() : (state.query.type || '');
+    const next = { chain, page: t.dataset.txPage };
+    if (type) next.type = type;
+    setHash('transactions', next);
+    return;
+  }
+
+  if (t.id === 'txFilter') {
+    const chain = $('txChain').value;
+    const type = $('txType').value.trim();
+    const next = { chain, page: 1 };
+    if (type) next.type = type;
+    setHash('transactions', next);
+    return;
+  }
+
+  if (t.id === 'addressGo') {
+    const address = $('addressInput').value.trim();
+    if (address) setHash('address', { address });
+    return;
+  }
+
+  if (t.id === 'symbolGo') {
+    const symbol = $('symbolInput').value.trim().toUpperCase();
+    setHash('prices', symbol ? { symbol } : {});
+    return;
+  }
+});
+
+$('saveJwt').onclick = () => {
+  localStorage.setItem('explorer.jwt', $('jwt').value.trim());
+};
+$('refresh').onclick = render;
+$('search').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') runSearch();
+});
+window.addEventListener('hashchange', render);
+
+(function init() {
+  $('jwt').value = localStorage.getItem('explorer.jwt') || '';
+  if (!location.hash) location.hash = '/dashboard';
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "state_version": 1,
+  "participants": {},
+  "validators": {},
+  "issuers": [],
+  "notaries": {},
+  "domains": {},
+  "governance_threshold": 2,
+  "finality_threshold": 1,
+  "proposals": {},
+  "chain": [
+    {
+      "index": 0,
+      "timestamp": 1772912252.288307,
+      "transactions": [],
+      "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "nonce": 0,
+      "meta": {
+        "network": "private-rwa"
+      },
+      "hash": "4d71cb1b2f61531d7a330c5b25e5dd08e333cc63ef1811c1fb7bc3a1cb0cb5b8"
+    }
+  ],
+  "pending_transactions": [],
+  "pending_blocks": [],
+  "pending_finality": {},
+  "finality_records": {}
+}

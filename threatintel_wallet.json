@@ -1,0 +1,12 @@
+{
+  "address": "Wefac07aebd4f2d96441e98e3b2ed3f59ba94c21d",
+  "public_key": {
+    "kty": "ed25519",
+    "key": "ud92ojM4slFJxhl0SuPDpUsZUCsXjonyXM4U39nqbkg="
+  },
+  "private_key": {
+    "kty": "ed25519",
+    "key": "RVPeaZ9UcohlyHXKOMPDyZXf/Dp6+/lpUrtGDPecGps="
+  },
+  "label": "threatintel-agent"
+}

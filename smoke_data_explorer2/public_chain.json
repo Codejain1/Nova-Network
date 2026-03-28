@@ -1,0 +1,37 @@
+{
+  "state_version": 2,
+  "difficulty": 3,
+  "mining_reward": 25.0,
+  "price_oracles": [],
+  "latest_prices": {},
+  "chain": [
+    {
+      "index": 0,
+      "timestamp": 1772905315.525141,
+      "transactions": [],
+      "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "nonce": 0,
+      "meta": {},
+      "hash": "62ad0821cd074f58a35df94acc3d20fab05ec13cec758c51be140c4e6bec52de"
+    },
+    {
+      "index": 1,
+      "timestamp": 1772905322.871414,
+      "transactions": [
+        {
+          "type": "payment",
+          "sender": "SYSTEM",
+          "recipient": "Wef005a9d695ddb7375754e7988491c9e9bee62da",
+          "amount": 25.0,
+          "timestamp": 1772905322.8712509,
+          "id": "0b46e9d5c66613ff60c9fe3b0fea756f397b7cab55d0970db8277e0e9b7886de"
+        }
+      ],
+      "previous_hash": "62ad0821cd074f58a35df94acc3d20fab05ec13cec758c51be140c4e6bec52de",
+      "nonce": 1048,
+      "meta": {},
+      "hash": "000eafc439ceb4ce600643c00111eb4c3c15ce58c2da9263b742493a19a94313"
+    }
+  ],
+  "pending_transactions": []
+}

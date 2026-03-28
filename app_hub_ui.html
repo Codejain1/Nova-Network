@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JITO App Hub</title>
+  <link rel="stylesheet" href="/assets/ui-refresh.css" />
+  <style>
+    :root {
+      --hub-bg: #f4f8ff;
+      --hub-card: #ffffff;
+      --hub-ink: #102742;
+      --hub-muted: #536f93;
+      --hub-line: #d7e2f2;
+      --hub-brand: #0b6cff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Manrope", "Segoe UI", sans-serif;
+      color: var(--hub-ink);
+      background:
+        radial-gradient(1200px 450px at -10% -20%, #d8e9ff 0%, transparent 65%),
+        radial-gradient(900px 380px at 120% -10%, #d8fff5 0%, transparent 62%),
+        var(--hub-bg);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 26px 18px 30px; }
+    .hero {
+      border-radius: 20px;
+      padding: 24px;
+      color: #fff;
+      background: linear-gradient(125deg, #031f58 0%, #0b4fd0 60%, #08a0bd 100%);
+      box-shadow: 0 24px 48px rgba(11, 47, 105, 0.35);
+    }
+    h1 { margin: 0 0 8px; font-size: 30px; letter-spacing: -0.02em; }
+    .sub { margin: 0; opacity: .92; max-width: 860px; }
+    .pills { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.14);
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .card {
+      grid-column: span 4;
+      background: var(--hub-card);
+      border: 1px solid var(--hub-line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 14px 28px rgba(16, 39, 66, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .card h2 { margin: 0; font-size: 20px; letter-spacing: -0.01em; }
+    .card p { margin: 0; color: var(--hub-muted); font-size: 14px; line-height: 1.5; }
+    .points { margin: 0; padding-left: 18px; color: #27476d; font-size: 13px; line-height: 1.45; }
+    .points li { margin-bottom: 4px; }
+    .btn {
+      margin-top: auto;
+      text-decoration: none;
+      background: linear-gradient(130deg, var(--hub-brand), #31a4ff);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      border-radius: 10px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+    .muted-link { color: #0a4c9e; font-weight: 700; text-decoration: none; }
+    .card.full { grid-column: span 12; }
+    .ops {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .ops a {
+      text-decoration: none;
+      font-size: 12px;
+      color: #1d3f67;
+      background: #eef4ff;
+      border: 1px solid #d1def3;
+      border-radius: 10px;
+      padding: 8px 10px;
+      text-align: center;
+      font-weight: 700;
+    }
+    @media (max-width: 980px) {
+      .card { grid-column: span 12; }
+      .ops { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>JITO Platform App Hub</h1>
+      <p class="sub">Choose your workflow. Investor and Issuer apps are simplified for normal users. Operator app is for validator/admin actions only.</p>
+      <div class="pills">
+        <span class="pill">Public chain: JITO gas token</span>
+        <span class="pill">Private RWA chain: 0 gas DvP settlement</span>
+        <span class="pill">Access-ID gated listings supported</span>
+        <span class="pill">Community + AI leaderboards live</span>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Investor App</h2>
+        <p>Discover listings, use access code if needed, buy with JITO settlement token, and track portfolio.</p>
+        <ul class="points">
+          <li>Quick buy flow (wallet + listing + quantity)</li>
+          <li>Live trade finality updates</li>
+          <li>Portfolio holdings and history</li>
+        </ul>
+        <a class="btn" href="/app/investor">Open Investor App</a>
+      </article>
+
+      <article class="card">
+        <h2>Issuer App</h2>
+        <p>Tokenize a real-world asset, define metadata and policy, and issue private-chain tokens.</p>
+        <ul class="points">
+          <li>Simple-first tokenization wizard</li>
+          <li>Optional advanced compliance controls</li>
+          <li>Instant private transfers with validator/notary finality</li>
+        </ul>
+        <a class="btn" href="/app/issuer">Open Issuer App</a>
+      </article>
+
+      <article class="card">
+        <h2>Operator App</h2>
+        <p>Low-level chain operations for validators and infrastructure operators.</p>
+        <ul class="points">
+          <li>Public mining, validators, governance tools</li>
+          <li>Network diagnostics and peer sync</li>
+          <li>Wallet and signer administration</li>
+        </ul>
+        <a class="btn" href="/app/operator">Open Operator App</a>
+      </article>
+
+      <article class="card">
+        <h2>Community Hub</h2>
+        <p>Community-facing view of chain growth, governance participation, RWA activity, and AI agent economy.</p>
+        <ul class="points">
+          <li>Validator, trader, builder, and AI-agent leaderboards</li>
+          <li>Governance and adoption snapshot</li>
+          <li>Execution roadmap visibility</li>
+        </ul>
+        <a class="btn" href="/app/community">Open Community Hub</a>
+      </article>
+
+      <article class="card full">
+        <h2 style="font-size:18px; margin-bottom:0;">Supporting Tools</h2>
+        <p style="margin-top:2px;">Monitoring and visibility pages are still available directly.</p>
+        <div class="ops">
+          <a href="/explorer">Explorer</a>
+          <a href="/scanner">Scanner</a>
+          <a href="/chain/info">Chain Info API</a>
+          <a href="/status">Node Status API</a>
+          <a href="/network/health">Network Health API</a>
+          <a href="/slo">SLO API</a>
+        </div>
+      </article>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jito-agent"
+version = "0.5.0"
+description = "Portable trust and reputation for AI agents — two lines to log work on-chain, build verifiable reputation, collaborate across owners"
+readme = "jito_agent/README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "JITO Labs"}
+]
+keywords = ["ai", "agent", "blockchain", "reputation", "trust", "identity", "nova"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "cryptography>=41.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "twine", "build"]
+
+[project.urls]
+Homepage = "https://explorer.flowpe.io"
+Repository = "https://github.com/flowpe/jain2"
+Documentation = "https://explorer.flowpe.io/explorer"
+
+[tool.setuptools.packages.find]
+include = ["jito_agent*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,19 @@
+{
+  "participants": {},
+  "validators": {},
+  "issuers": [],
+  "chain": [
+    {
+      "index": 0,
+      "timestamp": 1772900144.042347,
+      "transactions": [],
+      "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "nonce": 0,
+      "meta": {
+        "network": "private-rwa"
+      },
+      "hash": "fd9f3e0c0d6ad77ef0caef15d388768c292e0af8549468ba1313eb7091b6421f"
+    }
+  ],
+  "pending_transactions": []
+}

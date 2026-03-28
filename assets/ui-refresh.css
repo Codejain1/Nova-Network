@@ -1,0 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --ui-bg-soft: #f2f7ff;
+  --ui-ink: #0f233c;
+  --ui-muted: #4f6785;
+  --ui-line: #d7e2f1;
+  --ui-card: #ffffff;
+  --ui-brand: #0b6cff;
+  --ui-brand-2: #009bb6;
+  --ui-good: #118a56;
+  --ui-warn: #bd4d14;
+}
+
+body {
+  font-family: 'Manrope', 'Segoe UI', sans-serif !important;
+  color: var(--ui-ink);
+}
+
+h1, h2, h3, h4 {
+  letter-spacing: -0.01em;
+}
+
+.card {
+  border-color: var(--ui-line) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 14px 32px rgba(14, 38, 70, 0.08) !important;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid #c8d7ea !important;
+  border-radius: 11px !important;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #4b95ff !important;
+  box-shadow: 0 0 0 3px rgba(11, 108, 255, 0.16);
+}
+
+button {
+  border-radius: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.01em;
+}
+
+button.primary,
+button:not(.ghost):not(.flat):not(.secondary):not(.alt):not(.btn-danger) {
+  background: linear-gradient(130deg, var(--ui-brand), #1e86ff) !important;
+}
+
+button.secondary,
+button.ghost,
+button.flat,
+button.alt {
+  background: #eaf1fb !important;
+  color: #183252 !important;
+  border: 1px solid #bfd0e7 !important;
+}
+
+pre,
+code,
+.mono,
+.detail {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace !important;
+}
+
+.small {
+  color: var(--ui-muted) !important;
+}
+
+.ok {
+  color: var(--ui-good) !important;
+}
+
+.warn {
+  color: var(--ui-warn) !important;
+}
+
+table thead th {
+  color: #557192 !important;
+}
+
+table tbody tr:nth-child(2n) {
+  background: rgba(233, 242, 255, 0.45);
+}
+
+.top-nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.top-nav a {
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: #174477;
+  background: #e8f0ff;
+  border: 1px solid #c4d6ef;
+  border-radius: 999px;
+  padding: 6px 11px;
+}
+
+.top-nav a:hover {
+  background: #dbe9ff;
+}
+
+.friendly-tip {
+  border: 1px solid #cde0fb;
+  background: #edf5ff;
+  color: #1d406b;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.friendly-tip strong {
+  color: #0f2f54;
+}
+
+@media (max-width: 900px) {
+  .top-nav {
+    gap: 6px;
+  }
+  .top-nav a {
+    font-size: 11px;
+    padding: 5px 9px;
+  }
+}

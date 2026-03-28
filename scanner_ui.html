@@ -1,0 +1,913 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JITO Scanner</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+
+    :root {
+      --bg: #f1f6fd;
+      --ink: #10253d;
+      --muted: #5e7593;
+      --line: #d6e3f3;
+      --card: #ffffff;
+      --navy: #0d2b52;
+      --blue: #0b7dff;
+      --teal: #00a897;
+      --warn: #cf2d2d;
+      --good: #0f8d62;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --sans: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+      --brand: "Space Grotesk", "Plus Jakarta Sans", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 0% -5%, #cfe3ff 0%, transparent 42%),
+        radial-gradient(circle at 100% 0%, #cdf5ef 0%, transparent 36%),
+        var(--bg);
+      min-height: 100vh;
+    }
+
+    .shell { max-width: 1400px; margin: 0 auto; padding: 16px; }
+
+    .hero {
+      background:
+        radial-gradient(circle at 10% 0%, #3f74b7 0%, transparent 35%),
+        radial-gradient(circle at 85% 100%, #1e5f8f 0%, transparent 35%),
+        linear-gradient(130deg, #0e2342, #142f58);
+      border: 1px solid #203f6f;
+      border-radius: 18px;
+      color: #f5fbff;
+      padding: 16px;
+      box-shadow: 0 20px 44px rgba(8, 27, 52, 0.2);
+      margin-bottom: 12px;
+    }
+
+    .heroTop {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 11px;
+      border: 1px solid rgba(185, 214, 255, 0.4);
+      background: #fff;
+      object-fit: cover;
+      display: none;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--brand);
+      font-size: 30px;
+      line-height: 1;
+      letter-spacing: 0.02em;
+    }
+
+    .sub {
+      margin-top: 6px;
+      color: #c9dfff;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .status {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(196, 220, 255, 0.35);
+      color: #d7ebff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #6f8fb7;
+      display: inline-block;
+    }
+    .dot.ok { background: #2ad08b; }
+    .dot.bad { background: #ff5959; }
+
+    .searchBar {
+      display: grid;
+      grid-template-columns: minmax(280px, 1fr) minmax(220px, 300px) auto auto auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .portalBar {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: minmax(140px, 180px) minmax(140px, 180px) auto auto minmax(220px, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    input, select, button {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 12px;
+      font-size: 13px;
+      font-family: var(--sans);
+    }
+
+    .searchBar input,
+    .searchBar select {
+      border-color: #a8c0e4;
+      background: #f8fbff;
+    }
+
+    button {
+      border: 0;
+      background: linear-gradient(115deg, var(--blue), #2f92ff);
+      color: #fff;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button.alt { background: #2e4464; }
+    button.flat { background: #f2f7ff; border: 1px solid #bad0ec; color: #163f6f; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .metric {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      padding: 10px;
+      box-shadow: 0 8px 24px rgba(15, 36, 65, 0.07);
+    }
+
+    .metric .k {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .metric .v {
+      margin-top: 5px;
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f3868;
+      line-height: 1.1;
+    }
+
+    .metric .s {
+      margin-top: 4px;
+      color: #527094;
+      font-size: 11px;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 1.7fr 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .stack { display: grid; gap: 10px; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      padding: 12px;
+      box-shadow: 0 10px 26px rgba(16, 37, 64, 0.08);
+    }
+
+    .titleRow {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .title {
+      font-family: var(--brand);
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #355986;
+      font-weight: 700;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th, td {
+      text-align: left;
+      border-bottom: 1px solid #ecf2fb;
+      padding: 8px 6px;
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-weight: 700;
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .mono { font-family: var(--mono); }
+    .link { color: #0d68d5; text-decoration: none; cursor: pointer; font-weight: 700; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 800;
+      background: #e5f0ff;
+      color: #0f4d96;
+      border: 1px solid #cae0ff;
+    }
+
+    .pill.private {
+      background: #dff6f1;
+      color: #0b665b;
+      border-color: #bbe9df;
+    }
+
+    .good { color: var(--good); font-weight: 700; }
+    .warn { color: var(--warn); font-weight: 700; }
+
+    .bars {
+      display: grid;
+      grid-template-columns: repeat(32, 1fr);
+      gap: 4px;
+      align-items: end;
+      min-height: 110px;
+    }
+    .bar {
+      background: linear-gradient(180deg, var(--blue), var(--teal));
+      border-radius: 3px 3px 0 0;
+      min-height: 3px;
+    }
+
+    .detail {
+      min-height: 480px;
+      max-height: 740px;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-size: 12px;
+      background: #0d2036;
+      color: #e8f3ff;
+      border-radius: 10px;
+      border: 1px solid #1f3957;
+      padding: 10px;
+      margin: 0;
+      font-family: var(--mono);
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    @media (max-width: 1200px) {
+      .grid { grid-template-columns: repeat(3, 1fr); }
+      .main { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 900px) {
+      .heroTop { grid-template-columns: 1fr; }
+      .status { justify-content: flex-start; }
+      .searchBar { grid-template-columns: 1fr; }
+      .portalBar { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+  <link rel="stylesheet" href="/assets/ui-refresh.css" />
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="heroTop">
+        <div>
+          <div class="brand">
+            <img id="chainLogo" class="logo" alt="Chain logo" />
+            <img id="tokenLogo" class="logo" alt="Token logo" />
+            <div>
+              <h1 id="chainTitle">JITO Scanner</h1>
+              <div class="sub" id="chainSub">Live operations view for chain health, wallet activity, and private market status.</div>
+              <div class="top-nav">
+                <a href="/rwa-market">RWA Market</a>
+                <a href="/rwa">Tokenization</a>
+                <a href="/explorer">Explorer</a>
+                <a href="/ui">Operator Console</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="status">
+          <span class="chip"><span id="rpcDot" class="dot"></span> RPC</span>
+          <span class="chip"><span id="autoMineDot" class="dot"></span> Auto Mine</span>
+          <span class="chip" id="chainChip">CHAIN #149</span>
+          <span class="chip" id="updatedChip">Updated --</span>
+        </div>
+      </div>
+
+      <div class="searchBar">
+        <input id="searchBox" placeholder="Search by tx hash, address, block index, symbol" />
+        <input id="jwt" placeholder="JWT token (optional)" />
+        <button id="searchBtn">Search</button>
+        <button id="saveJwt" class="alt">Save JWT</button>
+        <button id="clearDetail" class="flat">Clear</button>
+      </div>
+      <div class="portalBar">
+        <input id="portalUser" placeholder="Portal username" />
+        <input id="portalPass" type="password" placeholder="Portal password" />
+        <button id="portalLoginBtn" class="alt">Portal Login</button>
+        <button id="portalLogoutBtn" class="flat">Portal Logout</button>
+        <input id="portalSession" placeholder="Portal session token (optional paste)" />
+        <button id="savePortalSession" class="flat">Save Session</button>
+      </div>
+      <div class="small" id="portalStatus" style="margin-top:6px;color:#c9dfff;">Private scanner data is hidden until portal login/session is set.</div>
+    </section>
+
+    <section class="grid">
+      <div class="metric"><div class="k">Public Height</div><div class="v" id="mPublicHeight">-</div><div class="s" id="mPublicAge">-</div></div>
+      <div class="metric"><div class="k">Private Height</div><div class="v" id="mPrivateHeight">-</div><div class="s" id="mPrivateBlocks">-</div></div>
+      <div class="metric"><div class="k">Mempool</div><div class="v" id="mPending">-</div><div class="s" id="mPendingPrivate">-</div></div>
+      <div class="metric"><div class="k">Tx Last 32 Blocks</div><div class="v" id="mTx32">-</div><div class="s" id="mAvgTx">-</div></div>
+      <div class="metric"><div class="k">Validators</div><div class="v" id="mValidators">-</div><div class="s" id="mConsensus">-</div></div>
+      <div class="metric"><div class="k">Auto Mine</div><div class="v" id="mAutoMine">-</div><div class="s" id="mAutoMineMeta">-</div></div>
+    </section>
+
+    <section class="main">
+      <div class="stack">
+        <div class="card">
+          <div class="titleRow">
+            <div class="title">Latest Public Blocks</div>
+            <div class="controls">
+              <span class="small">Rows</span>
+              <select id="blockRows" style="width:auto;">
+                <option value="10">10</option>
+                <option value="15" selected>15</option>
+                <option value="25">25</option>
+              </select>
+              <button id="refreshBlocks" class="flat" style="width:auto;padding:8px 10px;">Refresh</button>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>Height</th><th>Hash</th><th>Tx</th><th>Age</th><th>Validator</th></tr></thead>
+            <tbody id="blockRowsBody"></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="titleRow">
+            <div class="title">Latest Transactions</div>
+            <div class="controls">
+              <select id="txChain" style="width:auto;">
+                <option value="all" selected>All</option>
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+              </select>
+              <button id="refreshTx" class="flat" style="width:auto;padding:8px 10px;">Refresh</button>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>Chain</th><th>Type</th><th>Tx</th><th>From</th><th>To</th><th>Value</th></tr></thead>
+            <tbody id="txRowsBody"></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="titleRow">
+            <div class="title">Wallet Explorer</div>
+            <div class="controls">
+              <input id="addressInput" placeholder="W... / 0x... / EVM:0x..." style="min-width:240px;" />
+              <label class="small" style="display:flex;align-items:center;gap:6px;">
+                <input id="includePrivateAddress" type="checkbox" style="width:auto;" />
+                include private
+              </label>
+              <button id="loadAddressBtn" class="flat" style="width:auto;padding:8px 10px;">Load</button>
+            </div>
+          </div>
+          <div class="grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom:8px;">
+            <div class="metric" style="box-shadow:none;"><div class="k">Address</div><div class="v mono" id="aAddress" style="font-size:16px;">-</div></div>
+            <div class="metric" style="box-shadow:none;"><div class="k">Public Balance</div><div class="v" id="aPublic">-</div></div>
+            <div class="metric" style="box-shadow:none;"><div class="k">Private Assets</div><div class="v" id="aAssets">-</div></div>
+            <div class="metric" style="box-shadow:none;"><div class="k">Tx Count</div><div class="v" id="aTxCount">-</div></div>
+          </div>
+          <div class="small" style="margin-bottom:6px;">Private Holdings</div>
+          <table style="margin-bottom:10px;">
+            <thead><tr><th>Asset</th><th>Amount</th></tr></thead>
+            <tbody id="aAssetRows"><tr><td colspan="2">No data</td></tr></tbody>
+          </table>
+          <div class="small" style="margin-bottom:6px;">Recent Address Transactions</div>
+          <table>
+            <thead><tr><th>Chain</th><th>Type</th><th>Tx</th><th>From</th><th>To</th><th>Amount</th></tr></thead>
+            <tbody id="aTxRows"><tr><td colspan="6">No data</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="card">
+          <div class="titleRow">
+            <div class="title">Throughput (Last 32 Blocks)</div>
+            <button id="refreshActivity" class="flat" style="width:auto;padding:8px 10px;">Refresh</button>
+          </div>
+          <div id="activityBars" class="bars"></div>
+        </div>
+
+        <div class="card">
+          <div class="titleRow">
+            <div class="title">Latest Prices</div>
+            <button id="refreshPrices" class="flat" style="width:auto;padding:8px 10px;">Refresh</button>
+          </div>
+          <table>
+            <thead><tr><th>Symbol</th><th>Price</th><th>Oracle</th><th>Source</th></tr></thead>
+            <tbody id="priceRows"></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="titleRow">
+            <div class="title">Details</div>
+            <div class="controls">
+              <span class="small">Auto Refresh</span>
+              <select id="autoRefresh" style="width:auto;">
+                <option value="off">Off</option>
+                <option value="8" selected>8s</option>
+                <option value="15">15s</option>
+                <option value="30">30s</option>
+              </select>
+            </div>
+          </div>
+          <pre id="detail" class="detail">Click a block, tx, or run a search to inspect structured details.</pre>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const PORTAL_SESSION_KEY = "scanner.portal.session";
+    const PORTAL_USER_KEY = "scanner.portal.user";
+    let chainInfo = null;
+    let refreshTimer = null;
+    let latestPublicTimestamp = 0;
+    let currentAddress = "";
+
+    function short(v, n = 14) {
+      if (!v) return "-";
+      const s = String(v);
+      return s.length <= n ? s : `${s.slice(0, n)}...`;
+    }
+
+    function toNum(v, fallback = 0) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    function timeAgo(ts) {
+      const t = toNum(ts, 0);
+      if (!t) return "-";
+      const d = Math.max(0, Math.floor(Date.now() / 1000 - t));
+      if (d < 60) return `${d}s`;
+      if (d < 3600) return `${Math.floor(d / 60)}m`;
+      if (d < 86400) return `${Math.floor(d / 3600)}h`;
+      return `${Math.floor(d / 86400)}d`;
+    }
+
+    function pretty(value) {
+      if (value === null || value === undefined || value === "") return "-";
+      if (typeof value === "number") return Number.isInteger(value) ? String(value) : value.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+      return String(value);
+    }
+
+    function authHeader() {
+      const token = $("jwt").value.trim();
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    }
+
+    function portalSessionToken() {
+      const inline = $("portalSession").value.trim();
+      if (inline) return inline;
+      return localStorage.getItem(PORTAL_SESSION_KEY) || "";
+    }
+
+    function portalHeader() {
+      const token = portalSessionToken();
+      return token ? { "X-Portal-Session": token } : {};
+    }
+
+    function portalLoggedIn() {
+      return !!portalSessionToken();
+    }
+
+    function updatePortalStatus() {
+      const user = localStorage.getItem(PORTAL_USER_KEY) || "";
+      if (portalLoggedIn()) {
+        $("portalStatus").textContent = user
+          ? `Portal session active for ${user}. Private scanner endpoints enabled.`
+          : "Portal session active. Private scanner endpoints enabled.";
+      } else {
+        $("portalStatus").textContent = "Private scanner data is hidden until portal login/session is set.";
+      }
+    }
+
+    async function api(path) {
+      const headers = { ...authHeader(), ...portalHeader() };
+      const r = await fetch(path, { headers });
+      const raw = await r.text();
+      let data = {};
+      try { data = raw ? JSON.parse(raw) : {}; } catch { data = { raw }; }
+      if (!r.ok) throw new Error(data.error || raw || `HTTP ${r.status}`);
+      return data;
+    }
+
+    async function apiPost(path, body) {
+      const headers = { "content-type": "application/json", ...authHeader(), ...portalHeader() };
+      const r = await fetch(path, { method: "POST", headers, body: JSON.stringify(body || {}) });
+      const raw = await r.text();
+      let data = {};
+      try { data = raw ? JSON.parse(raw) : {}; } catch { data = { raw }; }
+      if (!r.ok) throw new Error(data.error || raw || `HTTP ${r.status}`);
+      return data;
+    }
+
+    function toDetail(value) {
+      $("detail").textContent = JSON.stringify(value, null, 2);
+    }
+
+    function renderAddressView(data, requestedAddress = "") {
+      const addr = (data && data.address) ? String(data.address) : requestedAddress;
+      $("aAddress").textContent = addr || "-";
+      $("aPublic").textContent = pretty(data ? data.public_balance : "-");
+
+      const privateBalances = (data && data.private_balances) || {};
+      const assetRows = Object.entries(privateBalances)
+        .filter(([, amount]) => toNum(amount, 0) > 0)
+        .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+      $("aAssets").textContent = String(assetRows.length);
+      $("aAssetRows").innerHTML = assetRows.map(([asset, amount]) => `
+        <tr><td class="mono">${asset}</td><td>${pretty(amount)}</td></tr>
+      `).join("") || `<tr><td colspan="2">No private holdings</td></tr>`;
+
+      const txs = (data && data.transactions) || [];
+      $("aTxCount").textContent = pretty(data ? data.tx_count : 0);
+      $("aTxRows").innerHTML = txs.slice(0, 25).map((t) => `
+        <tr>
+          <td><span class="pill ${t.chain === "private" ? "private" : ""}">${t.chain || "-"}</span></td>
+          <td>${t.type || "-"}</td>
+          <td class="mono"><a class="link" data-tx="${t.tx_id}">${short(t.tx_id, 16)}</a></td>
+          <td class="mono"><a class="link" data-address="${t.from || ""}">${short(t.from || "-", 14)}</a></td>
+          <td class="mono"><a class="link" data-address="${t.to || ""}">${short(t.to || "-", 14)}</a></td>
+          <td>${pretty(t.amount)}</td>
+        </tr>
+      `).join("") || `<tr><td colspan="6">No transactions</td></tr>`;
+    }
+
+    function setStatus(ok, autoMineEnabled) {
+      $("rpcDot").className = `dot ${ok ? "ok" : "bad"}`;
+      $("autoMineDot").className = `dot ${autoMineEnabled ? "ok" : "bad"}`;
+      $("updatedChip").textContent = `Updated ${new Date().toLocaleTimeString()}`;
+    }
+
+    async function loadChainInfo() {
+      chainInfo = await api("/chain/info");
+      const pub = (chainInfo || {}).public_chain || {};
+      const token = pub.native_token || {};
+      const branding = (chainInfo || {}).branding || {};
+      const chainLogo = pub.logo_url || branding.chain_logo_url || "";
+      const tokenLogo = token.logo_url || branding.token_logo_url || "";
+
+      $("chainTitle").textContent = `${pub.name || "JITO"} Scanner`;
+      $("chainSub").textContent = `${token.name || "Native token"} (${token.symbol || "-"}) network explorer and activity scanner`;
+      $("chainChip").textContent = `CHAIN #${pub.chain_id || "149"}`;
+      $("mConsensus").textContent = pub.consensus || "-";
+
+      if (chainLogo) { $("chainLogo").src = chainLogo; $("chainLogo").style.display = "block"; }
+      else { $("chainLogo").style.display = "none"; }
+      if (tokenLogo) { $("tokenLogo").src = tokenLogo; $("tokenLogo").style.display = "block"; }
+      else { $("tokenLogo").style.display = "none"; }
+    }
+
+    async function loadSummary() {
+      const s = await api("/scan/summary");
+      $("mPublicHeight").textContent = pretty(s.public_height);
+      $("mPrivateHeight").textContent = (s.private_height === null || s.private_height === undefined) ? "Hidden" : pretty(s.private_height);
+      $("mPending").textContent = pretty(s.pending_public_tx);
+      if (s.private_visibility === "hidden") {
+        $("mPendingPrivate").textContent = "private tx hidden";
+        $("mPrivateBlocks").textContent = "portal session required";
+      } else {
+        $("mPendingPrivate").textContent = `private tx ${pretty(s.pending_private_tx)}`;
+        $("mPrivateBlocks").textContent = `pending blocks ${pretty(s.pending_private_blocks)}`;
+      }
+
+      const autoMine = s.auto_mine || {};
+      $("mAutoMine").textContent = autoMine.enabled ? "ON" : "OFF";
+      $("mAutoMine").className = autoMine.enabled ? "v good" : "v warn";
+      const autoMeta = autoMine.enabled
+        ? `${pretty(autoMine.interval_seconds)}s interval`
+        : "disabled";
+      $("mAutoMineMeta").textContent = autoMeta;
+
+      setStatus(true, !!autoMine.enabled);
+      return s;
+    }
+
+    async function loadConsensus() {
+      const c = await api("/public/consensus");
+      $("mValidators").textContent = Array.isArray(c.validators) ? c.validators.length : 0;
+      $("mConsensus").textContent = `${c.consensus || "-"} · reward ${pretty(c.mining_reward)}`;
+      return c;
+    }
+
+    async function loadBlocks() {
+      const rows = Number($("blockRows").value || "15");
+      const out = await api(`/scan/blocks?chain=public&page=1&page_size=${rows}`);
+      const blocks = out.blocks || [];
+      latestPublicTimestamp = blocks.length ? toNum(blocks[0].timestamp, 0) : 0;
+      $("mPublicAge").textContent = latestPublicTimestamp ? `latest ${timeAgo(latestPublicTimestamp)} ago` : "-";
+
+      $("blockRowsBody").innerHTML = blocks.map((b) => {
+        const validator = ((b.meta || {}).validator || "-");
+        return `<tr>
+          <td><a class="link" data-block="${b.index}">${b.index}</a></td>
+          <td class="mono"><a class="link" data-block-hash="${b.hash}">${short(b.hash, 20)}</a></td>
+          <td>${pretty(b.tx_count)}</td>
+          <td>${timeAgo(b.timestamp)}</td>
+          <td class="mono">${short(validator, 16)}</td>
+        </tr>`;
+      }).join("") || `<tr><td colspan="5">No blocks</td></tr>`;
+      return blocks;
+    }
+
+    async function loadTransactions() {
+      const chain = $("txChain").value || "all";
+      if (chain === "private" && !portalLoggedIn()) {
+        throw new Error("Private tx view requires portal login/session.");
+      }
+      const out = await api(`/scan/transactions?chain=${encodeURIComponent(chain)}&page=1&page_size=16`);
+      const list = out.transactions || [];
+      $("txRowsBody").innerHTML = list.map((t) => `
+        <tr>
+          <td><span class="pill ${t.chain === "private" ? "private" : ""}">${t.chain || "-"}</span></td>
+          <td>${t.type || "-"}</td>
+          <td class="mono"><a class="link" data-tx="${t.tx_id}">${short(t.tx_id, 16)}</a></td>
+          <td class="mono"><a class="link" data-address="${t.from}">${short(t.from, 14)}</a></td>
+          <td class="mono"><a class="link" data-address="${t.to}">${short(t.to, 14)}</a></td>
+          <td>${pretty(t.amount ?? t.price)}</td>
+        </tr>
+      `).join("") || `<tr><td colspan="6">No transactions</td></tr>`;
+      return list;
+    }
+
+    async function loadPrices() {
+      const prices = await api("/public/prices");
+      const rows = Object.entries(prices || {}).map(([symbol, v]) => ({ symbol, ...(v || {}) }));
+      $("priceRows").innerHTML = rows.slice(0, 10).map((p) => `
+        <tr>
+          <td><a class="link" data-symbol="${p.symbol}">${p.symbol}</a></td>
+          <td>${pretty(p.price)}</td>
+          <td class="mono">${short(p.oracle, 16)}</td>
+          <td>${p.source || "-"}</td>
+        </tr>
+      `).join("") || `<tr><td colspan="4">No on-chain prices</td></tr>`;
+      return rows;
+    }
+
+    async function loadActivity() {
+      const out = await api("/scan/activity?chain=public&window=32");
+      const points = out.points || [];
+      const total = points.reduce((n, p) => n + toNum(p.tx_count, 0), 0);
+      const avg = points.length ? total / points.length : 0;
+      $("mTx32").textContent = pretty(total);
+      $("mAvgTx").textContent = `avg ${avg.toFixed(2)} tx/block`;
+
+      const max = Math.max(1, ...points.map((p) => toNum(p.tx_count, 0)));
+      $("activityBars").innerHTML = points.map((p) => {
+        const h = Math.max(3, Math.round((toNum(p.tx_count, 0) / max) * 104));
+        return `<div class="bar" title="Block ${p.index}: ${p.tx_count} tx" style="height:${h}px"></div>`;
+      }).join("") || `<span class="warn">No activity data</span>`;
+      return points;
+    }
+
+    async function showBlock(index = "", hash = "") {
+      const q = index !== "" ? `index=${encodeURIComponent(index)}` : `hash=${encodeURIComponent(hash)}`;
+      const data = await api(`/scan/block?chain=public&${q}`);
+      toDetail(data);
+    }
+
+    async function showTx(id) {
+      const data = await api(`/scan/tx?id=${encodeURIComponent(id)}`);
+      toDetail(data);
+    }
+
+    async function showAddress(address) {
+      if (!address) return;
+      const includePrivate = !!$("includePrivateAddress").checked && portalLoggedIn();
+      const data = await api(`/scan/address?address=${encodeURIComponent(address)}&include_private=${includePrivate ? "true" : "false"}&limit=120`);
+      currentAddress = String(address);
+      $("addressInput").value = String(address);
+      renderAddressView(data, String(address));
+      toDetail(data);
+    }
+
+    async function showSymbol(symbol) {
+      const data = await api(`/scan/prices/history?symbol=${encodeURIComponent(symbol)}&limit=120`);
+      toDetail(data);
+    }
+
+    async function runSearch() {
+      const q = $("searchBox").value.trim();
+      if (!q) return;
+      const includePrivate = portalLoggedIn();
+      try {
+        if (/^[0-9]+$/.test(q)) { await showBlock(q, ""); return; }
+        if (q.startsWith("W") || q.startsWith("EVM:") || q.startsWith("0x")) { await showAddress(q); return; }
+        if (q.length >= 32) { await showTx(q); return; }
+        const data = await api(`/scan/search?q=${encodeURIComponent(q)}&include_private=${includePrivate ? "true" : "false"}&limit=120`);
+        toDetail(data);
+      } catch (e) {
+        toDetail({ ok: false, error: String(e && e.message ? e.message : e) });
+      }
+    }
+
+    async function portalLogin() {
+      const username = $("portalUser").value.trim();
+      const password = $("portalPass").value;
+      if (!username || !password) throw new Error("Portal username and password are required.");
+      const out = await apiPost("/ui/private/auth/login", { username, password });
+      const token = String(out.token || "").trim();
+      if (!token) throw new Error("Portal login succeeded but no token returned.");
+      localStorage.setItem(PORTAL_SESSION_KEY, token);
+      localStorage.setItem(PORTAL_USER_KEY, username);
+      $("portalSession").value = token;
+      updatePortalStatus();
+      toDetail({ ok: true, message: "Portal login successful", user: out.user || { username }, expires_at: out.expires_at });
+      await refreshAll();
+    }
+
+    async function portalLogout() {
+      try {
+        await apiPost("/ui/private/auth/logout", {});
+      } catch (_) {
+        // ignore logout failure, clear local state anyway
+      }
+      localStorage.removeItem(PORTAL_SESSION_KEY);
+      localStorage.removeItem(PORTAL_USER_KEY);
+      $("portalSession").value = "";
+      $("portalPass").value = "";
+      updatePortalStatus();
+      await refreshAll();
+    }
+
+    async function loadAddressFromInput() {
+      const value = $("addressInput").value.trim();
+      if (!value) return;
+      await showAddress(value);
+    }
+
+    async function refreshAll() {
+      try {
+        await Promise.all([
+          loadChainInfo(),
+          loadSummary(),
+          loadConsensus(),
+          loadBlocks(),
+          loadTransactions(),
+          loadPrices(),
+          loadActivity(),
+        ]);
+      } catch (e) {
+        setStatus(false, false);
+        toDetail({ ok: false, error: String(e && e.message ? e.message : e) });
+      }
+    }
+
+    function restartAutoRefresh() {
+      if (refreshTimer) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+      }
+      const raw = $("autoRefresh").value;
+      if (raw === "off") return;
+      const sec = Math.max(5, Number(raw) || 8);
+      refreshTimer = setInterval(refreshAll, sec * 1000);
+    }
+
+    document.addEventListener("click", async (event) => {
+      const t = event.target;
+      if (!(t instanceof HTMLElement)) return;
+      if (t.dataset.block !== undefined) { event.preventDefault(); await showBlock(t.dataset.block, ""); }
+      if (t.dataset.blockHash !== undefined) { event.preventDefault(); await showBlock("", t.dataset.blockHash); }
+      if (t.dataset.tx !== undefined) { event.preventDefault(); await showTx(t.dataset.tx); }
+      if (t.dataset.address !== undefined) { event.preventDefault(); await showAddress(t.dataset.address); }
+      if (t.dataset.symbol !== undefined) { event.preventDefault(); await showSymbol(t.dataset.symbol); }
+    });
+
+    $("saveJwt").onclick = () => {
+      localStorage.setItem("scanner.jwt", $("jwt").value.trim());
+    };
+    $("savePortalSession").onclick = () => {
+      localStorage.setItem(PORTAL_SESSION_KEY, $("portalSession").value.trim());
+      localStorage.setItem(PORTAL_USER_KEY, $("portalUser").value.trim());
+      updatePortalStatus();
+    };
+    $("portalLoginBtn").onclick = async () => {
+      try { await portalLogin(); } catch (e) { toDetail({ ok: false, error: String(e && e.message ? e.message : e) }); }
+    };
+    $("portalLogoutBtn").onclick = async () => {
+      try { await portalLogout(); } catch (e) { toDetail({ ok: false, error: String(e && e.message ? e.message : e) }); }
+    };
+    $("clearDetail").onclick = () => {
+      $("detail").textContent = "Details cleared.";
+    };
+    $("searchBtn").onclick = runSearch;
+    $("searchBox").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") runSearch();
+    });
+    $("blockRows").onchange = loadBlocks;
+    $("txChain").onchange = loadTransactions;
+    $("refreshBlocks").onclick = loadBlocks;
+    $("refreshTx").onclick = loadTransactions;
+    $("refreshPrices").onclick = loadPrices;
+    $("refreshActivity").onclick = loadActivity;
+    $("autoRefresh").onchange = restartAutoRefresh;
+    $("loadAddressBtn").onclick = loadAddressFromInput;
+    $("addressInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") loadAddressFromInput();
+    });
+
+    (function init() {
+      $("jwt").value = localStorage.getItem("scanner.jwt") || "";
+      $("portalSession").value = localStorage.getItem(PORTAL_SESSION_KEY) || "";
+      $("portalUser").value = localStorage.getItem(PORTAL_USER_KEY) || "";
+      updatePortalStatus();
+      refreshAll();
+      renderAddressView(null, "");
+      restartAutoRefresh();
+    })();
+  </script>
+</body>
+</html>

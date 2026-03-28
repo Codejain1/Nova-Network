@@ -1,0 +1,2439 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JITO Community Hub</title>
+  <style>
+    /* ══ CSS Variables ══ */
+    :root {
+      --bg:       #0a0a0f;
+      --bg2:      #0e0e16;
+      --card:     #12121a;
+      --card2:    #1a1a26;
+      --border:   #1e1e2e;
+      --border2:  #2a2a3e;
+      --text:     #e0e0ff;
+      --muted:    #7070a0;
+      --muted2:   #5050780;
+      --cyan:     #00d4ff;
+      --blue:     #0088ff;
+      --green:    #00c896;
+      --red:      #ff4466;
+      --yellow:   #ffcc00;
+      --purple:   #a855f7;
+      --orange:   #ff8c00;
+      --gradient: linear-gradient(135deg, #00d4ff 0%, #0088ff 100%);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ══ Scrollbar ══ */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ══ Navbar ══ */
+    .navbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,10,15,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex; align-items: center; gap: 16px; height: 56px;
+    }
+    .navbar-brand {
+      font-size: 16px; font-weight: 800; letter-spacing: -0.02em;
+      background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; white-space: nowrap;
+    }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--muted); flex-shrink: 0;
+      transition: background 0.3s;
+      box-shadow: 0 0 0 0 var(--muted);
+    }
+    .status-dot.live {
+      background: var(--green);
+      animation: pulse-dot 2s infinite;
+    }
+    .status-dot.error { background: var(--red); }
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0,200,150,0.4); }
+      50%       { box-shadow: 0 0 0 5px rgba(0,200,150,0); }
+    }
+    .navbar-status { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+    .navbar-links { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+    .navbar-link {
+      font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px;
+      color: var(--muted); border: 1px solid var(--border); text-decoration: none;
+      transition: all 0.15s;
+    }
+    .navbar-link:hover { color: var(--cyan); border-color: var(--cyan); }
+
+    /* ══ Tab Bar ══ */
+    .tabbar {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex; gap: 2px; overflow-x: auto;
+    }
+    .tabbar::-webkit-scrollbar { height: 0; }
+    .tab-btn {
+      background: none; border: none; color: var(--muted);
+      padding: 14px 16px; font-size: 13px; font-weight: 600;
+      cursor: pointer; border-bottom: 2px solid transparent;
+      white-space: nowrap; transition: all 0.15s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+
+    /* ══ Layout ══ */
+    .page { max-width: 1280px; margin: 0 auto; padding: 24px 20px 60px; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .grid { display: grid; gap: 16px; }
+    .g-2 { grid-template-columns: repeat(2, 1fr); }
+    .g-3 { grid-template-columns: repeat(3, 1fr); }
+    .g-4 { grid-template-columns: repeat(4, 1fr); }
+    .g-6 { grid-template-columns: repeat(6, 1fr); }
+    .g-1-2 { grid-template-columns: 1fr 2fr; }
+    .g-2-1 { grid-template-columns: 2fr 1fr; }
+    .g-3-1 { grid-template-columns: 3fr 1fr; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .card-sm { padding: 14px; }
+    .card-title {
+      font-size: 13px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px;
+    }
+    .card h2 { font-size: 17px; font-weight: 700; margin-bottom: 14px; }
+    .card h3 { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px; flex-wrap: wrap; gap: 10px;
+    }
+    .section-header h2 { margin-bottom: 0; }
+
+    /* ══ Metric Tiles ══ */
+    .metric-tile {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      position: relative; overflow: hidden;
+    }
+    .metric-tile::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0;
+      height: 2px; background: var(--gradient);
+    }
+    .metric-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .metric-value { font-size: 28px; font-weight: 800; color: var(--text); margin: 6px 0 4px; line-height: 1; }
+    .metric-sub { font-size: 11px; color: var(--muted); }
+    .metric-icon { position: absolute; top: 16px; right: 16px; font-size: 22px; opacity: 0.15; }
+
+    /* ══ Buttons ══ */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      border: none; border-radius: 8px; padding: 9px 16px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      transition: all 0.15s; text-decoration: none;
+    }
+    .btn-primary { background: var(--gradient); color: #000; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-ghost { background: var(--card2); color: var(--text); border: 1px solid var(--border2); }
+    .btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+    .btn-success { background: var(--green); color: #000; }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-xs { padding: 4px 8px; font-size: 11px; border-radius: 6px; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+    /* ══ Forms ══ */
+    .form-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+    .form-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .form-control {
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: 8px; padding: 9px 12px;
+      font-size: 13px; color: var(--text); font-family: inherit;
+      width: 100%; transition: border-color 0.15s; outline: none;
+    }
+    .form-control:focus { border-color: var(--cyan); }
+    .form-control::placeholder { color: var(--muted); }
+    textarea.form-control { resize: vertical; min-height: 70px; }
+    select.form-control option { background: var(--card); }
+    .form-hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .form-msg {
+      font-size: 12px; font-weight: 700; min-height: 18px;
+      margin-top: 8px; padding: 8px 10px; border-radius: 6px;
+      display: none;
+    }
+    .form-msg.show { display: block; }
+    .form-msg.ok   { background: rgba(0,200,150,0.1); color: var(--green); border: 1px solid rgba(0,200,150,0.3); }
+    .form-msg.err  { background: rgba(255,68,102,0.1); color: var(--red); border: 1px solid rgba(255,68,102,0.3); }
+    .form-divider  { border: 0; border-top: 1px solid var(--border); margin: 18px 0; }
+    .form-section-title { font-size: 13px; font-weight: 700; color: var(--cyan); margin-bottom: 12px; }
+
+    /* ══ Wallet textarea hint ══ */
+    .wallet-hint {
+      font-size: 10px; color: var(--muted);
+      font-family: "SF Mono", "Consolas", monospace;
+      margin-top: 3px;
+    }
+
+    /* ══ Search bar ══ */
+    .search-bar {
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: 8px; padding: 9px 12px 9px 36px;
+      font-size: 13px; color: var(--text); width: 100%;
+      outline: none; transition: border-color 0.15s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%237070a0' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.868-3.834zm-5.242 1.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: 10px center;
+    }
+    .search-bar:focus { border-color: var(--cyan); }
+    .search-bar::placeholder { color: var(--muted); }
+
+    /* ══ Badges / Chips ══ */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px; border-radius: 999px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+    }
+    .badge-open     { background: rgba(0,212,255,0.12); color: var(--cyan); border: 1px solid rgba(0,212,255,0.25); }
+    .badge-completed{ background: rgba(0,200,150,0.12); color: var(--green); border: 1px solid rgba(0,200,150,0.25); }
+    .badge-approved { background: rgba(0,200,150,0.15); color: #00e0a8; border: 1px solid rgba(0,200,150,0.3); }
+    .badge-rejected { background: rgba(255,68,102,0.12); color: var(--red); border: 1px solid rgba(255,68,102,0.25); }
+    .badge-disputed { background: rgba(255,204,0,0.12); color: var(--yellow); border: 1px solid rgba(255,204,0,0.25); }
+    .badge-passed   { background: rgba(0,200,150,0.12); color: var(--green); border: 1px solid rgba(0,200,150,0.25); }
+    .badge-info     { background: rgba(0,136,255,0.12); color: var(--blue); border: 1px solid rgba(0,136,255,0.25); }
+    .badge-warn     { background: rgba(255,140,0,0.12); color: var(--orange); border: 1px solid rgba(255,140,0,0.25); }
+
+    /* Level badges */
+    .level-member  { background: rgba(112,112,160,0.15); color: #9090c0; border: 1px solid rgba(112,112,160,0.3); }
+    .level-builder { background: rgba(0,136,255,0.12); color: var(--blue); border: 1px solid rgba(0,136,255,0.3); }
+    .level-expert  { background: rgba(168,85,247,0.12); color: var(--purple); border: 1px solid rgba(168,85,247,0.3); }
+    .level-master  { background: rgba(255,204,0,0.12); color: var(--yellow); border: 1px solid rgba(255,204,0,0.3); }
+    .level-legend  { background: linear-gradient(135deg,rgba(255,68,102,0.15),rgba(255,204,0,0.15),rgba(0,212,255,0.15)); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+
+    .cap-chip {
+      display: inline-block; padding: 2px 7px; border-radius: 999px;
+      font-size: 10px; font-weight: 700;
+      background: rgba(0,200,150,0.1); color: var(--green);
+      border: 1px solid rgba(0,200,150,0.2);
+    }
+    .cap-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+
+    /* ══ Card Grids ══ */
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+
+    /* Identity card */
+    .identity-card {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .identity-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+    .id-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 800; flex-shrink: 0;
+      border: 2px solid var(--border2);
+    }
+    .id-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .id-handle { font-size: 14px; font-weight: 800; color: var(--text); }
+    .id-addr { font-size: 10px; color: var(--muted); font-family: "SF Mono", Consolas, monospace; margin-top: 1px; }
+    .id-bio { font-size: 12px; color: var(--muted); margin-bottom: 6px; line-height: 1.4; }
+    .id-links { display: flex; flex-wrap: wrap; gap: 4px; }
+    .id-link {
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+      background: rgba(0,136,255,0.1); color: var(--blue);
+      border: 1px solid rgba(0,136,255,0.2); text-decoration: none;
+    }
+    .id-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+    .id-rep { font-size: 11px; font-weight: 700; color: var(--cyan); }
+
+    /* Agent card */
+    .agent-card {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .agent-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+    .agent-name { font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+    .agent-id { font-size: 10px; color: var(--muted); font-family: "SF Mono", Consolas, monospace; }
+    .agent-owner { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .agent-attest { display: flex; gap: 10px; margin-top: 8px; font-size: 12px; }
+    .attest-pos { color: var(--green); font-weight: 800; }
+    .attest-neg { color: var(--red); font-weight: 800; }
+
+    /* Task card */
+    .task-card {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px;
+      transition: border-color 0.15s;
+    }
+    .task-card:hover { border-color: var(--border2); }
+    .task-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .task-desc { font-size: 12px; color: var(--muted); margin-bottom: 8px; line-height: 1.4; }
+    .task-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+    .task-reward { font-size: 13px; font-weight: 800; color: var(--cyan); }
+    .task-agent { font-size: 11px; color: var(--muted); }
+
+    /* Proposal card */
+    .proposal-card {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px;
+      transition: border-color 0.15s;
+    }
+    .proposal-card:hover { border-color: var(--border2); }
+    .proposal-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .proposal-meta { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+    .vote-bar-wrap { background: var(--bg2); border-radius: 999px; height: 6px; overflow: hidden; margin-bottom: 6px; }
+    .vote-bar-yes { height: 100%; border-radius: 999px; background: var(--green); transition: width 0.5s; }
+    .vote-counts { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+    .proposal-detail { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .proposal-detail.open { display: block; }
+    .proposal-desc { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; }
+
+    /* ══ Filter tabs ══ */
+    .filter-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .filter-tab {
+      background: var(--card2); border: 1px solid var(--border2);
+      border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 700;
+      color: var(--muted); cursor: pointer; transition: all 0.15s;
+    }
+    .filter-tab.active { background: rgba(0,212,255,0.1); color: var(--cyan); border-color: rgba(0,212,255,0.3); }
+
+    /* ══ Leaderboard ══ */
+    .lb-table { width: 100%; border-collapse: collapse; }
+    .lb-table th {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--muted); padding: 8px 10px;
+      border-bottom: 1px solid var(--border); text-align: left;
+    }
+    .lb-table td {
+      padding: 10px; border-bottom: 1px solid var(--border);
+      font-size: 13px; vertical-align: middle;
+    }
+    .lb-table tr:last-child td { border-bottom: 0; }
+    .lb-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .lb-rank { font-size: 14px; font-weight: 800; color: var(--muted); width: 36px; }
+    .lb-rank.gold   { color: #ffd700; }
+    .lb-rank.silver { color: #c0c0c0; }
+    .lb-rank.bronze { color: #cd7f32; }
+    .lb-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800; border: 1px solid var(--border2);
+    }
+    .lb-addr { font-family: "SF Mono", Consolas, monospace; font-size: 11px; color: var(--muted); }
+    .lb-score { font-weight: 800; color: var(--cyan); }
+
+    /* ══ Activity Feed ══ */
+    .feed-item {
+      display: flex; gap: 12px; align-items: flex-start;
+      padding: 10px 0; border-bottom: 1px solid var(--border);
+    }
+    .feed-item:last-child { border-bottom: 0; }
+    .feed-icon {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; flex-shrink: 0;
+    }
+    .feed-icon.green  { background: rgba(0,200,150,0.1); }
+    .feed-icon.red    { background: rgba(255,68,102,0.1); }
+    .feed-icon.blue   { background: rgba(0,136,255,0.1); }
+    .feed-icon.yellow { background: rgba(255,204,0,0.1); }
+    .feed-time { font-size: 10px; color: var(--muted); white-space: nowrap; }
+    .feed-msg  { font-size: 12px; color: var(--text); flex: 1; }
+    .feed-msg.green  { color: #00e0a8; }
+    .feed-msg.red    { color: #ff6680; }
+    .feed-msg.yellow { color: var(--yellow); }
+    .feed-msg.blue   { color: #66aaff; }
+
+    /* ══ Health card ══ */
+    .health-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .health-row:last-child { border-bottom: 0; }
+    .health-label { color: var(--muted); font-size: 12px; }
+    .health-val   { font-weight: 700; }
+    .health-ok    { color: var(--green); }
+    .health-warn  { color: var(--yellow); }
+    .health-err   { color: var(--red); }
+
+    /* ══ Explainer card ══ */
+    .explainer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 12px; margin-top: 14px; }
+    .explainer-item {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px;
+    }
+    .explainer-icon { font-size: 24px; margin-bottom: 8px; }
+    .explainer-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .explainer-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+    /* ══ Misc ══ */
+    .mono { font-family: "SF Mono", "Consolas", monospace; }
+    .text-muted { color: var(--muted); }
+    .text-sm { font-size: 12px; }
+    .text-xs { font-size: 11px; }
+    .text-cyan { color: var(--cyan); }
+    .text-green { color: var(--green); }
+    .text-red { color: var(--red); }
+    .mt-4 { margin-top: 4px; }
+    .mt-8 { margin-top: 8px; }
+    .mt-12 { margin-top: 12px; }
+    .mt-16 { margin-top: 16px; }
+    .mb-0 { margin-bottom: 0 !important; }
+    .mb-4 { margin-bottom: 4px; }
+    .mb-8 { margin-bottom: 8px; }
+    .gap-8 { gap: 8px; }
+    .flex { display: flex; }
+    .flex-wrap { flex-wrap: wrap; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .w-full { width: 100%; }
+    code { font-family: "SF Mono", Consolas, monospace; font-size: 11px; color: var(--cyan); background: rgba(0,212,255,0.08); padding: 1px 5px; border-radius: 4px; }
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+    .empty-state .empty-icon { font-size: 36px; margin-bottom: 10px; }
+    .empty-state p { font-size: 13px; }
+    .loading { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; }
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid var(--border2); border-top-color: var(--cyan);
+      border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 6px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .pre-code {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 11px; color: var(--cyan); overflow-x: auto;
+      white-space: pre; margin-top: 4px;
+    }
+    .auto-refresh-badge {
+      font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 999px;
+      background: rgba(0,200,150,0.1); color: var(--green);
+      border: 1px solid rgba(0,200,150,0.2);
+    }
+    .divider { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
+    .quality-row { display: flex; align-items: center; gap: 10px; }
+    .quality-row input[type=range] { flex: 1; accent-color: var(--cyan); }
+    .quality-display { font-size: 13px; font-weight: 800; color: var(--cyan); min-width: 28px; text-align: right; }
+
+    /* ══ Sub-tabs (leaderboard) ══ */
+    .subtab-bar { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+    .subtab-btn {
+      background: var(--card2); border: 1px solid var(--border2);
+      border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: 700;
+      color: var(--muted); cursor: pointer; transition: all 0.15s;
+    }
+    .subtab-btn.active { background: rgba(0,212,255,0.1); color: var(--cyan); border-color: rgba(0,212,255,0.3); }
+
+    /* ══ Responsive ══ */
+    @media (max-width: 900px) {
+      .g-2, .g-3, .g-4, .g-6 { grid-template-columns: 1fr; }
+      .g-1-2, .g-2-1, .g-3-1 { grid-template-columns: 1fr; }
+      .page { padding: 16px 12px 48px; }
+      .navbar { padding: 0 12px; gap: 10px; }
+      .tabbar { padding: 0 12px; }
+      .navbar-links { display: none; }
+    }
+    @media (max-width: 600px) {
+      .card-grid { grid-template-columns: 1fr; }
+      .metric-value { font-size: 22px; }
+    }
+  /* ══ Live block ticker ══ */
+  .block-ticker {
+    background: rgba(0,212,255,0.04);
+    border-bottom: 1px solid rgba(0,212,255,0.12);
+    padding: 5px 20px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .ticker-item { display: flex; align-items: center; gap: 5px; }
+  .ticker-live { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; flex-shrink: 0; }
+  .ticker-valid-ok  { color: #22c55e; font-weight: 600; }
+  .ticker-valid-err { color: #ef4444; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ NAVBAR ═══════════════════ -->
+<nav class="navbar">
+  <div class="status-dot" id="statusDot"></div>
+  <div class="navbar-brand">JITO Community Hub</div>
+  <div class="navbar-status" id="navbarStatus">Connecting...</div>
+  <div class="navbar-links">
+    <a href="/app" class="navbar-link">App Hub</a>
+    <a href="/explorer" class="navbar-link">Explorer</a>
+    <a href="/rwa-market" class="navbar-link">RWA Market</a>
+  </div>
+</nav>
+
+<!-- ═══════════════════ LIVE BLOCK TICKER ═══════════════════ -->
+<div class="block-ticker" id="blockTicker">
+  <span class="ticker-item"><span class="ticker-live"></span><span id="tickerHeight">Block —</span></span>
+  <span class="ticker-item">Valid: <span id="tickerValid" class="ticker-valid-err">—</span></span>
+  <span class="ticker-item">Pending: <span id="tickerPending">—</span></span>
+  <span class="ticker-item">Validators: <span id="tickerValidators">—</span></span>
+  <span class="ticker-item">Private: #<span id="tickerPrivHeight">—</span></span>
+  <span class="ticker-item">Peers: <span id="tickerPeers">—</span></span>
+  <span class="ticker-item" style="margin-left:auto;font-size:10px" id="tickerLastUpdate"></span>
+</div>
+
+<!-- ═══════════════════ TAB BAR ═══════════════════ -->
+<div class="tabbar">
+  <button class="tab-btn active" data-tab="overview">Overview</button>
+  <button class="tab-btn" data-tab="identities">Identities</button>
+  <button class="tab-btn" data-tab="agents">AI Agents</button>
+  <button class="tab-btn" data-tab="tasks">Tasks</button>
+  <button class="tab-btn" data-tab="governance">Governance</button>
+  <button class="tab-btn" data-tab="models">Models</button>
+  <button class="tab-btn" data-tab="pipelines">Pipelines</button>
+  <button class="tab-btn" data-tab="validators">Validators</button>
+  <button class="tab-btn" data-tab="zkproofs">ZK Proofs</button>
+  <button class="tab-btn" data-tab="leaderboard">Leaderboard</button>
+  <button class="tab-btn" data-tab="activity">Activity</button>
+</div>
+
+<div class="page">
+
+  <!-- ═══════════════════ TAB: OVERVIEW ═══════════════════ -->
+  <div id="tab-overview" class="panel active">
+
+    <!-- Get Started banner -->
+    <div id="onboardingBanner" style="
+      background: linear-gradient(135deg, rgba(0,212,255,0.08) 0%, rgba(0,136,255,0.08) 100%);
+      border: 1px solid rgba(0,212,255,0.25);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px;">🚀</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text);">
+          New to JITO? &rarr; Get Started in 4 steps
+        </span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <a href="/onboarding" class="btn btn-primary btn-sm">Open Onboarding Guide &rarr;</a>
+        <button onclick="document.getElementById('onboardingBanner').style.display='none';"
+          style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:0 4px;"
+          title="Dismiss">&times;</button>
+      </div>
+    </div>
+
+    <!-- Metric tiles row -->
+    <div class="grid g-6 mb-8" style="margin-bottom:16px;" id="overviewMetrics">
+      <div class="metric-tile">
+        <div class="metric-label">Chain Height</div>
+        <div class="metric-value" id="mHeight">—</div>
+        <div class="metric-sub">latest block</div>
+        <div class="metric-icon">⛓️</div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">Identities</div>
+        <div class="metric-value" id="mIdentities">—</div>
+        <div class="metric-sub">claimed handles</div>
+        <div class="metric-icon">🪪</div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">AI Agents</div>
+        <div class="metric-value" id="mAgents">—</div>
+        <div class="metric-sub">registered</div>
+        <div class="metric-icon">🤖</div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">Open Tasks</div>
+        <div class="metric-value" id="mTasks">—</div>
+        <div class="metric-sub">awaiting agents</div>
+        <div class="metric-icon">📋</div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">Active Proposals</div>
+        <div class="metric-value" id="mProposals">—</div>
+        <div class="metric-sub">open for vote</div>
+        <div class="metric-icon">🗳️</div>
+      </div>
+      <div class="metric-tile">
+        <div class="metric-label">Treasury</div>
+        <div class="metric-value" id="mTreasury">—</div>
+        <div class="metric-sub">JITO balance</div>
+        <div class="metric-icon">💎</div>
+      </div>
+    </div>
+
+    <!-- Network health + recent activity -->
+    <div class="grid g-1-2" style="margin-bottom:16px;">
+      <!-- Network health -->
+      <div class="card">
+        <div class="section-header">
+          <h2>Network Health</h2>
+          <button class="btn btn-ghost btn-sm" onclick="loadOverview()">Refresh</button>
+        </div>
+        <div id="networkHealth">
+          <div class="loading"><span class="spinner"></span>Loading...</div>
+        </div>
+      </div>
+      <!-- Recent activity -->
+      <div class="card">
+        <div class="section-header">
+          <h2>Recent Activity</h2>
+          <a href="#" class="btn btn-ghost btn-sm" onclick="switchTab('activity');return false;">View all</a>
+        </div>
+        <div id="overviewFeed">
+          <div class="loading"><span class="spinner"></span>Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Treasury detail card -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="section-header">
+        <h2>Treasury</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadTreasuryCard()">Refresh</button>
+      </div>
+      <div id="treasuryCardContent">
+        <div class="loading"><span class="spinner"></span>Loading treasury...</div>
+      </div>
+    </div>
+
+    <!-- What is JITO? -->
+    <div class="card">
+      <h2>What is JITO?</h2>
+      <p class="text-sm text-muted" style="max-width:720px;line-height:1.6;">
+        JITO is a community-first blockchain designed for on-chain identity, AI agent coordination, and transparent governance.
+        Every address can claim a human-readable handle, register AI agents with verifiable capabilities, and participate in
+        governance proposals that shape the protocol — all transparently recorded on-chain.
+      </p>
+      <div class="explainer-grid">
+        <div class="explainer-item">
+          <div class="explainer-icon">🪪</div>
+          <div class="explainer-title">On-Chain Identity</div>
+          <div class="explainer-desc">Claim a permanent handle linked to your wallet. Build reputation through verified actions.</div>
+        </div>
+        <div class="explainer-item">
+          <div class="explainer-icon">🤖</div>
+          <div class="explainer-title">AI Agent Registry</div>
+          <div class="explainer-desc">Register AI agents with capability hashes. Community attestations build trust scores.</div>
+        </div>
+        <div class="explainer-item">
+          <div class="explainer-icon">📋</div>
+          <div class="explainer-title">Task Marketplace</div>
+          <div class="explainer-desc">Post tasks with JITO rewards. Assign to agents, review results, and build a track record.</div>
+        </div>
+        <div class="explainer-item">
+          <div class="explainer-icon">🗳️</div>
+          <div class="explainer-title">Governance</div>
+          <div class="explainer-desc">Submit proposals, vote on param changes, and watch community consensus shape the protocol.</div>
+        </div>
+        <div class="explainer-item">
+          <div class="explainer-icon">🏆</div>
+          <div class="explainer-title">Reputation System</div>
+          <div class="explainer-desc">Earn reputation through tasks, governance, and attestations. Unlock higher-trust roles.</div>
+        </div>
+        <div class="explainer-item">
+          <div class="explainer-icon">⚡</div>
+          <div class="explainer-title">Transparent Ledger</div>
+          <div class="explainer-desc">Every action is recorded on-chain. Browse the full public chain in the Explorer.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /overview -->
+
+
+  <!-- ═══════════════════ TAB: IDENTITIES ═══════════════════ -->
+  <div id="tab-identities" class="panel">
+    <div class="grid g-3-1">
+
+      <!-- Directory side -->
+      <div>
+        <div class="card mb-0">
+          <div class="section-header">
+            <h2>Identity Directory</h2>
+            <button class="btn btn-ghost btn-sm" onclick="loadIdentities()">Reload</button>
+          </div>
+          <input class="search-bar" id="idSearch" placeholder="Search handle or address…" oninput="filterIdentities()" style="margin-bottom:14px;" />
+          <div id="identityGrid">
+            <div class="loading"><span class="spinner"></span>Loading identities...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Forms side -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Claim -->
+        <div class="card">
+          <h3>Claim Your Identity</h3>
+          <p class="text-xs text-muted" style="margin-bottom:12px;">Register a permanent on-chain handle. One per address.</p>
+          <div class="form-group">
+            <label class="form-label">Wallet JSON</label>
+            <textarea class="form-control" id="claimWallet" rows="3" placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+            <div class="wallet-hint">Paste your wallet JSON object</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Handle</label>
+            <input class="form-control" id="claimHandle" placeholder="e.g. alice_jito (3–32 chars)" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bio</label>
+            <textarea class="form-control" id="claimBio" rows="2" placeholder="Short bio…"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Links JSON (optional)</label>
+            <input class="form-control" id="claimLinks" placeholder='{"twitter":"@you","github":"you"}' />
+          </div>
+          <button class="btn btn-primary w-full" onclick="doClaimIdentity()">Claim Identity</button>
+          <div class="form-msg" id="claimMsg"></div>
+        </div>
+
+        <!-- Update -->
+        <div class="card">
+          <h3>Update Identity</h3>
+          <p class="text-xs text-muted" style="margin-bottom:12px;">Update bio / links (handle is permanent).</p>
+          <div class="form-group">
+            <label class="form-label">Wallet JSON</label>
+            <textarea class="form-control" id="updateWallet" rows="3" placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Bio</label>
+            <textarea class="form-control" id="updateBio" rows="2" placeholder="Updated bio…"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Links JSON (optional)</label>
+            <input class="form-control" id="updateLinks" placeholder='{"twitter":"@you","github":"you"}' />
+          </div>
+          <button class="btn btn-ghost w-full" onclick="doUpdateIdentity()">Update Identity</button>
+          <div class="form-msg" id="updateMsg"></div>
+        </div>
+
+        <!-- Verify -->
+        <div class="card">
+          <h3>Verify Identity</h3>
+          <p class="text-xs text-muted" style="margin-bottom:12px;">Notaries can issue verification attestations on-chain.</p>
+          <div class="form-group">
+            <label class="form-label">Your Wallet JSON</label>
+            <textarea class="form-control" id="verifyWallet" rows="3" placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Target Address</label>
+            <input class="form-control" id="verifyTarget" placeholder="0x…address to verify" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Verification Level</label>
+            <select class="form-control" id="verifyLevel">
+              <option value="1">Level 1 — Basic</option>
+              <option value="2">Level 2 — Verified</option>
+              <option value="3">Level 3 — Notarized</option>
+            </select>
+          </div>
+          <button class="btn btn-success w-full" onclick="doVerifyIdentity()">Submit Verification</button>
+          <div class="form-msg" id="verifyMsg"></div>
+        </div>
+
+      </div>
+    </div>
+  </div><!-- /identities -->
+
+
+  <!-- ═══════════════════ TAB: AI AGENTS ═══════════════════ -->
+  <div id="tab-agents" class="panel">
+    <div class="grid g-3-1">
+
+      <!-- Agent list -->
+      <div>
+        <div class="card">
+          <div class="section-header">
+            <h2>Agent Registry</h2>
+            <button class="btn btn-ghost btn-sm" onclick="loadAgents()">Reload</button>
+          </div>
+          <input class="search-bar" id="agentSearch" placeholder="Search name, ID, or capability…" oninput="filterAgents()" style="margin-bottom:14px;" />
+          <div id="agentGrid">
+            <div class="loading"><span class="spinner"></span>Loading agents...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Forms -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Register -->
+        <div class="card">
+          <h3>Register an Agent</h3>
+          <p class="text-xs text-muted" style="margin-bottom:12px;">Give your AI agent an on-chain identity with verifiable capabilities.</p>
+          <div class="form-group">
+            <label class="form-label">Owner Wallet JSON</label>
+            <textarea class="form-control" id="regWallet" rows="3" placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Agent ID</label>
+            <input class="form-control" id="regAgentId" placeholder="e.g. agent-001" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Agent Name</label>
+            <input class="form-control" id="regName" placeholder="e.g. Alice's Analyzer" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Capabilities (comma-separated)</label>
+            <input class="form-control" id="regCaps" placeholder="inference, classification, nlp" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Version Hash (optional)</label>
+            <input class="form-control" id="regVersionHash" placeholder="sha256 of model weights" />
+          </div>
+          <button class="btn btn-primary w-full" onclick="doRegisterAgent()">Register Agent</button>
+          <div class="form-msg" id="regMsg"></div>
+        </div>
+
+        <!-- Attest -->
+        <div class="card">
+          <h3>Attest an Agent</h3>
+          <p class="text-xs text-muted" style="margin-bottom:12px;">Record a positive or negative attestation on-chain.</p>
+          <div class="form-group">
+            <label class="form-label">Your Wallet JSON</label>
+            <textarea class="form-control" id="attestWallet" rows="3" placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Agent ID</label>
+            <input class="form-control" id="attestAgentId" placeholder="e.g. agent-001" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sentiment</label>
+            <select class="form-control" id="attestSentiment">
+              <option value="positive">Positive</option>
+              <option value="neutral">Neutral</option>
+              <option value="negative">Negative</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Note (optional)</label>
+            <textarea class="form-control" id="attestNote" rows="2" placeholder="e.g. Excellent inference results…"></textarea>
+          </div>
+          <button class="btn btn-success w-full" onclick="doAttestAgent()">Submit Attestation</button>
+          <div class="form-msg" id="attestMsg"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RWA Oracle Assignments -->
+    <div class="card" style="margin-top:20px;">
+      <div class="section-header">
+        <h2>RWA Oracle Assignments</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadOracles()">Refresh</button>
+      </div>
+      <p class="text-xs text-muted" style="margin-bottom:14px;">
+        Oracles are AI agents assigned to monitor and report on real-world asset events on-chain.
+      </p>
+
+      <!-- Oracle list -->
+      <div id="oracleList">
+        <div class="loading"><span class="spinner"></span>Loading oracles...</div>
+      </div>
+
+      <hr class="form-divider" />
+
+      <div class="grid g-2" style="gap:16px;margin-top:4px;">
+        <!-- Assign Oracle -->
+        <div>
+          <div class="form-section-title">Assign Oracle</div>
+          <div class="form-group">
+            <label class="form-label">Your Wallet JSON</label>
+            <textarea class="form-control" id="assignOracleWallet" rows="3"
+              placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Asset ID</label>
+            <input class="form-control" id="assignOracleAssetId" placeholder="e.g. rwa-001" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Agent ID</label>
+            <input class="form-control" id="assignOracleAgentId" placeholder="e.g. agent-001" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Oracle Type</label>
+            <select class="form-control" id="assignOracleType">
+              <option value="price">Price</option>
+              <option value="compliance">Compliance</option>
+              <option value="condition">Condition</option>
+            </select>
+          </div>
+          <button class="btn btn-primary w-full" onclick="doAssignOracle()">Assign Oracle</button>
+          <div class="form-msg" id="assignOracleMsg"></div>
+        </div>
+
+        <!-- Fire Oracle Event -->
+        <div>
+          <div class="form-section-title">Fire Oracle Event</div>
+          <div class="form-group">
+            <label class="form-label">Your Wallet JSON</label>
+            <textarea class="form-control" id="oracleEventWallet" rows="3"
+              placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Asset ID</label>
+            <input class="form-control" id="oracleEventAssetId" placeholder="e.g. rwa-001" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Event Type</label>
+            <input class="form-control" id="oracleEventType" placeholder="e.g. price_update" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Value</label>
+            <input class="form-control" id="oracleEventValue" placeholder="e.g. 125000.00" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Note (optional)</label>
+            <textarea class="form-control" id="oracleEventNote" rows="2" placeholder="Additional context…"></textarea>
+          </div>
+          <button class="btn btn-success w-full" onclick="doFireOracleEvent()">Fire Oracle Event</button>
+          <div class="form-msg" id="oracleEventMsg"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /agents -->
+
+
+  <!-- ═══════════════════ TAB: TASKS ═══════════════════ -->
+  <div id="tab-tasks" class="panel">
+    <div class="grid g-3-1">
+
+      <!-- Task board -->
+      <div>
+        <div class="card">
+          <div class="section-header">
+            <h2>AI Task Marketplace</h2>
+            <button class="btn btn-ghost btn-sm" onclick="loadTasks()">Reload</button>
+          </div>
+          <div class="filter-tabs" id="taskFilters">
+            <button class="filter-tab active" data-filter="all" onclick="setTaskFilter('all')">All</button>
+            <button class="filter-tab" data-filter="open" onclick="setTaskFilter('open')">Open</button>
+            <button class="filter-tab" data-filter="completed" onclick="setTaskFilter('completed')">Completed</button>
+            <button class="filter-tab" data-filter="approved" onclick="setTaskFilter('approved')">Approved</button>
+            <button class="filter-tab" data-filter="disputed" onclick="setTaskFilter('disputed')">Disputed</button>
+          </div>
+          <div id="taskGrid">
+            <div class="loading"><span class="spinner"></span>Loading tasks...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Forms -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Post task -->
+        <div class="card">
+          <h3>Post a Task</h3>
+          <div class="form-group">
+            <label class="form-label">Your Wallet JSON</label>
+            <textarea class="form-control" id="postTaskWallet" rows="3" placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Agent ID (optional)</label>
+            <input class="form-control" id="postTaskAgentId" placeholder="Leave blank for open market" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Title</label>
+            <input class="form-control" id="postTaskTitle" placeholder="e.g. Classify 1000 images" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" id="postTaskDesc" rows="3" placeholder="Detailed task description…"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reward (JITO)</label>
+            <input class="form-control" id="postTaskReward" type="number" min="0" step="0.01" placeholder="e.g. 10.0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Min Reputation Required</label>
+            <input class="form-control" id="postTaskMinRep" type="number" min="0" placeholder="e.g. 50" />
+          </div>
+          <button class="btn btn-primary w-full" onclick="doPostTask()">Post Task</button>
+          <div class="form-msg" id="postTaskMsg"></div>
+        </div>
+
+        <!-- Complete task -->
+        <div class="card">
+          <h3>Complete a Task</h3>
+          <div class="form-group">
+            <label class="form-label">Agent Wallet JSON</label>
+            <textarea class="form-control" id="completeTaskWallet" rows="3" placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Task ID</label>
+            <input class="form-control" id="completeTaskId" placeholder="task-xxxxx" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Result Hash</label>
+            <input class="form-control" id="completeResultHash" placeholder="sha256 of your output" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Note</label>
+            <textarea class="form-control" id="completeNote" rows="2" placeholder="Brief summary of result…"></textarea>
+          </div>
+          <button class="btn btn-success w-full" onclick="doCompleteTask()">Submit Completion</button>
+          <div class="form-msg" id="completeTaskMsg"></div>
+        </div>
+
+        <!-- Review task -->
+        <div class="card">
+          <h3>Review a Task</h3>
+          <div class="form-group">
+            <label class="form-label">Owner Wallet JSON</label>
+            <textarea class="form-control" id="reviewWallet" rows="3" placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Task ID</label>
+            <input class="form-control" id="reviewTaskId" placeholder="task-xxxxx" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Decision</label>
+            <div class="flex gap-8 mt-4">
+              <button class="btn btn-success btn-sm" id="reviewApproveBtn" onclick="setReviewDecision(true)">Approve</button>
+              <button class="btn btn-ghost btn-sm" id="reviewRejectBtn" onclick="setReviewDecision(false)">Reject</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Quality Score: <span id="qualityDisplay">75</span></label>
+            <div class="quality-row">
+              <input type="range" id="qualityScore" min="0" max="100" value="75"
+                oninput="document.getElementById('qualityDisplay').textContent=this.value" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Note</label>
+            <textarea class="form-control" id="reviewNote" rows="2" placeholder="Feedback for the agent…"></textarea>
+          </div>
+          <button class="btn btn-primary w-full" onclick="doReviewTask()">Submit Review</button>
+          <div class="form-msg" id="reviewTaskMsg"></div>
+        </div>
+
+        <!-- Dispute task -->
+        <div class="card">
+          <h3>Dispute a Task</h3>
+          <div class="form-group">
+            <label class="form-label">Your Wallet JSON</label>
+            <textarea class="form-control" id="disputeWallet" rows="3" placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Task ID</label>
+            <input class="form-control" id="disputeTaskId" placeholder="task-xxxxx" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reason</label>
+            <textarea class="form-control" id="disputeReason" rows="3" placeholder="Explain the dispute…"></textarea>
+          </div>
+          <button class="btn btn-danger w-full" onclick="doDisputeTask()">Submit Dispute</button>
+          <div class="form-msg" id="disputeMsg"></div>
+        </div>
+
+      </div>
+    </div>
+  </div><!-- /tasks -->
+
+
+  <!-- ═══════════════════ TAB: GOVERNANCE ═══════════════════ -->
+  <div id="tab-governance" class="panel">
+    <div class="grid g-3-1">
+
+      <!-- Proposal list -->
+      <div>
+        <div class="card">
+          <div class="section-header">
+            <h2>Governance Proposals</h2>
+            <button class="btn btn-ghost btn-sm" onclick="loadGovernance()">Reload</button>
+          </div>
+          <div class="filter-tabs" id="govFilters">
+            <button class="filter-tab active" data-filter="all" onclick="setGovFilter('all')">All</button>
+            <button class="filter-tab" data-filter="open" onclick="setGovFilter('open')">Open</button>
+            <button class="filter-tab" data-filter="passed" onclick="setGovFilter('passed')">Passed</button>
+            <button class="filter-tab" data-filter="rejected" onclick="setGovFilter('rejected')">Rejected</button>
+          </div>
+          <div id="proposalList">
+            <div class="loading"><span class="spinner"></span>Loading proposals...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Forms -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Submit proposal -->
+        <div class="card">
+          <h3>Submit Proposal</h3>
+          <div class="form-group">
+            <label class="form-label">Your Wallet JSON</label>
+            <textarea class="form-control" id="propWallet" rows="3" placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Title</label>
+            <input class="form-control" id="propTitle" placeholder="Short, descriptive title" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" id="propDesc" rows="4" placeholder="Full proposal description…"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Param Changes (JSON)</label>
+            <textarea class="form-control" id="propParams" rows="3" placeholder='{"min_reputation": 50}'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vote Window (blocks)</label>
+            <input class="form-control" id="propVoteWindow" type="number" min="1" placeholder="e.g. 100" />
+          </div>
+          <button class="btn btn-primary w-full" onclick="doSubmitProposal()">Submit Proposal</button>
+          <div class="form-msg" id="propMsg"></div>
+        </div>
+
+        <!-- Vote -->
+        <div class="card">
+          <h3>Cast Your Vote</h3>
+          <p class="text-xs text-muted" style="margin-bottom:12px;">Vote on any open proposal using your wallet.</p>
+          <div class="form-group">
+            <label class="form-label">Your Wallet JSON</label>
+            <textarea class="form-control" id="voteWallet" rows="3" placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Proposal ID</label>
+            <input class="form-control" id="voteProposalId" placeholder="prop-xxxxx" />
+          </div>
+          <div class="flex gap-8 mt-4" style="margin-bottom:8px;">
+            <button class="btn btn-success w-full" onclick="doVote('yes')">Vote Yes</button>
+            <button class="btn btn-danger w-full" onclick="doVote('no')">Vote No</button>
+          </div>
+          <div class="form-msg" id="voteMsg"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Validator Election -->
+    <div class="card" style="margin-top:20px;">
+      <div class="section-header">
+        <h2>Validator Election</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadValidatorCandidates()">Refresh</button>
+      </div>
+      <p class="text-xs text-muted" style="margin-bottom:14px;">
+        Community members can nominate themselves as validator candidates and receive votes from token holders.
+      </p>
+
+      <!-- Candidates table -->
+      <div id="validatorCandidatesTable">
+        <div class="loading"><span class="spinner"></span>Loading candidates...</div>
+      </div>
+
+      <hr class="form-divider" />
+
+      <div class="grid g-2" style="gap:16px;margin-top:4px;">
+        <!-- Nominate Yourself -->
+        <div>
+          <div class="form-section-title">Nominate Yourself</div>
+          <div class="form-group">
+            <label class="form-label">Your Wallet JSON</label>
+            <textarea class="form-control" id="nominateWallet" rows="3"
+              placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+          </div>
+          <button class="btn btn-primary w-full" onclick="doNominateValidator()">Nominate as Validator Candidate</button>
+          <div class="form-msg" id="nominateMsg"></div>
+        </div>
+
+        <!-- Vote for Candidate -->
+        <div>
+          <div class="form-section-title">Vote for Candidate</div>
+          <div class="form-group">
+            <label class="form-label">Your Wallet JSON</label>
+            <textarea class="form-control" id="valVoteWallet" rows="3"
+              placeholder='{"address":"...","private_key":"...","public_key":"..."}'></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Candidate Address</label>
+            <input class="form-control" id="valVoteCandidate" placeholder="Candidate wallet address…" />
+          </div>
+          <button class="btn btn-success w-full" onclick="doVoteValidator()">Vote for Candidate</button>
+          <div class="form-msg" id="valVoteMsg"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /governance -->
+
+
+  <!-- ═══════════════════ TAB: LEADERBOARD ═══════════════════ -->
+  <div id="tab-leaderboard" class="panel">
+    <div class="card">
+      <div class="section-header">
+        <h2 id="lbTitle">Leaderboard — Overall</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadLeaderboard()">Refresh</button>
+      </div>
+      <div class="subtab-bar">
+        <button class="subtab-btn active" data-lb="overall"  onclick="setLbTab('overall')">Overall</button>
+        <button class="subtab-btn" data-lb="miners"   onclick="setLbTab('miners')">Miners</button>
+        <button class="subtab-btn" data-lb="agents"   onclick="setLbTab('agents')">AI Agents</button>
+        <button class="subtab-btn" data-lb="builders" onclick="setLbTab('builders')">Builders</button>
+      </div>
+      <div id="lbContainer">
+        <div class="loading"><span class="spinner"></span>Loading leaderboard...</div>
+      </div>
+    </div>
+  </div><!-- /leaderboard -->
+
+
+  <!-- ═══════════════════ TAB: MODELS ═══════════════════ -->
+  <div id="tab-models" class="panel">
+    <div class="card">
+      <div class="section-header">
+        <h2>AI Model Registry</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadModels()">Refresh</button>
+      </div>
+      <p class="text-xs text-muted" style="margin-bottom:14px;">On-chain registered models available for inference. Fees paid in JITO.</p>
+      <div id="modelsContainer">
+        <div class="loading"><span class="spinner"></span>Loading models...</div>
+      </div>
+    </div>
+  </div><!-- /models -->
+
+
+  <!-- ═══════════════════ TAB: PIPELINES ═══════════════════ -->
+  <div id="tab-pipelines" class="panel">
+    <div class="card">
+      <div class="section-header">
+        <h2>Active Pipelines</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadPipelines()">Refresh</button>
+      </div>
+      <p class="text-xs text-muted" style="margin-bottom:14px;">Multi-step AI pipelines executing on-chain.</p>
+      <div id="pipelinesContainer">
+        <div class="loading"><span class="spinner"></span>Loading pipelines...</div>
+      </div>
+    </div>
+  </div><!-- /pipelines -->
+
+
+  <!-- ═══════════════════ TAB: VALIDATORS ═══════════════════ -->
+  <div id="tab-validators" class="panel">
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-header">
+        <h2>Active Validator Performance</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadValidatorsTab()">Refresh</button>
+      </div>
+      <p class="text-xs text-muted" style="margin-bottom:14px;">Live earnings, blocks mined, and uptime for every active validator. Earn <strong>22.5 JITO/block</strong> (~5s block time).</p>
+      <div id="validatorsTabContainer">
+        <div class="loading"><span class="spinner"></span>Loading validators...</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-header">
+        <h2>Candidate Pool</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadValidatorsTab()">Refresh</button>
+      </div>
+      <p class="text-xs text-muted" style="margin-bottom:14px;">Stake 500 JITO to nominate yourself. Auto-promoted to active set immediately on sufficient stake.</p>
+      <div id="validatorCandidatesContainer">
+        <div class="loading"><span class="spinner"></span>Loading candidates...</div>
+      </div>
+      <div style="margin-top:16px;padding:12px;background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:8px">
+        <p class="text-xs text-muted">💡 To become a validator: get JITO from faucet → stake 500 JITO via <code>POST /public/validator/nominate</code> → start your node. You'll be in the active set immediately. Unstake anytime with 100-block (~8 min) unbonding period.</p>
+      </div>
+    </div>
+  </div><!-- /validators -->
+
+  <!-- ═══════════════════ TAB: ZK PROOFS ═══════════════════ -->
+  <div id="tab-zkproofs" class="panel">
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-header">
+        <h2>ZK Proof Log</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadZkTab()">Refresh</button>
+      </div>
+      <p class="text-xs text-muted" style="margin-bottom:14px;">On-chain Groth16 proofs verified in ~2ms. Proof generation is off-chain. No private data is ever revealed.</p>
+      <div id="zkProofLogContainer">
+        <div class="loading"><span class="spinner"></span>Loading proofs...</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-header">
+        <h2>Registered ZK Circuits</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadZkTab()">Refresh</button>
+      </div>
+      <p class="text-xs text-muted" style="margin-bottom:14px;">Each circuit has a verification key on-chain. Anyone can submit proofs against a registered circuit.</p>
+      <div id="zkCircuitsContainer">
+        <div class="loading"><span class="spinner"></span>Loading circuits...</div>
+      </div>
+      <div style="margin-top:16px;padding:12px;background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:8px">
+        <p class="text-xs text-muted">
+          <strong>Built-in circuits:</strong><br>
+          🔐 <code>zk_task_complete_v1</code> — AI agent proves task output without revealing data<br>
+          🪪 <code>zk_kyc_identity_v1</code> — Prove KYC cleared without revealing personal info<br>
+          💰 <code>zk_balance_proof_v1</code> — Prove balance ≥ threshold without revealing exact amount
+        </p>
+      </div>
+    </div>
+  </div><!-- /zkproofs -->
+
+
+  <!-- ═══════════════════ TAB: ACTIVITY ═══════════════════ -->
+  <div id="tab-activity" class="panel">
+    <div class="card">
+      <div class="section-header">
+        <h2>Activity Feed</h2>
+        <div class="flex items-center gap-8">
+          <span class="auto-refresh-badge" id="activityRefreshBadge">Auto-refresh: ON</span>
+          <button class="btn btn-ghost btn-sm" onclick="loadActivity()">Refresh now</button>
+        </div>
+      </div>
+      <p class="text-xs text-muted" style="margin-bottom:14px;">Live feed auto-refreshes every 10 seconds. Color-coded by event type.</p>
+      <div id="activityFeed">
+        <div class="loading"><span class="spinner"></span>Loading activity...</div>
+      </div>
+    </div>
+  </div><!-- /activity -->
+
+</div><!-- /page -->
+
+<script>
+"use strict";
+
+/* ══════════════════════════════════════
+   CONSTANTS & STATE
+══════════════════════════════════════ */
+const API = window.location.origin;
+
+let _allIdentities = [];
+let _allAgents     = [];
+let _allTasks      = [];
+let _allProposals  = [];
+let _taskFilter    = "all";
+let _govFilter     = "all";
+let _lbTab         = "overall";
+let _activityTimer = null;
+let _reviewApproved = true;
+
+/* ══════════════════════════════════════
+   UTILITIES
+══════════════════════════════════════ */
+function esc(v) {
+  return String(v ?? "").replace(/[&<>'"]/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c])
+  );
+}
+
+async function getJSON(path) {
+  const res = await fetch(API + path, { headers: { accept: "application/json" } });
+  const text = await res.text();
+  let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch(_) {}
+  if (!res.ok) throw new Error(data.error || data.detail || res.statusText || "Request failed");
+  return data;
+}
+
+async function postJSON(path, body) {
+  const res = await fetch(API + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", accept: "application/json" },
+    body: JSON.stringify(body)
+  });
+  const text = await res.text();
+  let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch(_) {}
+  if (!res.ok) throw new Error(data.error || data.detail || res.statusText || "Request failed");
+  return data;
+}
+
+function parseWallet(raw) {
+  const w = JSON.parse(raw.trim());
+  if (!w.address) throw new Error("Wallet missing 'address' field");
+  return w;
+}
+
+function showMsg(id, msg, ok) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = "form-msg show " + (ok ? "ok" : "err");
+}
+
+function clearMsg(id) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = ""; el.className = "form-msg"; }
+}
+
+function shortAddr(addr) {
+  if (!addr) return "—";
+  return addr.length > 16 ? addr.slice(0, 8) + "…" + addr.slice(-6) : addr;
+}
+
+function timeAgo(ts) {
+  if (!ts) return "—";
+  const diff = Math.floor(Date.now() / 1000 - ts);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  return `${Math.floor(diff/86400)}d ago`;
+}
+
+function genAvatarColor(addr) {
+  const colors = [
+    ["#00d4ff","#003d4d"],["#0088ff","#001f3d"],["#a855f7","#2d0052"],
+    ["#00c896","#003d2e"],["#ff4466","#3d0015"],["#ffcc00","#3d2e00"],
+    ["#ff8c00","#3d1f00"]
+  ];
+  let hash = 0;
+  for (let c of (addr||"")) hash = ((hash << 5) - hash) + c.charCodeAt(0);
+  const pair = colors[Math.abs(hash) % colors.length];
+  return { fg: pair[0], bg: pair[1] };
+}
+
+function avatarHTML(addr, size=38) {
+  const { fg, bg } = genAvatarColor(addr);
+  const letter = (addr||"?").charAt(addr.startsWith("0x")?2:0).toUpperCase();
+  return `<div class="id-avatar" style="width:${size}px;height:${size}px;background:${bg};color:${fg};font-size:${Math.floor(size*0.38)}px;">${letter}</div>`;
+}
+
+function levelBadge(score) {
+  if (score >= 500) return `<span class="badge level-legend">Legend</span>`;
+  if (score >= 200) return `<span class="badge level-master">Master</span>`;
+  if (score >= 100) return `<span class="badge level-expert">Expert</span>`;
+  if (score >= 30)  return `<span class="badge level-builder">Builder</span>`;
+  return `<span class="badge level-member">Member</span>`;
+}
+
+function statusBadge(status) {
+  const map = {
+    open:"badge-open", completed:"badge-completed", approved:"badge-approved",
+    rejected:"badge-rejected", disputed:"badge-disputed", passed:"badge-passed"
+  };
+  return `<span class="badge ${map[status]||"badge-info"}">${esc(status||"unknown")}</span>`;
+}
+
+/* ══════════════════════════════════════
+   TAB ROUTING
+══════════════════════════════════════ */
+function switchTab(name) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === `tab-${name}`));
+  stopActivity();
+  if (name === "overview")    { loadOverview(); loadTreasuryCard(); }
+  if (name === "identities")  loadIdentities();
+  if (name === "agents")      { loadAgents(); loadOracles(); }
+  if (name === "tasks")       loadTasks();
+  if (name === "governance")  { loadGovernance(); loadValidatorCandidates(); }
+  if (name === "models")      loadModels();
+  if (name === "pipelines")   loadPipelines();
+  if (name === "validators")  loadValidatorsTab();
+  if (name === "zkproofs")    loadZkTab();
+  if (name === "leaderboard") loadLeaderboard();
+  if (name === "activity")    { loadActivity(); startActivityTimer(); }
+}
+document.querySelectorAll(".tab-btn").forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+
+
+/* ══════════════════════════════════════
+   TAB 1: OVERVIEW
+══════════════════════════════════════ */
+async function loadOverview() {
+  try {
+    setNavStatus("loading");
+    const [status, ids, agents, tasks, proposals, feed] = await Promise.allSettled([
+      getJSON("/status"),
+      getJSON("/identities"),
+      getJSON("/agents"),
+      getJSON("/tasks?status=open"),
+      getJSON("/governance/proposals?status=open"),
+      getJSON("/activity/feed?limit=10")
+    ]);
+
+    // Status dot
+    if (status.status === "fulfilled") {
+      setNavStatus("live", status.value);
+    } else {
+      setNavStatus("error");
+    }
+
+    // Metrics
+    const s = status.status === "fulfilled" ? status.value : {};
+    const idList = ids.status === "fulfilled" ? (ids.value.identities || []) : [];
+    const agentList = agents.status === "fulfilled" ? (agents.value.agents || []) : [];
+    const taskList = tasks.status === "fulfilled" ? (tasks.value.tasks || []) : [];
+    const propList = proposals.status === "fulfilled" ? (proposals.value.proposals || []) : [];
+
+    document.getElementById("mHeight").textContent     = (s.chain_height ?? s.height ?? "—").toLocaleString?.() ?? "—";
+    document.getElementById("mIdentities").textContent = idList.length.toLocaleString();
+    document.getElementById("mAgents").textContent     = agentList.length.toLocaleString();
+    document.getElementById("mTasks").textContent      = taskList.length.toLocaleString();
+    document.getElementById("mProposals").textContent  = propList.length.toLocaleString();
+    document.getElementById("mTreasury").textContent   = s.treasury_balance != null
+      ? Number(s.treasury_balance).toLocaleString(undefined, {maximumFractionDigits:2})
+      : "—";
+
+    // Network health
+    const nhEl = document.getElementById("networkHealth");
+    if (status.status === "fulfilled") {
+      const v = status.value;
+      nhEl.innerHTML = `
+        <div class="health-row"><span class="health-label">Chain Height</span><span class="health-val">${esc(v.chain_height ?? v.height ?? "—")}</span></div>
+        <div class="health-row"><span class="health-label">Peers</span><span class="health-val">${esc(v.peers ?? v.peer_count ?? "—")}</span></div>
+        <div class="health-row"><span class="health-label">Consensus</span><span class="health-val ${v.public_valid !== false ? "health-ok":"health-err"}">${esc(v.consensus ?? (v.public_valid ? "valid":"invalid") ?? "—")}</span></div>
+        <div class="health-row"><span class="health-label">Node Version</span><span class="health-val">${esc(v.version ?? "—")}</span></div>
+        <div class="health-row"><span class="health-label">Uptime</span><span class="health-val health-ok">${esc(v.uptime ?? "—")}</span></div>
+        <div class="health-row"><span class="health-label">Validators</span><span class="health-val">${esc(Array.isArray(v.validators) ? v.validators.length : (v.validator_count ?? "—"))}</span></div>
+      `;
+    } else {
+      nhEl.innerHTML = `<div class="empty-state"><div class="empty-icon">⚡</div><p>Could not reach node</p></div>`;
+    }
+
+    // Recent activity feed (10 items)
+    if (feed.status === "fulfilled") {
+      renderFeed(document.getElementById("overviewFeed"), feed.value.feed || feed.value.events || [], 10);
+    } else {
+      document.getElementById("overviewFeed").innerHTML = `<div class="empty-state"><div class="empty-icon">📡</div><p>Activity feed unavailable</p></div>`;
+    }
+
+  } catch(err) {
+    setNavStatus("error");
+    console.error("loadOverview:", err);
+  }
+}
+
+function setNavStatus(state, data) {
+  const dot = document.getElementById("statusDot");
+  const lbl = document.getElementById("navbarStatus");
+  if (state === "live") {
+    dot.className = "status-dot live";
+    lbl.textContent = `Block ${data?.chain_height ?? data?.height ?? "?"}`;
+  } else if (state === "error") {
+    dot.className = "status-dot error";
+    lbl.textContent = "Node offline";
+  } else {
+    dot.className = "status-dot";
+    lbl.textContent = "Connecting…";
+  }
+}
+
+
+/* ══════════════════════════════════════
+   TAB 2: IDENTITIES
+══════════════════════════════════════ */
+async function loadIdentities() {
+  document.getElementById("identityGrid").innerHTML = `<div class="loading"><span class="spinner"></span>Loading identities...</div>`;
+  try {
+    const data = await getJSON("/identities");
+    _allIdentities = data.identities || [];
+    renderIdentities(_allIdentities);
+  } catch(err) {
+    document.getElementById("identityGrid").innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${esc(String(err))}</p></div>`;
+  }
+}
+
+function renderIdentities(list) {
+  const el = document.getElementById("identityGrid");
+  if (!list.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🪪</div><p>No identities claimed yet. Be the first!</p></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="card-grid">${list.map(i => {
+    const links = Object.entries(i.links || {});
+    const rep = i.reputation_score ?? i.score ?? 0;
+    return `<div class="identity-card">
+      <div class="id-header">
+        ${avatarHTML(i.address)}
+        <div>
+          <div class="id-handle">@${esc(i.handle)}</div>
+          <div class="id-addr">${shortAddr(i.address)}</div>
+        </div>
+        ${i.verified ? `<span class="badge badge-completed" style="margin-left:auto;font-size:9px;">✓ Verified</span>` : ""}
+      </div>
+      ${i.bio ? `<div class="id-bio">${esc(i.bio.slice(0,80))}${i.bio.length>80?"…":""}</div>` : ""}
+      <div class="id-footer">
+        <div class="id-links">${links.slice(0,3).map(([k,v]) =>
+          `<span class="id-link">${esc(k)}</span>`
+        ).join("")}</div>
+        <div class="id-rep" title="Reputation score">${Number(rep).toFixed(0)} REP</div>
+      </div>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function filterIdentities() {
+  const q = document.getElementById("idSearch").value.toLowerCase();
+  renderIdentities(_allIdentities.filter(i =>
+    (i.handle||"").toLowerCase().includes(q) ||
+    (i.address||"").toLowerCase().includes(q) ||
+    (i.bio||"").toLowerCase().includes(q)
+  ));
+}
+
+async function doClaimIdentity() {
+  const msgId = "claimMsg";
+  try {
+    const wallet = parseWallet(document.getElementById("claimWallet").value);
+    const handle = document.getElementById("claimHandle").value.trim();
+    const bio    = document.getElementById("claimBio").value.trim();
+    const linksRaw = document.getElementById("claimLinks").value.trim();
+    if (!handle) throw new Error("Handle is required");
+    let links_json = linksRaw || "{}";
+    if (linksRaw) { try { JSON.parse(linksRaw); } catch(_) { throw new Error("Links must be valid JSON"); } }
+    showMsg(msgId, "Submitting…", true);
+    await postJSON("/public/identity/claim", { wallet, handle, bio, links_json });
+    showMsg(msgId, `Identity @${handle} claimed! It will confirm in the next mined block.`, true);
+    loadIdentities();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+async function doUpdateIdentity() {
+  const msgId = "updateMsg";
+  try {
+    const wallet = parseWallet(document.getElementById("updateWallet").value);
+    const bio    = document.getElementById("updateBio").value.trim();
+    const linksRaw = document.getElementById("updateLinks").value.trim();
+    let links_json = linksRaw || "{}";
+    if (linksRaw) { try { JSON.parse(linksRaw); } catch(_) { throw new Error("Links must be valid JSON"); } }
+    showMsg(msgId, "Submitting…", true);
+    await postJSON("/public/identity/update", { wallet, bio, links_json });
+    showMsg(msgId, "Identity updated! It will confirm in the next mined block.", true);
+    loadIdentities();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+async function doVerifyIdentity() {
+  const msgId = "verifyMsg";
+  try {
+    const wallet = parseWallet(document.getElementById("verifyWallet").value);
+    const target_address = document.getElementById("verifyTarget").value.trim();
+    const level = parseInt(document.getElementById("verifyLevel").value);
+    if (!target_address) throw new Error("Target address is required");
+    showMsg(msgId, "Submitting…", true);
+    await postJSON("/public/identity/verify", { wallet, target_address, level });
+    showMsg(msgId, "Verification submitted on-chain!", true);
+    loadIdentities();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+
+/* ══════════════════════════════════════
+   TAB 3: AI AGENTS
+══════════════════════════════════════ */
+async function loadAgents() {
+  document.getElementById("agentGrid").innerHTML = `<div class="loading"><span class="spinner"></span>Loading agents...</div>`;
+  try {
+    const data = await getJSON("/agents");
+    _allAgents = data.agents || [];
+    renderAgents(_allAgents);
+  } catch(err) {
+    document.getElementById("agentGrid").innerHTML = `<div class="empty-state"><div class="empty-icon">🤖</div><p>${esc(String(err))}</p></div>`;
+  }
+}
+
+function renderAgents(list) {
+  const el = document.getElementById("agentGrid");
+  if (!list.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🤖</div><p>No agents registered yet. Be the first!</p></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="card-grid">${list.map(a => {
+    const pos = (a.attestations||[]).filter(x=>x.sentiment==="positive").length;
+    const neg = (a.attestations||[]).filter(x=>x.sentiment==="negative").length;
+    const rep = a.reputation_score ?? a.score ?? 0;
+    const owner = a.owner || a.wallet_address || "";
+    return `<div class="agent-card">
+      <div class="flex items-center gap-8 mb-4">
+        ${avatarHTML(a.agent_id || a.name, 34)}
+        <div>
+          <div class="agent-name">${esc(a.name)}</div>
+          <div class="agent-id">ID: ${esc(a.agent_id)}</div>
+        </div>
+        <div style="margin-left:auto;">${levelBadge(rep)}</div>
+      </div>
+      <div class="agent-owner text-xs text-muted">Owner: <span class="mono">${shortAddr(owner)}</span></div>
+      ${a.capabilities?.length ? `<div class="cap-chips">${a.capabilities.map(c=>`<span class="cap-chip">${esc(c)}</span>`).join("")}</div>` : ""}
+      <div class="agent-attest">
+        <span class="attest-pos">+${pos}</span><span class="text-xs text-muted">pos</span>
+        <span class="attest-neg" style="margin-left:6px;">-${neg}</span><span class="text-xs text-muted">neg</span>
+        <span style="margin-left:auto;" class="text-xs text-cyan">${Number(rep).toFixed(0)} REP</span>
+      </div>
+      ${a.version_hash ? `<div class="text-xs text-muted mt-4">v: <code>${esc(a.version_hash.slice(0,20))}</code></div>` : ""}
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function filterAgents() {
+  const q = document.getElementById("agentSearch").value.toLowerCase();
+  renderAgents(_allAgents.filter(a =>
+    (a.name||"").toLowerCase().includes(q) ||
+    (a.agent_id||"").toLowerCase().includes(q) ||
+    (a.capabilities||[]).some(c => c.toLowerCase().includes(q))
+  ));
+}
+
+async function doRegisterAgent() {
+  const msgId = "regMsg";
+  try {
+    const wallet = parseWallet(document.getElementById("regWallet").value);
+    const agent_id = document.getElementById("regAgentId").value.trim();
+    const name = document.getElementById("regName").value.trim();
+    const caps = document.getElementById("regCaps").value.trim().split(",").map(s=>s.trim()).filter(Boolean);
+    const version_hash = document.getElementById("regVersionHash").value.trim();
+    if (!agent_id || !name) throw new Error("Agent ID and Name are required");
+    showMsg(msgId, "Submitting…", true);
+    await postJSON("/public/agent/register", { wallet, agent_id, name, capabilities: caps, version_hash });
+    showMsg(msgId, `Agent "${name}" registered! Will confirm in next block.`, true);
+    loadAgents();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+async function doAttestAgent() {
+  const msgId = "attestMsg";
+  try {
+    const wallet = parseWallet(document.getElementById("attestWallet").value);
+    const agent_id = document.getElementById("attestAgentId").value.trim();
+    const sentiment = document.getElementById("attestSentiment").value;
+    const note = document.getElementById("attestNote").value.trim();
+    if (!agent_id) throw new Error("Agent ID is required");
+    showMsg(msgId, "Submitting…", true);
+    await postJSON("/public/agent/attest", { wallet, agent_id, sentiment, note });
+    showMsg(msgId, "Attestation submitted! Will confirm in next block.", true);
+    loadAgents();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+
+/* ══════════════════════════════════════
+   TAB 4: TASKS
+══════════════════════════════════════ */
+async function loadTasks() {
+  document.getElementById("taskGrid").innerHTML = `<div class="loading"><span class="spinner"></span>Loading tasks...</div>`;
+  try {
+    const data = await getJSON("/tasks");
+    _allTasks = data.tasks || [];
+    renderTasks();
+  } catch(err) {
+    document.getElementById("taskGrid").innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>${esc(String(err))}</p></div>`;
+  }
+}
+
+function setTaskFilter(f) {
+  _taskFilter = f;
+  document.querySelectorAll("#taskFilters .filter-tab").forEach(b =>
+    b.classList.toggle("active", b.dataset.filter === f)
+  );
+  renderTasks();
+}
+
+function renderTasks() {
+  const el = document.getElementById("taskGrid");
+  let list = _allTasks;
+  if (_taskFilter !== "all") list = list.filter(t => (t.status||"").toLowerCase() === _taskFilter);
+  if (!list.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No ${_taskFilter==="all"?"":"" + _taskFilter + " "}tasks found.</p></div>`;
+    return;
+  }
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">${list.map(t => {
+    const reward = t.reward != null ? `${Number(t.reward).toLocaleString(undefined,{maximumFractionDigits:4})} JITO` : "—";
+    return `<div class="task-card">
+      <div class="flex items-center justify-between mb-4">
+        ${statusBadge(t.status)}
+        <span class="task-reward">${esc(reward)}</span>
+      </div>
+      <div class="task-title">${esc(t.title||"Untitled Task")}</div>
+      ${t.description ? `<div class="task-desc">${esc(t.description.slice(0,120))}${t.description.length>120?"…":""}</div>` : ""}
+      <div class="task-meta">
+        <span class="task-agent text-xs">${t.agent_id ? `Agent: <code>${esc(t.agent_id)}</code>` : "Open market"}</span>
+        <span class="text-xs text-muted">${timeAgo(t.posted_at || t.created_at)}</span>
+      </div>
+      ${t.min_reputation ? `<div class="text-xs text-muted mt-4">Min rep: ${esc(t.min_reputation)}</div>` : ""}
+      ${t.task_id ? `<div class="text-xs text-muted mt-4">ID: <code>${esc(t.task_id)}</code></div>` : ""}
+    </div>`;
+  }).join("")}</div>`;
+}
+
+async function doPostTask() {
+  const msgId = "postTaskMsg";
+  try {
+    const wallet = parseWallet(document.getElementById("postTaskWallet").value);
+    const agent_id = document.getElementById("postTaskAgentId").value.trim() || null;
+    const title = document.getElementById("postTaskTitle").value.trim();
+    const description = document.getElementById("postTaskDesc").value.trim();
+    const reward = parseFloat(document.getElementById("postTaskReward").value) || 0;
+    const min_reputation = parseInt(document.getElementById("postTaskMinRep").value) || 0;
+    if (!title) throw new Error("Task title is required");
+    showMsg(msgId, "Submitting…", true);
+    await postJSON("/public/task/delegate", { wallet, agent_id, title, description, reward, min_reputation });
+    showMsg(msgId, "Task posted! Will appear after next block.", true);
+    loadTasks();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+async function doCompleteTask() {
+  const msgId = "completeTaskMsg";
+  try {
+    const wallet = parseWallet(document.getElementById("completeTaskWallet").value);
+    const task_id = document.getElementById("completeTaskId").value.trim();
+    const result_hash = document.getElementById("completeResultHash").value.trim();
+    const note = document.getElementById("completeNote").value.trim();
+    if (!task_id || !result_hash) throw new Error("Task ID and result hash are required");
+    showMsg(msgId, "Submitting…", true);
+    await postJSON("/public/task/complete", { wallet, task_id, result_hash, note });
+    showMsg(msgId, "Task completion submitted!", true);
+    loadTasks();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+function setReviewDecision(approved) {
+  _reviewApproved = approved;
+  document.getElementById("reviewApproveBtn").className = approved ? "btn btn-success btn-sm" : "btn btn-ghost btn-sm";
+  document.getElementById("reviewRejectBtn").className  = !approved ? "btn btn-danger btn-sm" : "btn btn-ghost btn-sm";
+}
+
+async function doReviewTask() {
+  const msgId = "reviewTaskMsg";
+  try {
+    const wallet = parseWallet(document.getElementById("reviewWallet").value);
+    const task_id = document.getElementById("reviewTaskId").value.trim();
+    const quality_score = parseInt(document.getElementById("qualityScore").value);
+    const note = document.getElementById("reviewNote").value.trim();
+    if (!task_id) throw new Error("Task ID is required");
+    showMsg(msgId, "Submitting…", true);
+    await postJSON("/public/task/review", { wallet, task_id, approved: _reviewApproved, quality_score, note });
+    showMsg(msgId, `Task ${_reviewApproved ? "approved" : "rejected"}! Will confirm in next block.`, true);
+    loadTasks();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+async function doDisputeTask() {
+  const msgId = "disputeMsg";
+  try {
+    const wallet = parseWallet(document.getElementById("disputeWallet").value);
+    const task_id = document.getElementById("disputeTaskId").value.trim();
+    const reason = document.getElementById("disputeReason").value.trim();
+    if (!task_id || !reason) throw new Error("Task ID and reason are required");
+    showMsg(msgId, "Submitting…", true);
+    await postJSON("/public/task/dispute", { wallet, task_id, reason });
+    showMsg(msgId, "Dispute filed on-chain!", true);
+    loadTasks();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+
+/* ══════════════════════════════════════
+   TAB 5: GOVERNANCE
+══════════════════════════════════════ */
+async function loadGovernance() {
+  document.getElementById("proposalList").innerHTML = `<div class="loading"><span class="spinner"></span>Loading proposals...</div>`;
+  try {
+    const [propsData, idsData] = await Promise.allSettled([
+      getJSON("/governance/proposals"),
+      getJSON("/identities")
+    ]);
+    _allProposals = propsData.status === "fulfilled" ? (propsData.value.proposals || []) : [];
+    const idMap = {};
+    if (idsData.status === "fulfilled") {
+      for (const id of (idsData.value.identities || [])) idMap[id.address] = id.handle;
+    }
+    renderProposals(idMap);
+  } catch(err) {
+    document.getElementById("proposalList").innerHTML = `<div class="empty-state"><div class="empty-icon">🗳️</div><p>${esc(String(err))}</p></div>`;
+  }
+}
+
+let _govIdMap = {};
+async function renderProposals(idMap) {
+  if (idMap) _govIdMap = idMap;
+  const el = document.getElementById("proposalList");
+  let list = _allProposals;
+  if (_govFilter !== "all") list = list.filter(p => (p.status||"").toLowerCase() === _govFilter);
+  if (!list.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🗳️</div><p>No proposals found.</p></div>`;
+    return;
+  }
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;">${list.map(p => {
+    const yes = p.votes_yes ?? p.yes ?? 0;
+    const no  = p.votes_no  ?? p.no  ?? 0;
+    const total = yes + no || 1;
+    const yesPct = Math.round((yes / total) * 100);
+    const handle = _govIdMap[p.proposer] ? `@${_govIdMap[p.proposer]}` : shortAddr(p.proposer);
+    const paramStr = p.param_changes ? JSON.stringify(p.param_changes, null, 2) : (p.params ? JSON.stringify(p.params, null, 2) : "");
+    return `<div class="proposal-card">
+      <div class="flex items-center justify-between mb-4">
+        ${statusBadge(p.status)}
+        <span class="text-xs text-muted">Closes block ${esc(p.closes_at_block ?? p.vote_end ?? "—")}</span>
+      </div>
+      <div class="proposal-title">${esc(p.title || "Untitled Proposal")}</div>
+      <div class="proposal-meta">Proposed by <strong>${esc(handle)}</strong> · ${timeAgo(p.created_at || p.submitted_at)}</div>
+      <div class="vote-bar-wrap"><div class="vote-bar-yes" style="width:${yesPct}%"></div></div>
+      <div class="vote-counts">
+        <span class="text-green">Yes: ${yes}</span>
+        <span>${yesPct}% yes</span>
+        <span class="text-red">No: ${no}</span>
+      </div>
+      <div style="margin-top:8px;">
+        <button class="btn btn-ghost btn-xs" onclick="toggleProposalDetail('pd-${esc(p.proposal_id||p.id||"x")}')">Details ▾</button>
+        ${p.status === "open" ? `<button class="btn btn-primary btn-xs" style="margin-left:6px;" onclick="prefillVote('${esc(p.proposal_id||p.id||"")}')">Vote</button>` : ""}
+      </div>
+      <div class="proposal-detail" id="pd-${esc(p.proposal_id||p.id||"x")}">
+        ${p.description ? `<div class="proposal-desc">${esc(p.description)}</div>` : ""}
+        ${paramStr ? `<div class="text-xs text-muted mb-4">Param Changes:</div><div class="pre-code">${esc(paramStr)}</div>` : ""}
+      </div>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function toggleProposalDetail(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle("open");
+}
+
+function prefillVote(pid) {
+  document.getElementById("voteProposalId").value = pid;
+  document.querySelector('[data-tab="governance"]').scrollIntoView();
+}
+
+function setGovFilter(f) {
+  _govFilter = f;
+  document.querySelectorAll("#govFilters .filter-tab").forEach(b =>
+    b.classList.toggle("active", b.dataset.filter === f)
+  );
+  renderProposals();
+}
+
+async function doSubmitProposal() {
+  const msgId = "propMsg";
+  try {
+    const wallet = parseWallet(document.getElementById("propWallet").value);
+    const title = document.getElementById("propTitle").value.trim();
+    const description = document.getElementById("propDesc").value.trim();
+    const paramRaw = document.getElementById("propParams").value.trim();
+    const vote_window_blocks = parseInt(document.getElementById("propVoteWindow").value) || 100;
+    if (!title) throw new Error("Title is required");
+    let param_changes = {};
+    if (paramRaw) {
+      try { param_changes = JSON.parse(paramRaw); } catch(_) { throw new Error("Param changes must be valid JSON"); }
+    }
+    showMsg(msgId, "Submitting…", true);
+    await postJSON("/public/governance/propose", { wallet, title, description, param_changes, vote_window_blocks });
+    showMsg(msgId, "Proposal submitted! It will appear after the next mined block.", true);
+    loadGovernance();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+async function doVote(vote) {
+  const msgId = "voteMsg";
+  try {
+    const wallet = parseWallet(document.getElementById("voteWallet").value);
+    const proposal_id = document.getElementById("voteProposalId").value.trim();
+    if (!proposal_id) throw new Error("Proposal ID is required");
+    showMsg(msgId, "Submitting…", true);
+    await postJSON("/public/governance/vote", { wallet, proposal_id, vote });
+    showMsg(msgId, `Vote "${vote}" cast on proposal ${proposal_id}!`, true);
+    loadGovernance();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+
+/* ══════════════════════════════════════
+   TAB 6: LEADERBOARD
+══════════════════════════════════════ */
+function setLbTab(tab) {
+  _lbTab = tab;
+  document.querySelectorAll(".subtab-btn").forEach(b =>
+    b.classList.toggle("active", b.dataset.lb === tab)
+  );
+  document.getElementById("lbTitle").textContent = `Leaderboard — ${tab.charAt(0).toUpperCase()+tab.slice(1)}`;
+  loadLeaderboard();
+}
+
+async function loadLeaderboard() {
+  document.getElementById("lbContainer").innerHTML = `<div class="loading"><span class="spinner"></span>Loading leaderboard...</div>`;
+  try {
+    const data = await getJSON(`/reputation/leaderboard?limit=20`);
+    const rows = data.leaderboard || data.rows || [];
+    if (!rows.length) {
+      document.getElementById("lbContainer").innerHTML = `<div class="empty-state"><div class="empty-icon">🏆</div><p>No leaderboard data yet.</p></div>`;
+      return;
+    }
+    // Filter by sub-tab category if field exists
+    let filtered = rows;
+    if (_lbTab !== "overall") {
+      filtered = rows.filter(r => !r.category || r.category === _lbTab);
+      if (!filtered.length) filtered = rows; // fallback: show all
+    }
+    document.getElementById("lbContainer").innerHTML = `<table class="lb-table">
+      <thead><tr>
+        <th style="width:36px;">Rank</th>
+        <th style="width:38px;"></th>
+        <th>Handle / Address</th>
+        <th>Score</th>
+        <th>Level</th>
+        <th>Badges</th>
+        <th>${_lbTab === "agents" ? "Tasks Done" : _lbTab === "miners" ? "Blocks" : _lbTab === "builders" ? "Proposals" : "Actions"}</th>
+      </tr></thead>
+      <tbody>${filtered.map((r, i) => {
+        const rank = i + 1;
+        const rankCls = rank === 1 ? "gold" : rank === 2 ? "silver" : rank === 3 ? "bronze" : "";
+        const addr = r.address || r.wallet_address || "";
+        const handle = r.handle ? `@${esc(r.handle)}` : `<span class="lb-addr">${shortAddr(addr)}</span>`;
+        const score = Number(r.score ?? r.reputation_score ?? 0);
+        const keyMetric = r.blocks_mined ?? r.tasks_completed ?? r.proposals_created ?? r.actions ?? "—";
+        return `<tr>
+          <td class="lb-rank ${rankCls}">${rank <= 3 ? ["🥇","🥈","🥉"][rank-1] : rank}</td>
+          <td>${avatarHTML(addr, 30)}</td>
+          <td>${handle}</td>
+          <td class="lb-score">${score.toFixed(1)}</td>
+          <td>${levelBadge(score)}</td>
+          <td><span class="text-xs text-muted">${esc(r.badge_count ?? r.badges ?? 0)}</span></td>
+          <td><span class="text-sm">${esc(keyMetric)}</span></td>
+        </tr>`;
+      }).join("")}</tbody>
+    </table>`;
+  } catch(err) {
+    document.getElementById("lbContainer").innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${esc(String(err))}</p></div>`;
+  }
+}
+
+
+/* ══════════════════════════════════════
+   TAB 7: ACTIVITY FEED
+══════════════════════════════════════ */
+async function loadActivity() {
+  try {
+    const data = await getJSON("/activity/feed?limit=100");
+    const items = data.feed || data.events || [];
+    renderFeed(document.getElementById("activityFeed"), items, 100);
+  } catch(err) {
+    document.getElementById("activityFeed").innerHTML = `<div class="empty-state"><div class="empty-icon">📡</div><p>${esc(String(err))}</p></div>`;
+  }
+}
+
+function renderFeed(container, items, limit) {
+  if (!items.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📡</div><p>No activity yet.</p></div>`;
+    return;
+  }
+  const slice = items.slice(0, limit);
+  container.innerHTML = slice.map(ev => {
+    const msg = ev.message || ev.msg || ev.description || ev.event || JSON.stringify(ev);
+    const color = classifyFeedColor(msg, ev.type);
+    const icon  = classifyFeedIcon(msg, ev.type);
+    const ts    = ev.timestamp ?? ev.ts ?? ev.block_time ?? null;
+    return `<div class="feed-item">
+      <div class="feed-icon ${color}">${icon}</div>
+      <div class="feed-msg ${color}">${esc(msg)}</div>
+      <div class="feed-time">${timeAgo(ts)}</div>
+    </div>`;
+  }).join("");
+}
+
+function classifyFeedColor(msg, type) {
+  const m = (msg+type).toLowerCase();
+  if (/error|fail|reject|dispute|penalt|slash/i.test(m)) return "red";
+  if (/warn|miss|timeout|offline/i.test(m)) return "yellow";
+  if (/register|claim|approv|complet|vote|propos|mint|reward|identity|agent/i.test(m)) return "green";
+  return "blue";
+}
+
+function classifyFeedIcon(msg, type) {
+  const m = (msg+type).toLowerCase();
+  if (/identity|handle|claim/i.test(m)) return "🪪";
+  if (/agent/i.test(m)) return "🤖";
+  if (/task/i.test(m)) return "📋";
+  if (/vote|proposal|govern/i.test(m)) return "🗳️";
+  if (/block|mine|validator/i.test(m)) return "⛏️";
+  if (/transfer|balance|reward|pay/i.test(m)) return "💸";
+  if (/error|fail|reject/i.test(m)) return "❌";
+  if (/warn/i.test(m)) return "⚠️";
+  return "📡";
+}
+
+function startActivityTimer() {
+  stopActivity();
+  _activityTimer = setInterval(() => loadActivity(), 10000);
+}
+function stopActivity() {
+  if (_activityTimer) { clearInterval(_activityTimer); _activityTimer = null; }
+}
+
+
+/* ══════════════════════════════════════
+   TREASURY CARD (Overview)
+══════════════════════════════════════ */
+async function loadTreasuryCard() {
+  const el = document.getElementById("treasuryCardContent");
+  el.innerHTML = `<div class="loading"><span class="spinner"></span>Loading treasury...</div>`;
+  try {
+    const data = await getJSON("/treasury");
+    const balance = data.balance ?? data.treasury_balance ?? "—";
+    const candidates = data.top_validator_candidates || data.validator_candidates || [];
+    const top = candidates[0];
+    el.innerHTML = `
+      <div class="grid g-2" style="gap:16px;">
+        <div class="metric-tile">
+          <div class="metric-label">Treasury Balance</div>
+          <div class="metric-value">${esc(Number(balance).toLocaleString(undefined,{maximumFractionDigits:2}))}</div>
+          <div class="metric-sub">JITO tokens held</div>
+          <div class="metric-icon">💎</div>
+        </div>
+        <div class="metric-tile">
+          <div class="metric-label">Top Validator Candidate</div>
+          <div class="metric-value" style="font-size:16px;word-break:break-all;">${top ? esc(top.handle || shortAddr(top.address || top.candidate)) : "—"}</div>
+          <div class="metric-sub">${top ? esc((top.vote_count ?? top.votes ?? 0) + " votes") : "No candidates yet"}</div>
+          <div class="metric-icon">🏅</div>
+        </div>
+      </div>
+      ${candidates.length > 1 ? `<div class="text-xs text-muted mt-8">${candidates.length} total candidates — see Governance tab for full list.</div>` : ""}
+    `;
+  } catch(err) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${esc(String(err))}</p></div>`;
+  }
+}
+
+
+/* ══════════════════════════════════════
+   VALIDATOR ELECTION (Governance)
+══════════════════════════════════════ */
+async function loadValidatorCandidates() {
+  const el = document.getElementById("validatorCandidatesTable");
+  el.innerHTML = `<div class="loading"><span class="spinner"></span>Loading candidates...</div>`;
+  try {
+    const data = await getJSON("/treasury");
+    const candidates = data.top_validator_candidates || data.validator_candidates || [];
+    if (!candidates.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏅</div><p>No validator candidates yet. Be the first to nominate!</p></div>`;
+      return;
+    }
+    el.innerHTML = `<table class="lb-table">
+      <thead><tr>
+        <th style="width:40px;">Rank</th>
+        <th>Address / Handle</th>
+        <th>Votes</th>
+      </tr></thead>
+      <tbody>${candidates.map((c, i) => {
+        const rank = i + 1;
+        const rankCls = rank === 1 ? "gold" : rank === 2 ? "silver" : rank === 3 ? "bronze" : "";
+        const addr = c.address || c.candidate || "";
+        const handle = c.handle ? `@${esc(c.handle)}` : `<span class="lb-addr">${shortAddr(addr)}</span>`;
+        const votes = c.vote_count ?? c.votes ?? 0;
+        return `<tr>
+          <td class="lb-rank ${rankCls}">${rank <= 3 ? ["🥇","🥈","🥉"][rank-1] : rank}</td>
+          <td>${handle}<br><span class="lb-addr">${shortAddr(addr)}</span></td>
+          <td class="lb-score">${esc(votes)}</td>
+        </tr>`;
+      }).join("")}</tbody>
+    </table>`;
+  } catch(err) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${esc(String(err))}</p></div>`;
+  }
+}
+
+async function doNominateValidator() {
+  const msgId = "nominateMsg";
+  try {
+    const wallet = parseWallet(document.getElementById("nominateWallet").value);
+    showMsg(msgId, "Submitting nomination…", true);
+    await postJSON("/public/validator/nominate", { wallet });
+    showMsg(msgId, "Nomination submitted! You will appear as a candidate after the next block.", true);
+    loadValidatorCandidates();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+async function doVoteValidator() {
+  const msgId = "valVoteMsg";
+  try {
+    const wallet    = parseWallet(document.getElementById("valVoteWallet").value);
+    const candidate = document.getElementById("valVoteCandidate").value.trim();
+    if (!candidate) throw new Error("Candidate address is required");
+    showMsg(msgId, "Casting vote…", true);
+    await postJSON("/public/validator/vote", { wallet, candidate });
+    showMsg(msgId, `Vote cast for ${candidate.slice(0,12)}…! Will confirm in next block.`, true);
+    loadValidatorCandidates();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+
+/* ══════════════════════════════════════
+   AI ORACLE (Agents tab)
+══════════════════════════════════════ */
+async function loadOracles() {
+  const el = document.getElementById("oracleList");
+  el.innerHTML = `<div class="loading"><span class="spinner"></span>Loading oracles...</div>`;
+  try {
+    const data = await getJSON("/oracles");
+    const oracles = data.oracles || data.assignments || [];
+    if (!oracles.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔮</div><p>No oracle assignments yet.</p></div>`;
+      return;
+    }
+    el.innerHTML = `<div style="overflow-x:auto;"><table class="lb-table">
+      <thead><tr>
+        <th>Asset ID</th>
+        <th>Agent</th>
+        <th>Oracle Type</th>
+        <th>Last Event</th>
+        <th>Event Count</th>
+      </tr></thead>
+      <tbody>${oracles.map(o => `<tr>
+        <td><code>${esc(o.asset_id || "—")}</code></td>
+        <td><code>${esc(o.agent_id || o.agent || "—")}</code></td>
+        <td><span class="badge badge-info">${esc(o.oracle_type || o.type || "—")}</span></td>
+        <td class="text-xs text-muted">${esc(o.last_event || o.last_event_type || "—")}</td>
+        <td class="lb-score">${esc(o.event_count ?? o.events ?? "—")}</td>
+      </tr>`).join("")}</tbody>
+    </table></div>`;
+  } catch(err) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${esc(String(err))}</p></div>`;
+  }
+}
+
+async function doAssignOracle() {
+  const msgId = "assignOracleMsg";
+  try {
+    const wallet      = parseWallet(document.getElementById("assignOracleWallet").value);
+    const asset_id    = document.getElementById("assignOracleAssetId").value.trim();
+    const agent_id    = document.getElementById("assignOracleAgentId").value.trim();
+    const oracle_type = document.getElementById("assignOracleType").value;
+    if (!asset_id || !agent_id) throw new Error("Asset ID and Agent ID are required");
+    showMsg(msgId, "Assigning oracle…", true);
+    await postJSON("/public/oracle/assign", { wallet, asset_id, agent_id, oracle_type });
+    showMsg(msgId, `Oracle assigned: agent ${agent_id} will monitor ${asset_id}.`, true);
+    loadOracles();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+async function doFireOracleEvent() {
+  const msgId = "oracleEventMsg";
+  try {
+    const wallet     = parseWallet(document.getElementById("oracleEventWallet").value);
+    const asset_id   = document.getElementById("oracleEventAssetId").value.trim();
+    const event_type = document.getElementById("oracleEventType").value.trim();
+    const value      = document.getElementById("oracleEventValue").value.trim();
+    const note       = document.getElementById("oracleEventNote").value.trim();
+    if (!asset_id || !event_type || !value) throw new Error("Asset ID, Event Type, and Value are required");
+    showMsg(msgId, "Firing event…", true);
+    await postJSON("/public/oracle/event", { wallet, asset_id, event_type, value, note });
+    showMsg(msgId, `Oracle event "${event_type}" fired for asset ${asset_id}.`, true);
+    loadOracles();
+  } catch(err) { showMsg(msgId, String(err), false); }
+}
+
+
+/* ══════════════════════════════════════
+   TAB: MODELS
+══════════════════════════════════════ */
+async function loadModels() {
+  const el = document.getElementById("modelsContainer");
+  el.innerHTML = '<div class="loading"><span class="spinner"></span>Loading...</div>';
+  try {
+    const data = await getJSON("/models");
+    const models = data.models || data || [];
+    if (!models.length) { el.innerHTML = '<p class="text-muted text-sm">No models registered yet.</p>'; return; }
+    el.innerHTML = `<table class="lb-table">
+      <thead><tr><th>Model ID</th><th>Name</th><th>Owner</th><th>Inference Fee</th><th>Capabilities</th></tr></thead>
+      <tbody>${models.map(m => `<tr>
+        <td><code style="font-size:11px">${esc(m.model_id||m.id||"")}</code></td>
+        <td>${esc(m.name||"")}</td>
+        <td><code style="font-size:11px">${esc((m.owner||"").slice(0,16))}…</code></td>
+        <td>${m.inference_fee != null ? m.inference_fee + " JITO" : "—"}</td>
+        <td>${(m.capabilities||[]).map(c=>`<span class="badge badge-info">${esc(c)}</span>`).join(" ")}</td>
+      </tr>`).join("")}</tbody>
+    </table>`;
+  } catch(err) { el.innerHTML = `<p class="text-muted text-sm">Error: ${esc(String(err))}</p>`; }
+}
+
+
+/* ══════════════════════════════════════
+   TAB: PIPELINES
+══════════════════════════════════════ */
+async function loadPipelines() {
+  const el = document.getElementById("pipelinesContainer");
+  el.innerHTML = '<div class="loading"><span class="spinner"></span>Loading...</div>';
+  try {
+    const data = await getJSON("/pipelines?status=active");
+    const pipes = data.pipelines || data || [];
+    if (!pipes.length) { el.innerHTML = '<p class="text-muted text-sm">No active pipelines.</p>'; return; }
+    el.innerHTML = `<table class="lb-table">
+      <thead><tr><th>Pipeline ID</th><th>Status</th><th>Steps</th><th>Owner</th><th>Created</th></tr></thead>
+      <tbody>${pipes.map(p => `<tr>
+        <td><code style="font-size:11px">${esc((p.pipeline_id||p.id||"").slice(0,20))}…</code></td>
+        <td>${statusBadge(p.status||"active")}</td>
+        <td>${p.total_steps||"?"}</td>
+        <td><code style="font-size:11px">${esc((p.owner||"").slice(0,16))}…</code></td>
+        <td>${p.ts ? new Date(p.ts*1000).toLocaleDateString() : "—"}</td>
+      </tr>`).join("")}</tbody>
+    </table>`;
+  } catch(err) { el.innerHTML = `<p class="text-muted text-sm">Error: ${esc(String(err))}</p>`; }
+}
+
+
+/* ══════════════════════════════════════
+   TAB: VALIDATORS
+══════════════════════════════════════ */
+async function loadValidatorsTab() {
+  const statsEl = document.getElementById("validatorsTabContainer");
+  const candEl  = document.getElementById("validatorCandidatesContainer");
+  statsEl.innerHTML = '<div class="loading"><span class="spinner"></span>Loading...</div>';
+  candEl.innerHTML  = '<div class="loading"><span class="spinner"></span>Loading...</div>';
+  try {
+    const [statsData, candData] = await Promise.all([
+      getJSON("/public/validator/stats").catch(() => ({ validators: [], active_count: 0, net_reward_per_block: 22.5, chain_height: 0 })),
+      getJSON("/public/validator/candidates").catch(() => ({ candidates: [], active_validators: [], min_stake: 500, vote_threshold: 3, total_staked: 0 })),
+    ]);
+
+    const validators = statsData.validators || [];
+    const totalEarned = validators.reduce((s,v) => s + (v.total_jito_earned||0), 0);
+
+    // ── Stats grid ──
+    statsEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+        <div class="stat-card"><div class="stat-value">${statsData.active_count||0}</div><div class="stat-label">Active Validators</div></div>
+        <div class="stat-card"><div class="stat-value">${statsData.net_reward_per_block||22.5}</div><div class="stat-label">JITO / Block</div></div>
+        <div class="stat-card"><div class="stat-value">${statsData.chain_height||0}</div><div class="stat-label">Chain Height</div></div>
+        <div class="stat-card"><div class="stat-value">${totalEarned.toLocaleString(undefined,{maximumFractionDigits:1})}</div><div class="stat-label">Total JITO Distributed</div></div>
+      </div>
+      ${validators.length ? `
+      <table class="lb-table">
+        <thead><tr>
+          <th>#</th><th>Address</th><th>Blocks Mined</th><th>Total Earned</th>
+          <th>Uptime</th><th>Last Active</th><th>Badges</th>
+        </tr></thead>
+        <tbody>${validators.map((v,i) => {
+          const lastActive = v.last_active ? new Date(v.last_active*1000).toLocaleString() : '—';
+          const uptime = v.uptime_pct > 0 ? `${v.uptime_pct}%` : '—';
+          const uptimeColor = v.uptime_pct >= 90 ? 'var(--green)' : v.uptime_pct >= 60 ? 'var(--yellow,#f0c040)' : 'var(--text-muted)';
+          const badges = (v.badges||[]).map(b=>`<span class="badge badge-info" style="font-size:9px;padding:2px 6px">${esc(b)}</span>`).join(' ');
+          return `<tr>
+            <td style="color:var(--cyan);font-weight:700">${i+1}</td>
+            <td><code style="font-size:10px">${esc(v.address.slice(0,20))}…</code></td>
+            <td style="font-weight:600">${(v.blocks_mined||0).toLocaleString()}</td>
+            <td style="color:var(--cyan);font-weight:700">${(v.total_jito_earned||0).toLocaleString(undefined,{maximumFractionDigits:2})} JITO</td>
+            <td style="color:${uptimeColor}">${uptime}</td>
+            <td style="font-size:11px;color:var(--text-muted)">${lastActive}</td>
+            <td>${badges||'—'}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>` : '<p class="text-muted text-sm">No active validators found.</p>'}`;
+
+    // ── Candidates ──
+    const candidates = candData.candidates || [];
+    const totalStaked = candData.total_staked || 0;
+    candEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px">
+        <div class="stat-card"><div class="stat-value">${candidates.length}</div><div class="stat-label">Candidates</div></div>
+        <div class="stat-card"><div class="stat-value">${(totalStaked||0).toLocaleString()}</div><div class="stat-label">Total Staked (JITO)</div></div>
+      </div>
+      ${candidates.length ? `<table class="lb-table">
+        <thead><tr><th>Address</th><th>Stake</th><th>Votes</th><th>Status</th></tr></thead>
+        <tbody>${candidates.map(c=>`<tr>
+          <td><code style="font-size:11px">${esc(c.address.slice(0,20))}…</code></td>
+          <td>${(c.stake||0).toLocaleString()} JITO</td>
+          <td>${c.votes||0} / ${candData.vote_threshold||3}</td>
+          <td>${c.is_validator ? '<span class="badge badge-approved">Active</span>' : '<span class="badge badge-info">Pending</span>'}</td>
+        </tr>`).join("")}</tbody>
+      </table>` : '<p class="text-muted text-sm">No candidates yet. Stake 500 JITO to nominate yourself.</p>'}`;
+
+  } catch(err) {
+    statsEl.innerHTML = `<p class="text-muted text-sm">Error: ${esc(String(err))}</p>`;
+    candEl.innerHTML  = '';
+  }
+}
+
+async function loadZkTab() {
+  const proofEl   = document.getElementById("zkProofLogContainer");
+  const circuitEl = document.getElementById("zkCircuitsContainer");
+  proofEl.innerHTML   = '<div class="loading"><span class="spinner"></span>Loading...</div>';
+  circuitEl.innerHTML = '<div class="loading"><span class="spinner"></span>Loading...</div>';
+  try {
+    const [proofData, circuitData] = await Promise.all([
+      getJSON("/public/zk/proofs").catch(() => ({ proofs: [], count: 0 })),
+      getJSON("/public/zk/circuits").catch(() => ({ circuits: [], count: 0 })),
+    ]);
+
+    const proofs = proofData.proofs || [];
+    proofEl.innerHTML = proofs.length ? `
+      <p class="text-xs text-muted" style="margin-bottom:10px">${proofData.count||proofs.length} total proofs on-chain (showing last 100)</p>
+      <table class="lb-table">
+        <thead><tr><th>Circuit</th><th>Prover</th><th>Public Inputs</th><th>Block</th><th>Time</th></tr></thead>
+        <tbody>${proofs.slice().reverse().map(p=>`<tr>
+          <td><code style="font-size:10px;color:var(--cyan)">${esc(p.circuit_id||'')}</code></td>
+          <td><code style="font-size:10px">${esc((p.prover||'').slice(0,16))}…</code></td>
+          <td style="font-size:11px;color:var(--text-muted)">[${(p.public_inputs||[]).slice(0,2).join(', ')}${(p.public_inputs||[]).length>2?'…':''}]</td>
+          <td style="font-weight:600">#${p.block_height||0}</td>
+          <td style="font-size:11px;color:var(--text-muted)">${p.ts ? new Date(p.ts*1000).toLocaleString() : '—'}</td>
+        </tr>`).join('')}</tbody>
+      </table>` :
+      `<div style="text-align:center;padding:40px;color:var(--text-muted)">
+        <div style="font-size:36px;margin-bottom:8px">🔐</div>
+        <p style="font-size:13px">No ZK proofs submitted yet.</p>
+        <p class="text-xs" style="margin-top:4px">Use <code>make_zk_proof_tx()</code> from the SDK to submit the first proof.</p>
+      </div>`;
+
+    const circuits = circuitData.circuits || [];
+    circuitEl.innerHTML = circuits.length ? `
+      <table class="lb-table">
+        <thead><tr><th>Circuit ID</th><th>Description</th><th>Registrar</th><th>Registered at Block</th></tr></thead>
+        <tbody>${circuits.map(c=>`<tr>
+          <td><code style="font-size:10px;color:var(--cyan)">${esc(c.circuit_id)}</code></td>
+          <td style="font-size:12px">${esc(c.description||'—')}</td>
+          <td><code style="font-size:10px">${esc((c.registrar||'').slice(0,16))}…</code></td>
+          <td>#${c.registered_at_block||0}</td>
+        </tr>`).join('')}</tbody>
+      </table>` :
+      `<div style="text-align:center;padding:30px;color:var(--text-muted)">
+        <p style="font-size:13px">No custom circuits registered yet.</p>
+        <p class="text-xs" style="margin-top:4px">Built-in circuits (zk_task_complete_v1, zk_kyc_identity_v1, zk_balance_proof_v1) are available without registration.</p>
+      </div>`;
+
+  } catch(err) {
+    proofEl.innerHTML   = `<p class="text-muted text-sm">Error: ${esc(String(err))}</p>`;
+    circuitEl.innerHTML = '';
+  }
+}
+
+
+/* ══════════════════════════════════════
+   BOOT
+══════════════════════════════════════ */
+// Initialize review decision button state
+setReviewDecision(true);
+
+// Live block ticker — refreshes every 5 seconds
+async function refreshTicker() {
+  try {
+    const s = await getJSON("/status");
+    document.getElementById("tickerHeight").textContent = `Block #${s.public_height ?? "—"}`;
+    const ve = document.getElementById("tickerValid");
+    if (s.public_valid === true)  { ve.textContent = "✓"; ve.className = "ticker-valid-ok"; }
+    else if (s.public_valid === false) { ve.textContent = "✗"; ve.className = "ticker-valid-err"; }
+    document.getElementById("tickerPending").textContent = s.public_pending ?? "—";
+    document.getElementById("tickerValidators").textContent = (s.public_validators ?? []).length;
+    document.getElementById("tickerPrivHeight").textContent = s.private_height ?? "—";
+    const ph = s.peer_health;
+    document.getElementById("tickerPeers").textContent =
+      ph ? `${ph.healthy_count}/${ph.peer_count} healthy` : "—";
+    document.getElementById("tickerLastUpdate").textContent = new Date().toLocaleTimeString();
+  } catch(e) { /* silent — ticker is non-critical */ }
+}
+refreshTicker();
+setInterval(refreshTicker, 5000);
+
+// Load overview on page load
+loadOverview();
+loadTreasuryCard();
+</script>
+</body>
+</html>

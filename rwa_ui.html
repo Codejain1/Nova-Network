@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JITO RWA Portal</title>
+  <style>
+    :root {
+      --bg: #f3f5f8;
+      --card: #ffffff;
+      --ink: #0f172a;
+      --muted: #475569;
+      --brand: #0b5fff;
+      --ok: #0f9d58;
+      --warn: #b45309;
+      --border: #dbe2ea;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 10% 10%, #e7f0ff 0%, var(--bg) 45%);
+      color: var(--ink);
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+    }
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 18px; }
+    .hero {
+      background: linear-gradient(130deg, #001a45, #00338a 56%, #0b5fff);
+      color: #fff;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 22px 44px rgba(1, 22, 60, 0.25);
+      margin-bottom: 14px;
+    }
+    .hero h1 { margin: 0 0 6px; font-size: 28px; }
+    .hero p { margin: 0; opacity: 0.9; }
+    .pill {
+      display: inline-block;
+      margin-top: 12px;
+      background: rgba(255, 255, 255, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 8px 16px rgba(10, 20, 40, 0.05);
+    }
+    .card h2 { margin: 0 0 10px; font-size: 18px; }
+    .card h3 { margin: 6px 0 8px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .span-12 { grid-column: span 12; }
+    .span-8 { grid-column: span 8; }
+    .span-6 { grid-column: span 6; }
+    .span-4 { grid-column: span 4; }
+    .span-3 { grid-column: span 3; }
+    label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 4px; color: #334155; }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid #c8d2df;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 14px;
+      background: #fff;
+      color: #0f172a;
+    }
+    textarea { min-height: 90px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .row { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .primary { background: var(--brand); color: #fff; }
+    .secondary { background: #e9eef6; color: #0f172a; }
+    .ok { color: var(--ok); font-weight: 700; }
+    .warn { color: var(--warn); font-weight: 700; }
+    .small { font-size: 12px; color: var(--muted); }
+    pre {
+      margin: 0;
+      background: #0b1220;
+      color: #d8e7ff;
+      border-radius: 10px;
+      padding: 12px;
+      max-height: 340px;
+      overflow: auto;
+      font-size: 12px;
+    }
+    @media (max-width: 900px) {
+      .span-8, .span-6, .span-4, .span-3 { grid-column: span 12; }
+      .row { grid-template-columns: 1fr; }
+    }
+    .mode-indicator {
+      font-size: 12px;
+      font-weight: 700;
+      color: #163f6f;
+      background: #e9f2ff;
+      border: 1px solid #c8dbf7;
+      padding: 6px 10px;
+      border-radius: 999px;
+    }
+    .advanced-only { display: block; }
+    body.simple-mode .advanced-only { display: none !important; }
+    .checklist {
+      margin: 0;
+      padding-left: 18px;
+      font-size: 12px;
+      color: #304f73;
+    }
+    .checklist li { margin-bottom: 4px; }
+    .checklist li.done { color: #0f8d62; font-weight: 700; }
+  </style>
+  <link rel="stylesheet" href="/assets/ui-refresh.css" />
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>JITO Asset Tokenization</h1>
+      <p>Create a digital asset for a real-world property, commodity, or invoice in a guided flow.</p>
+      <div class="pill">Private Chain Fee Policy: 0 Gas Fees</div>
+      <div class="top-nav">
+        <a href="/app">App Hub</a>
+        <a href="/community">Community</a>
+        <a href="/rwa-market">RWA Market</a>
+        <a href="/rwa-dashboard">Portfolio Dashboard</a>
+        <a href="/explorer">Explorer</a>
+      </div>
+      <div style="margin-top:10px; max-width:520px;">
+        <input id="jwt" placeholder="JWT token (only if your node requires auth)" />
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card span-4">
+        <h2>Network</h2>
+        <div id="netInfo" class="small">Loading...</div>
+      </div>
+      <div class="card span-8">
+        <h2>RWA Policy</h2>
+        <div id="policyInfo" class="small">Loading...</div>
+      </div>
+
+      <div class="card span-12">
+        <div class="friendly-tip">
+          <strong>Simple flow:</strong> choose issuer + owner wallets, enter asset details, pick token symbol/supply, then click
+          <strong>Tokenize Asset</strong>. Advanced controls (visibility/rules/metadata) are optional.
+        </div>
+      </div>
+
+      <div class="card span-12">
+        <div class="actions" style="justify-content:space-between;align-items:center;">
+          <div class="mode-indicator" id="modeLabel">Mode: Simple</div>
+          <div class="actions">
+            <button class="primary" id="simpleModeBtn" type="button">Simple Mode</button>
+            <button class="secondary" id="advancedModeBtn" type="button">Advanced Mode</button>
+          </div>
+        </div>
+        <ul class="checklist" id="flowChecklist" style="margin-top:10px;">
+          <li id="ckWallets">Select issuer + owner wallets</li>
+          <li id="ckIdentity">Set asset name + asset ID + token symbol</li>
+          <li id="ckSupply">Set token supply and valuation</li>
+          <li id="ckReady">Ready to tokenize</li>
+        </ul>
+      </div>
+
+      <div class="card span-12">
+        <h2>Step 1: Tokenize Asset</h2>
+        <div class="grid">
+          <div class="span-3">
+            <label>Issuer Wallet (who mints)</label>
+            <select id="issuerWallet"></select>
+          </div>
+          <div class="span-3">
+            <label>Owner Wallet (initial holder)</label>
+            <select id="ownerWallet"></select>
+          </div>
+          <div class="span-3">
+            <label>Validator Wallet (seal)</label>
+            <select id="validatorWallet"></select>
+          </div>
+          <div class="span-3">
+            <label>Notary Wallet (finality)</label>
+            <select id="notaryWallet"></select>
+          </div>
+
+          <div class="span-3 advanced-only">
+            <label>Business Domain</label>
+            <input id="domain" value="rwa-institutional" />
+          </div>
+          <div class="span-3 advanced-only">
+            <label>Rulebook ID</label>
+            <input id="contractId" value="rwa-standard-v1" />
+          </div>
+          <div class="span-3">
+            <label>Asset ID</label>
+            <input id="assetId" placeholder="e.g. REAL-ESTATE-DXB-0001" />
+          </div>
+          <div class="span-3">
+            <label>Total Token Units</label>
+            <input id="amount" type="number" min="0" step="0.000001" value="1000" />
+          </div>
+
+          <div class="span-3">
+            <label>Asset Name</label>
+            <input id="assetName" placeholder="Dubai Commercial Tower A" />
+          </div>
+          <div class="span-3">
+            <label>Asset Type</label>
+            <input id="assetType" value="real_estate" />
+          </div>
+          <div class="span-3 advanced-only">
+            <label>Issuer Entity / SPV</label>
+            <input id="issuerEntity" placeholder="JITO Asset SPV 1" />
+          </div>
+          <div class="span-3">
+            <label>Token Symbol</label>
+            <input id="tokenSymbol" placeholder="JRE1" />
+          </div>
+
+          <div class="span-3">
+            <label>Valuation Amount</label>
+            <input id="valuationAmount" type="number" step="0.01" value="1000000" />
+          </div>
+          <div class="span-3">
+            <label>Valuation Currency</label>
+            <input id="valuationCurrency" value="USD" />
+          </div>
+          <div class="span-3">
+            <label>Jurisdiction</label>
+            <input id="jurisdiction" value="IN" />
+          </div>
+          <div class="span-3">
+            <label>Legal Document URL (optional)</label>
+            <input id="legalDocUrl" placeholder="https://..." />
+          </div>
+
+          <div class="span-6 advanced-only">
+            <label>Visibility List (comma separated addresses or @wallet aliases)</label>
+            <input id="visibility" placeholder="@issuer,@owner" />
+          </div>
+          <div class="span-3 advanced-only">
+            <label>Allow Transfer</label>
+            <select id="allowTransfer">
+              <option value="true" selected>true</option>
+              <option value="false">false</option>
+            </select>
+          </div>
+          <div class="span-3 advanced-only">
+            <label>Require Visibility on Transfer</label>
+            <select id="requireVisibility">
+              <option value="false" selected>false</option>
+              <option value="true">true</option>
+            </select>
+          </div>
+
+          <div class="span-12 advanced-only">
+            <label>Extra Metadata (JSON, optional advanced)</label>
+            <textarea id="extraMeta">{"category":"institutional_rwa"}</textarea>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:12px;">
+          <button class="secondary" id="autoFillAsset" type="button">Auto-fill Asset ID + Symbol</button>
+          <button class="primary" id="tokenizeBtn">Tokenize Asset (0 Gas)</button>
+          <button class="secondary" id="refreshBtn">Refresh Wallets</button>
+        </div>
+        <div id="tokenizeStatus" class="small" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="card span-6">
+        <h2>Step 2: Private Transfer</h2>
+        <div class="small">Move tokenized units between approved wallets (0 gas). Validator seal + notary finality are applied automatically.</div>
+        <div class="row" style="margin-top:10px;">
+          <div>
+            <label>From Wallet</label>
+            <select id="tradeFrom"></select>
+          </div>
+          <div>
+            <label>To (address or @wallet)</label>
+            <input id="tradeTo" placeholder="@bob or W..." />
+          </div>
+          <div>
+            <label>Asset ID</label>
+            <input id="tradeAssetId" placeholder="same as issued asset" />
+          </div>
+          <div>
+            <label>Amount</label>
+            <input id="tradeAmount" type="number" min="0" step="0.000001" value="1" />
+          </div>
+          <div>
+            <label>Seal Validator</label>
+            <select id="tradeValidator"></select>
+          </div>
+          <div>
+            <label>Attest Notary</label>
+            <select id="tradeNotary"></select>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px;">
+          <button class="primary" id="tradeBtn">Execute Private Trade</button>
+        </div>
+        <div id="tradeStatus" class="small" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="card span-6">
+        <h2>Result</h2>
+        <div class="small" id="assetPreview" style="margin-bottom:8px;">Preview updates as you type.</div>
+        <pre id="resultOut">Ready.</pre>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const pretty = (v) => JSON.stringify(v, null, 2);
+    let currentMode = 'simple';
+    let eventSeq = 0;
+    let eventPollTimer = null;
+    let eventSource = null;
+
+    async function api(path, method = 'GET', body = null) {
+      const opts = { method, headers: {} };
+      const token = $('jwt').value.trim() || localStorage.getItem('dual.jwt') || '';
+      if (token) opts.headers['Authorization'] = `Bearer ${token}`;
+      if (body !== null) {
+        opts.headers['content-type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+      }
+      const res = await fetch(path, opts);
+      const text = await res.text();
+      let data = {};
+      try { data = text ? JSON.parse(text) : {}; } catch (_) { data = { raw: text }; }
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.error || `${res.status} ${res.statusText}`);
+      }
+      return data;
+    }
+
+    function humanizeError(err) {
+      const raw = String(err && err.message ? err.message : err || 'Unknown error');
+      const text = raw.toLowerCase();
+      if (text.includes('insufficient')) return raw.replace(/^error:\s*/i, '');
+      if (text.includes('unknown endpoint')) return 'This feature is not deployed on the connected node version.';
+      if (text.includes('invalid') && text.includes('transaction')) return 'Transaction validation failed. Check wallet, amount, and policy constraints.';
+      return raw.replace(/^error:\s*/i, '').replace(/^valueerror:\s*/i, '');
+    }
+
+    function setOptions(selectEl, wallets) {
+      const current = selectEl.value;
+      selectEl.innerHTML = wallets.map((w) => `<option value="${w.name}">${w.name} (${w.address.slice(0, 10)}...)</option>`).join('');
+      if (current && wallets.some((w) => w.name === current)) selectEl.value = current;
+    }
+
+    function parseExtraMeta() {
+      const raw = $('extraMeta').value.trim();
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('Extra metadata JSON must be an object.');
+      }
+      return parsed;
+    }
+
+    function toAssetSlug(name) {
+      const raw = String(name || '').trim().toUpperCase();
+      if (!raw) return '';
+      return raw.replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32);
+    }
+
+    function toSymbol(raw) {
+      return String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    }
+
+    function autoFillFromName() {
+      const assetName = $('assetName').value.trim();
+      if (!assetName) return;
+      if (!$('assetId').value.trim()) $('assetId').value = `RWA-${toAssetSlug(assetName)}`;
+      if (!$('tokenSymbol').value.trim()) $('tokenSymbol').value = toSymbol(assetName);
+      updateChecklist();
+      updatePreview();
+    }
+
+    function setMode(mode) {
+      currentMode = mode === 'advanced' ? 'advanced' : 'simple';
+      document.body.classList.toggle('simple-mode', currentMode === 'simple');
+      $('modeLabel').textContent = `Mode: ${currentMode === 'simple' ? 'Simple' : 'Advanced'}`;
+      $('tokenizeStatus').textContent = currentMode === 'simple'
+        ? 'Simple mode enabled: advanced protocol fields are hidden.'
+        : 'Advanced mode enabled: all protocol fields are visible.';
+    }
+
+    function mark(id, done) {
+      const el = $(id);
+      if (!el) return;
+      const base = el.textContent.replace(/^✔\s*/, '');
+      el.classList.toggle('done', !!done);
+      el.textContent = done ? `✔ ${base}` : base;
+    }
+
+    function updateChecklist() {
+      const walletsOk = $('issuerWallet').value && $('ownerWallet').value && $('validatorWallet').value && $('notaryWallet').value;
+      const identityOk = $('assetName').value.trim() && $('assetId').value.trim() && $('tokenSymbol').value.trim();
+      const supplyOk = Number($('amount').value || 0) > 0 && Number($('valuationAmount').value || 0) > 0;
+      mark('ckWallets', walletsOk);
+      mark('ckIdentity', identityOk);
+      mark('ckSupply', supplyOk);
+      mark('ckReady', walletsOk && identityOk && supplyOk);
+    }
+
+    function updatePreview() {
+      const total = Number($('amount').value || 0);
+      const valuation = Number($('valuationAmount').value || 0);
+      const price = total > 0 ? valuation / total : 0;
+      $('assetPreview').innerHTML = [
+        `<strong>Asset:</strong> ${$('assetName').value.trim() || '-'}`,
+        `<strong>ID:</strong> ${$('assetId').value.trim() || '-'}`,
+        `<strong>Token:</strong> ${$('tokenSymbol').value.trim() || '-'} (${total || 0} units)`,
+        `<strong>Implied price/unit:</strong> ${Number.isFinite(price) ? price.toFixed(6) : '0.000000'} ${$('valuationCurrency').value.trim() || 'USD'}`,
+      ].join('<br>');
+    }
+
+    function validateTokenizeBody(body) {
+      if (!body.issuer_wallet_name || !body.owner_wallet_name || !body.validator_wallet_name || !body.notary_wallet_name) {
+        throw new Error('Please select issuer, owner, validator, and notary wallets.');
+      }
+      if (!body.asset_name || !body.asset_id || !body.token_symbol) {
+        throw new Error('Asset Name, Asset ID, and Token Symbol are required.');
+      }
+      if (!Number.isFinite(body.amount) || body.amount <= 0) throw new Error('Token units must be greater than 0.');
+      if (!Number.isFinite(body.valuation_amount) || body.valuation_amount <= 0) throw new Error('Valuation amount must be greater than 0.');
+    }
+
+    async function refreshWallets() {
+      const out = await api('/ui/wallets');
+      const wallets = out.wallets || [];
+      if (!wallets.length) throw new Error('No wallets found. Create wallets first from /ui.');
+      const ids = ['issuerWallet', 'ownerWallet', 'validatorWallet', 'notaryWallet', 'tradeFrom', 'tradeValidator', 'tradeNotary'];
+      ids.forEach((id) => setOptions($(id), wallets));
+    }
+
+    async function loadNetwork() {
+      const [info, policy] = await Promise.all([api('/chain/info'), api('/private/rwa/policy')]);
+      $('netInfo').innerHTML = [
+        `Network: <strong>${info.network_name || '-'}</strong>`,
+        `Private: <strong>${(info.private_chain || {}).name || '-'}</strong>`,
+        `Consensus: <strong>${(info.private_chain || {}).consensus || '-'}</strong>`,
+      ].join('<br>');
+      $('policyInfo').innerHTML = [
+        `Gas Model: <strong class="ok">${policy.gas_model}</strong>`,
+        `Gas / tx: <strong class="ok">${policy.gas_fee_per_tx}</strong>`,
+        `Settlement fee / tx: <strong class="ok">${policy.settlement_fee_per_tx}</strong>`,
+      ].join('<br>');
+    }
+
+    async function tokenize() {
+      $('tokenizeStatus').innerHTML = 'Running tokenization workflow...';
+      const extra = parseExtraMeta();
+      const body = {
+        issuer_wallet_name: $('issuerWallet').value,
+        owner_wallet_name: $('ownerWallet').value,
+        validator_wallet_name: $('validatorWallet').value,
+        notary_wallet_name: $('notaryWallet').value,
+        domain: $('domain').value.trim(),
+        contract_id: $('contractId').value.trim(),
+        asset_id: $('assetId').value.trim(),
+        amount: Number($('amount').value),
+        asset_name: $('assetName').value.trim(),
+        asset_type: $('assetType').value.trim(),
+        issuer_entity: $('issuerEntity').value.trim(),
+        token_symbol: $('tokenSymbol').value.trim(),
+        valuation_amount: Number($('valuationAmount').value || 0),
+        valuation_currency: $('valuationCurrency').value.trim(),
+        jurisdiction: $('jurisdiction').value.trim(),
+        legal_doc_url: $('legalDocUrl').value.trim(),
+        visibility: $('visibility').value.trim(),
+        allow_transfer: $('allowTransfer').value === 'true',
+        require_visibility: $('requireVisibility').value === 'true',
+        metadata: extra,
+      };
+      validateTokenizeBody(body);
+
+      const out = await api('/ui/private/rwa/tokenize', 'POST', body);
+      $('tradeAssetId').value = body.asset_id;
+      $('tokenizeStatus').innerHTML = '<span class="ok">Tokenized and finalized on private chain.</span>';
+      $('resultOut').textContent = pretty(out);
+      updateChecklist();
+      updatePreview();
+    }
+
+    async function trade() {
+      $('tradeStatus').innerHTML = 'Submitting trade transfer...';
+      const transfer = await api('/ui/private/transfer', 'POST', {
+        wallet_name: $('tradeFrom').value,
+        asset_id: $('tradeAssetId').value.trim(),
+        amount: Number($('tradeAmount').value),
+        to: $('tradeTo').value.trim(),
+      });
+      const sealed = await api('/ui/private/seal', 'POST', { wallet_name: $('tradeValidator').value });
+      const attested = await api('/ui/private/attest', 'POST', {
+        wallet_name: $('tradeNotary').value,
+        block_hash: ((sealed || {}).block || {}).hash || '',
+      });
+      const out = { transfer, sealed, attested };
+      $('tradeStatus').innerHTML = '<span class="ok">Private trade confirmed.</span>';
+      $('resultOut').textContent = pretty(out);
+    }
+
+    function handleEventRow(row) {
+      if (!row || typeof row !== 'object') return;
+      const seq = Number(row.seq || 0);
+      if (Number.isFinite(seq) && seq > eventSeq) eventSeq = seq;
+      const type = String(row.type || '');
+      const payload = row.payload || {};
+      if (type === 'rwa.tokenized') {
+        $('tokenizeStatus').innerHTML = `<span class="ok">Tokenization finalized in block ${payload.block_index || '-'}.<\/span>`;
+      }
+      if (type === 'rwa.trade.finalized' || type === 'private.tx.finalized') {
+        $('tradeStatus').innerHTML = `<span class="ok">Finalized in block ${payload.block_index || '-'}.<\/span>`;
+      }
+    }
+
+    async function pollEventsOnce() {
+      try {
+        const out = await api(`/events?since=${encodeURIComponent(eventSeq)}&limit=120`);
+        const events = out.events || [];
+        for (const row of events) handleEventRow(row);
+        const latest = Number(out.latest_seq || 0);
+        if (Number.isFinite(latest) && latest > eventSeq) eventSeq = latest;
+      } catch (_) {
+        // silent fallback
+      } finally {
+        eventPollTimer = setTimeout(pollEventsOnce, 3500);
+      }
+    }
+
+    function startEventBridge() {
+      if (eventPollTimer) {
+        clearTimeout(eventPollTimer);
+        eventPollTimer = null;
+      }
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+      const jwt = $('jwt').value.trim() || localStorage.getItem('dual.jwt') || '';
+      if (jwt || typeof EventSource === 'undefined') {
+        pollEventsOnce();
+        return;
+      }
+      try {
+        eventSource = new EventSource(`/stream/events?since=${encodeURIComponent(eventSeq)}&timeout=20`);
+        eventSource.onmessage = (ev) => {
+          try { handleEventRow(JSON.parse(ev.data || '{}')); } catch (_) {}
+        };
+        eventSource.onerror = () => {
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          pollEventsOnce();
+        };
+      } catch (_) {
+        pollEventsOnce();
+      }
+    }
+
+    async function boot() {
+      try {
+        $('jwt').value = localStorage.getItem('dual.jwt') || '';
+        await Promise.all([loadNetwork(), refreshWallets()]);
+        setMode('simple');
+        updateChecklist();
+        updatePreview();
+        $('resultOut').textContent = 'Portal ready.';
+        startEventBridge();
+      } catch (err) {
+        $('resultOut').textContent = humanizeError(err);
+      }
+    }
+
+    $('jwt').onchange = () => {
+      localStorage.setItem('dual.jwt', $('jwt').value.trim());
+      startEventBridge();
+    };
+
+    $('tokenizeBtn').onclick = async () => {
+      try { await tokenize(); } catch (err) {
+        $('tokenizeStatus').innerHTML = `<span class="warn">${humanizeError(err)}</span>`;
+        $('resultOut').textContent = humanizeError(err);
+      }
+    };
+    $('tradeBtn').onclick = async () => {
+      try { await trade(); } catch (err) {
+        $('tradeStatus').innerHTML = `<span class="warn">${humanizeError(err)}</span>`;
+        $('resultOut').textContent = humanizeError(err);
+      }
+    };
+    $('refreshBtn').onclick = async () => {
+      try {
+        await refreshWallets();
+        $('tokenizeStatus').textContent = 'Wallet list refreshed.';
+        updateChecklist();
+      } catch (err) {
+        $('tokenizeStatus').innerHTML = `<span class="warn">${humanizeError(err)}</span>`;
+      }
+    };
+
+    $('autoFillAsset').onclick = autoFillFromName;
+    $('simpleModeBtn').onclick = () => setMode('simple');
+    $('advancedModeBtn').onclick = () => setMode('advanced');
+
+    ['issuerWallet','ownerWallet','validatorWallet','notaryWallet','assetName','assetId','tokenSymbol','amount','valuationAmount','valuationCurrency']
+      .forEach((id) => {
+        const el = $(id);
+        if (!el) return;
+        el.addEventListener('input', () => { updateChecklist(); updatePreview(); });
+        el.addEventListener('change', () => { updateChecklist(); updatePreview(); });
+      });
+
+    boot();
+  </script>
+</body>
+</html>

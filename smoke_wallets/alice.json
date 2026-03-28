@@ -1,0 +1,17 @@
+{
+  "name": "alice",
+  "address": "W8f39ea170b74e6878f6a0353775a3aa97a5453cd",
+  "scheme": "ed25519",
+  "public_key": {
+    "kty": "ed25519",
+    "key": "nj7o4JLkYsQp5O6uR1Sn2TxLu0HKVJNIr95+sWNdQaQ="
+  },
+  "private_key": {
+    "kty": "ed25519",
+    "key": "e3p6HRE5E6WweGFEky7n/swnXIbLswIvktCKol8M39M="
+  },
+  "signer": {
+    "type": "local"
+  },
+  "created_at": 1772905257.960088
+}

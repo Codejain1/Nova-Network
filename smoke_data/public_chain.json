@@ -1,0 +1,16 @@
+{
+  "difficulty": 3,
+  "mining_reward": 25.0,
+  "chain": [
+    {
+      "index": 0,
+      "timestamp": 1772900144.041945,
+      "transactions": [],
+      "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "nonce": 0,
+      "meta": {},
+      "hash": "641b793409fd590c287ae2bb00305eda1dac2112874e8f17098e0b55cbe9ea07"
+    }
+  ],
+  "pending_transactions": []
+}

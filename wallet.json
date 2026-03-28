@@ -1,0 +1,12 @@
+{
+  "address": "W84904e302360f461aa814ba38af2614a5fd74b34",
+  "public_key": {
+    "kty": "ed25519",
+    "key": "tOIObHX3Ojh0QUF3iPk9Q+7TqS/UsLQvmZd6bK4YIYc="
+  },
+  "private_key": {
+    "kty": "ed25519",
+    "key": "SdfEeYeQwnvc9+TciaqRNghXMbKJf2C7JN82u3meHyk="
+  },
+  "label": "test-agent"
+}

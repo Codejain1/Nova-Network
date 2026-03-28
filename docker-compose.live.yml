@@ -1,0 +1,69 @@
+services:
+  node:
+    build: .
+    container_name: jito-node
+    restart: unless-stopped
+    environment:
+      NODE_HOST: 0.0.0.0
+      NODE_PORT: 8000
+      DATA_DIR: /data
+      PUBLIC_DIFFICULTY: ${PUBLIC_DIFFICULTY:-3}
+      PUBLIC_REWARD: ${PUBLIC_REWARD:-25}
+      PUBLIC_CONSENSUS: ${PUBLIC_CONSENSUS:-poa}
+      PUBLIC_VALIDATORS: ${PUBLIC_VALIDATORS:-}
+      PUBLIC_VALIDATOR_ROTATION: ${PUBLIC_VALIDATOR_ROTATION:-true}
+      CHAIN_NAME: ${CHAIN_NAME:-JITO Public Network}
+      TOKEN_NAME: ${TOKEN_NAME:-JITO}
+      TOKEN_SYMBOL: ${TOKEN_SYMBOL:-JITO}
+      TOKEN_DECIMALS: ${TOKEN_DECIMALS:-18}
+      CHAIN_LOGO_URL: ${CHAIN_LOGO_URL:-}
+      TOKEN_LOGO_URL: ${TOKEN_LOGO_URL:-}
+      AUTO_MINE: ${AUTO_MINE:-true}
+      AUTO_MINE_MINER: ${AUTO_MINE_MINER:-}
+      AUTO_MINE_INTERVAL: ${AUTO_MINE_INTERVAL:-5}
+      AUTO_MINE_ALLOW_EMPTY: ${AUTO_MINE_ALLOW_EMPTY:-false}
+      PUBLIC_FAUCET_ENABLED: ${PUBLIC_FAUCET_ENABLED:-false}
+      PUBLIC_FAUCET_AMOUNT: ${PUBLIC_FAUCET_AMOUNT:-0}
+      PUBLIC_FAUCET_COOLDOWN: ${PUBLIC_FAUCET_COOLDOWN:-3600}
+      PUBLIC_FAUCET_DAILY_CAP: ${PUBLIC_FAUCET_DAILY_CAP:-0}
+      PUBLIC_MEMPOOL_TTL: ${PUBLIC_MEMPOOL_TTL:-900}
+      PUBLIC_MEMPOOL_MAX_SIZE: ${PUBLIC_MEMPOOL_MAX_SIZE:-5000}
+      PUBLIC_POW_WORKERS: ${PUBLIC_POW_WORKERS:-1}
+      PUBLIC_POW_NONCE_CHUNK: ${PUBLIC_POW_NONCE_CHUNK:-10000}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-300}
+      MAINNET_HARDENING: ${MAINNET_HARDENING:-false}
+      STRICT_PUBLIC_SIGNATURES: ${STRICT_PUBLIC_SIGNATURES:-true}
+      REQUIRE_HSM_SIGNERS: ${REQUIRE_HSM_SIGNERS:-false}
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_REQUIRED: ${JWT_REQUIRED:-false}
+      PEERS: ${PEERS:-}
+      PEER_TOKEN: ${PEER_TOKEN:-}
+      PEER_SYNC_ENABLED: ${PEER_SYNC_ENABLED:-true}
+      PEER_SYNC_INTERVAL: ${PEER_SYNC_INTERVAL:-6}
+      PEER_LAG_RESYNC_THRESHOLD: ${PEER_LAG_RESYNC_THRESHOLD:-3}
+    volumes:
+      - jito_node_data:/data
+      - ${WEBHOOK_WALLET_PATH:-/dev/null}:/app/webhook_wallet.json:ro
+    ports:
+      - "${NODE_BIND_ADDR:-0.0.0.0}:8000:8000"
+
+  gateway:
+    build: .
+    container_name: jito-evm-gateway
+    restart: unless-stopped
+    depends_on:
+      - node
+    entrypoint: ["./docker/gateway_entrypoint.sh"]
+    environment:
+      RPC_NODE_URL: ${RPC_NODE_URL:-http://node:8000}
+      RPC_HOST: 0.0.0.0
+      RPC_PORT: 8545
+      CHAIN_ID: ${CHAIN_ID:-77001}
+      RPC_AUTH_TOKEN: ${RPC_AUTH_TOKEN:-}
+      PEER_CA: ${PEER_CA:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    ports:
+      - "${RPC_BIND_ADDR:-0.0.0.0}:8545:8545"
+
+volumes:
+  jito_node_data:

@@ -10,11 +10,9 @@ hsm_keys/
 wallets/
 smoke_wallets/
 smoke_wallets2/
-node_data/
+node_data*/
 node_a_data/
 node_b_data/
-node_data_jito/
-node_data_tmp/
 data_local/
 smoke_data*/
 tmp_test_data*/

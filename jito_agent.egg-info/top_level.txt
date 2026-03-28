@@ -1,2 +1,0 @@
-jito_agent
-jito_agent_js

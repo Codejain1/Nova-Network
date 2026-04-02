@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JITO Community Hub</title>
+  <title>Nova Community Hub</title>
   <style>
     /* ══ CSS Variables ══ */
     :root {
@@ -480,7 +480,7 @@
 <!-- ═══════════════════ NAVBAR ═══════════════════ -->
 <nav class="navbar">
   <div class="status-dot" id="statusDot"></div>
-  <div class="navbar-brand">JITO Community Hub</div>
+  <div class="navbar-brand">Nova Community Hub</div>
   <div class="navbar-status" id="navbarStatus">Connecting...</div>
   <div class="navbar-links">
     <a href="/app" class="navbar-link">App Hub</a>
@@ -531,7 +531,7 @@
       <div style="display:flex;align-items:center;gap:10px;">
         <span style="font-size:20px;">🚀</span>
         <span style="font-size:13px;font-weight:600;color:var(--text);">
-          New to JITO? &rarr; Get Started in 4 steps
+          New to Nova? &rarr; Get Started in 4 steps
         </span>
       </div>
       <div style="display:flex;align-items:center;gap:10px;">
@@ -577,7 +577,7 @@
       <div class="metric-tile">
         <div class="metric-label">Treasury</div>
         <div class="metric-value" id="mTreasury">—</div>
-        <div class="metric-sub">JITO balance</div>
+        <div class="metric-sub">NOVA balance</div>
         <div class="metric-icon">💎</div>
       </div>
     </div>
@@ -617,11 +617,11 @@
       </div>
     </div>
 
-    <!-- What is JITO? -->
+    <!-- What is Nova? -->
     <div class="card">
-      <h2>What is JITO?</h2>
+      <h2>What is Nova?</h2>
       <p class="text-sm text-muted" style="max-width:720px;line-height:1.6;">
-        JITO is a community-first blockchain designed for on-chain identity, AI agent coordination, and transparent governance.
+        NOVA is a community-first blockchain designed for on-chain identity, AI agent coordination, and transparent governance.
         Every address can claim a human-readable handle, register AI agents with verifiable capabilities, and participate in
         governance proposals that shape the protocol — all transparently recorded on-chain.
       </p>
@@ -639,7 +639,7 @@
         <div class="explainer-item">
           <div class="explainer-icon">📋</div>
           <div class="explainer-title">Task Marketplace</div>
-          <div class="explainer-desc">Post tasks with JITO rewards. Assign to agents, review results, and build a track record.</div>
+          <div class="explainer-desc">Post tasks with NOVA rewards. Assign to agents, review results, and build a track record.</div>
         </div>
         <div class="explainer-item">
           <div class="explainer-icon">🗳️</div>
@@ -963,7 +963,7 @@
             <textarea class="form-control" id="postTaskDesc" rows="3" placeholder="Detailed task description…"></textarea>
           </div>
           <div class="form-group">
-            <label class="form-label">Reward (JITO)</label>
+            <label class="form-label">Reward (NOVA)</label>
             <input class="form-control" id="postTaskReward" type="number" min="0" step="0.01" placeholder="e.g. 10.0" />
           </div>
           <div class="form-group">
@@ -1207,7 +1207,7 @@
         <h2>AI Model Registry</h2>
         <button class="btn btn-ghost btn-sm" onclick="loadModels()">Refresh</button>
       </div>
-      <p class="text-xs text-muted" style="margin-bottom:14px;">On-chain registered models available for inference. Fees paid in JITO.</p>
+      <p class="text-xs text-muted" style="margin-bottom:14px;">On-chain registered models available for inference. Fees paid in NOVA.</p>
       <div id="modelsContainer">
         <div class="loading"><span class="spinner"></span>Loading models...</div>
       </div>
@@ -1237,7 +1237,7 @@
         <h2>Active Validator Performance</h2>
         <button class="btn btn-ghost btn-sm" onclick="loadValidatorsTab()">Refresh</button>
       </div>
-      <p class="text-xs text-muted" style="margin-bottom:14px;">Live earnings, blocks mined, and uptime for every active validator. Earn <strong>22.5 JITO/block</strong> (~5s block time).</p>
+      <p class="text-xs text-muted" style="margin-bottom:14px;">Live earnings, blocks mined, and uptime for every active validator. Earn <strong>22.5 NOVA/block</strong> (~5s block time).</p>
       <div id="validatorsTabContainer">
         <div class="loading"><span class="spinner"></span>Loading validators...</div>
       </div>
@@ -1247,12 +1247,12 @@
         <h2>Candidate Pool</h2>
         <button class="btn btn-ghost btn-sm" onclick="loadValidatorsTab()">Refresh</button>
       </div>
-      <p class="text-xs text-muted" style="margin-bottom:14px;">Stake 500 JITO to nominate yourself. Auto-promoted to active set immediately on sufficient stake.</p>
+      <p class="text-xs text-muted" style="margin-bottom:14px;">Stake 500 NOVA to nominate yourself. Auto-promoted to active set immediately on sufficient stake.</p>
       <div id="validatorCandidatesContainer">
         <div class="loading"><span class="spinner"></span>Loading candidates...</div>
       </div>
       <div style="margin-top:16px;padding:12px;background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:8px">
-        <p class="text-xs text-muted">💡 To become a validator: get JITO from faucet → stake 500 JITO via <code>POST /public/validator/nominate</code> → start your node. You'll be in the active set immediately. Unstake anytime with 100-block (~8 min) unbonding period.</p>
+        <p class="text-xs text-muted">💡 To become a validator: get NOVA from faucet → stake 500 NOVA via <code>POST /public/validator/nominate</code> → start your node. You'll be in the active set immediately. Unstake anytime with 100-block (~8 min) unbonding period.</p>
       </div>
     </div>
   </div><!-- /validators -->
@@ -1746,7 +1746,7 @@ function renderTasks() {
     return;
   }
   el.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">${list.map(t => {
-    const reward = t.reward != null ? `${Number(t.reward).toLocaleString(undefined,{maximumFractionDigits:4})} JITO` : "—";
+    const reward = t.reward != null ? `${Number(t.reward).toLocaleString(undefined,{maximumFractionDigits:4})} NOVA` : "—";
     return `<div class="task-card">
       <div class="flex items-center justify-between mb-4">
         ${statusBadge(t.status)}
@@ -2086,7 +2086,7 @@ async function loadTreasuryCard() {
         <div class="metric-tile">
           <div class="metric-label">Treasury Balance</div>
           <div class="metric-value">${esc(Number(balance).toLocaleString(undefined,{maximumFractionDigits:2}))}</div>
-          <div class="metric-sub">JITO tokens held</div>
+          <div class="metric-sub">NOVA tokens held</div>
           <div class="metric-icon">💎</div>
         </div>
         <div class="metric-tile">
@@ -2248,7 +2248,7 @@ async function loadModels() {
         <td><code style="font-size:11px">${esc(m.model_id||m.id||"")}</code></td>
         <td>${esc(m.name||"")}</td>
         <td><code style="font-size:11px">${esc((m.owner||"").slice(0,16))}…</code></td>
-        <td>${m.inference_fee != null ? m.inference_fee + " JITO" : "—"}</td>
+        <td>${m.inference_fee != null ? m.inference_fee + " NOVA" : "—"}</td>
         <td>${(m.capabilities||[]).map(c=>`<span class="badge badge-info">${esc(c)}</span>`).join(" ")}</td>
       </tr>`).join("")}</tbody>
     </table>`;
@@ -2295,15 +2295,15 @@ async function loadValidatorsTab() {
     ]);
 
     const validators = statsData.validators || [];
-    const totalEarned = validators.reduce((s,v) => s + (v.total_jito_earned||0), 0);
+    const totalEarned = validators.reduce((s,v) => s + (v.total_nova_earned||0), 0);
 
     // ── Stats grid ──
     statsEl.innerHTML = `
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
         <div class="stat-card"><div class="stat-value">${statsData.active_count||0}</div><div class="stat-label">Active Validators</div></div>
-        <div class="stat-card"><div class="stat-value">${statsData.net_reward_per_block||22.5}</div><div class="stat-label">JITO / Block</div></div>
+        <div class="stat-card"><div class="stat-value">${statsData.net_reward_per_block||22.5}</div><div class="stat-label">NOVA / Block</div></div>
         <div class="stat-card"><div class="stat-value">${statsData.chain_height||0}</div><div class="stat-label">Chain Height</div></div>
-        <div class="stat-card"><div class="stat-value">${totalEarned.toLocaleString(undefined,{maximumFractionDigits:1})}</div><div class="stat-label">Total JITO Distributed</div></div>
+        <div class="stat-card"><div class="stat-value">${totalEarned.toLocaleString(undefined,{maximumFractionDigits:1})}</div><div class="stat-label">Total NOVA Distributed</div></div>
       </div>
       ${validators.length ? `
       <table class="lb-table">
@@ -2320,7 +2320,7 @@ async function loadValidatorsTab() {
             <td style="color:var(--cyan);font-weight:700">${i+1}</td>
             <td><code style="font-size:10px">${esc(v.address.slice(0,20))}…</code></td>
             <td style="font-weight:600">${(v.blocks_mined||0).toLocaleString()}</td>
-            <td style="color:var(--cyan);font-weight:700">${(v.total_jito_earned||0).toLocaleString(undefined,{maximumFractionDigits:2})} JITO</td>
+            <td style="color:var(--cyan);font-weight:700">${(v.total_nova_earned||0).toLocaleString(undefined,{maximumFractionDigits:2})} NOVA</td>
             <td style="color:${uptimeColor}">${uptime}</td>
             <td style="font-size:11px;color:var(--text-muted)">${lastActive}</td>
             <td>${badges||'—'}</td>
@@ -2334,17 +2334,17 @@ async function loadValidatorsTab() {
     candEl.innerHTML = `
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px">
         <div class="stat-card"><div class="stat-value">${candidates.length}</div><div class="stat-label">Candidates</div></div>
-        <div class="stat-card"><div class="stat-value">${(totalStaked||0).toLocaleString()}</div><div class="stat-label">Total Staked (JITO)</div></div>
+        <div class="stat-card"><div class="stat-value">${(totalStaked||0).toLocaleString()}</div><div class="stat-label">Total Staked (NOVA)</div></div>
       </div>
       ${candidates.length ? `<table class="lb-table">
         <thead><tr><th>Address</th><th>Stake</th><th>Votes</th><th>Status</th></tr></thead>
         <tbody>${candidates.map(c=>`<tr>
           <td><code style="font-size:11px">${esc(c.address.slice(0,20))}…</code></td>
-          <td>${(c.stake||0).toLocaleString()} JITO</td>
+          <td>${(c.stake||0).toLocaleString()} NOVA</td>
           <td>${c.votes||0} / ${candData.vote_threshold||3}</td>
           <td>${c.is_validator ? '<span class="badge badge-approved">Active</span>' : '<span class="badge badge-info">Pending</span>'}</td>
         </tr>`).join("")}</tbody>
-      </table>` : '<p class="text-muted text-sm">No candidates yet. Stake 500 JITO to nominate yourself.</p>'}`;
+      </table>` : '<p class="text-muted text-sm">No candidates yet. Stake 500 NOVA to nominate yourself.</p>'}`;
 
   } catch(err) {
     statsEl.innerHTML = `<p class="text-muted text-sm">Error: ${esc(String(err))}</p>`;

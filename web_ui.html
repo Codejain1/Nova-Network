@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JITO Operator Console</title>
+  <title>Nova Operator Console</title>
   <style>
     :root {
       --bg: #071321;
@@ -87,7 +87,7 @@
   <link rel="stylesheet" href="/assets/ui-refresh.css" />
 </head>
 <body>
-  <h1 id="pageTitle">JITO Operator Console</h1>
+  <h1 id="pageTitle">Nova Operator Console</h1>
   <div class="small" id="pageSub">Advanced operations panel for node admins, validators, and protocol operators.</div>
   <div class="top-nav">
     <a href="/app">App Hub</a>
@@ -328,7 +328,7 @@ async function refreshStatus() {
   const info = s.chain_info || {};
   const pub = info.public_chain || {};
   const token = pub.native_token || {};
-  $('pageTitle').textContent = `${pub.name || 'JITO'} Control Panel`;
+  $('pageTitle').textContent = `${pub.name || 'Nova'} Control Panel`;
   $('pageSub').textContent = `${token.name || 'Native token'} (${token.symbol || '-'}) powers public chain gas + transfers`;
   const branding = info.branding || {};
   if (!$('chainLogoUrl').value) $('chainLogoUrl').value = branding.chain_logo_url || '';

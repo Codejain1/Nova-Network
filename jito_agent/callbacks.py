@@ -1,15 +1,15 @@
 """
 JITO LangChain callback handler.
 
-Automatically logs every LLM call, tool use, and chain run to JITO,
+Automatically logs every LLM call, tool use, and chain run to NOVA,
 building portable reputation with zero changes to existing agent code.
 
 Usage:
-    from jito_agent import JitoTracker
-    from jito_agent.callbacks import JitoCallbackHandler
+    from jito_agent import NovaTracker
+    from jito_agent.callbacks import NovaCallbackHandler
 
-    tracker = JitoTracker.new("my-agent")
-    handler = JitoCallbackHandler(tracker)
+    tracker = NovaTracker.new("my-agent")
+    handler = NovaCallbackHandler(tracker)
 
     # Pass to any LangChain runnable / agent / chain
     chain.invoke(input, config={"callbacks": [handler]})
@@ -35,21 +35,21 @@ except ImportError:
 def _check_langchain() -> None:
     if not _LANGCHAIN_AVAILABLE:
         raise ImportError(
-            "langchain-core is required for JitoCallbackHandler. "
+            "langchain-core is required for NovaCallbackHandler. "
             "Install it with: pip install langchain-core"
         )
 
 
-class JitoCallbackHandler(BaseCallbackHandler):
+class NovaCallbackHandler(BaseCallbackHandler):
     """
-    LangChain callback handler that logs agent activity to JITO.
+    LangChain callback handler that logs agent activity to NOVA.
 
     Every LLM call, tool use, and chain run is timed and logged automatically.
-    Errors are logged with success=False.  Logging never raises — a JITO
+    Errors are logged with success=False.  Logging never raises — a NOVA
     failure will not break your agent.
 
     Args:
-        tracker:    A JitoTracker instance (from JitoTracker.new() or __init__).
+        tracker:    A NovaTracker instance (from NovaTracker.new() or __init__).
         tags:       Default tags applied to every log entry.
         log_llm:    Log LLM calls (default True).
         log_tools:  Log tool calls (default True).

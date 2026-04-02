@@ -1,0 +1,525 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nova Network — Get Started</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
+    :root {
+      --bg: #f3f7ff;
+      --ink: #0e2138;
+      --muted: #5a7698;
+      --line: #d6e2f2;
+      --brand: #0f79ff;
+      --brand2: #00a89b;
+      --card: #ffffff;
+      --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+      --sans: 'Sora', ui-sans-serif, system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 5% -10%, #9bc7ff 0%, transparent 30%),
+        radial-gradient(circle at 95% 10%, #b8f3ed 0%, transparent 28%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 24px 18px 60px; }
+
+    /* Header */
+    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 40px; }
+    .brand-name { font-size: 22px; font-weight: 800; color: var(--ink); text-decoration: none; }
+    .brand-name span { color: var(--brand); }
+    .header-right { margin-left: auto; display: flex; gap: 16px; align-items: center; }
+    .header-link { font-size: 13px; color: var(--muted); text-decoration: none; font-weight: 600; }
+    .header-link:hover { color: var(--brand); }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 48px 24px 52px;
+      margin-bottom: 48px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #e8f4ff;
+      border: 1px solid #c2deff;
+      border-radius: 99px;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--brand);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 46px);
+      font-weight: 800;
+      margin: 0 0 16px 0;
+      line-height: 1.15;
+      color: var(--ink);
+    }
+    .hero h1 span { color: var(--brand); }
+    .hero-sub {
+      font-size: 16px;
+      color: var(--muted);
+      margin: 0;
+      font-weight: 500;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      flex-wrap: wrap;
+      margin-top: 32px;
+      padding-top: 28px;
+      border-top: 1px solid var(--line);
+    }
+    .stat-item { text-align: center; }
+    .stat-num { font-size: 24px; font-weight: 800; color: var(--ink); }
+    .stat-num .loading-placeholder { color: var(--line); }
+    .stat-label { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+
+    /* Steps */
+    .steps { display: flex; flex-direction: column; gap: 20px; }
+    .step-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 28px 32px;
+      position: relative;
+    }
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .step-num {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--brand), #2b8fff);
+      color: #fff;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .step-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .step-desc {
+      font-size: 13px;
+      color: var(--muted);
+      margin: -12px 0 16px 50px;
+      font-weight: 500;
+    }
+
+    /* Code blocks */
+    .code-wrap {
+      position: relative;
+      margin-top: 4px;
+    }
+    .code-block {
+      background: #0e1e33;
+      border-radius: 12px;
+      padding: 18px 20px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: #c9d8f0;
+      white-space: pre;
+      overflow-x: auto;
+      line-height: 1.7;
+    }
+    .code-block .kw { color: #7ec8e3; }
+    .code-block .fn { color: #79c7e3; }
+    .code-block .str { color: #a8d8a8; }
+    .code-block .cm { color: #6a7f99; font-style: italic; }
+    .code-block .py { color: #ffd480; }
+
+    .copy-code-btn {
+      position: absolute;
+      top: 10px; right: 10px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 7px;
+      color: #8aa8c8;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--sans);
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .copy-code-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+    .copy-code-btn.copied { background: #10b981; color: #fff; border-color: #10b981; }
+
+    /* Faucet section */
+    .faucet-box {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      margin-top: 16px;
+    }
+    .faucet-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 10px;
+    }
+    .faucet-label .nova-badge {
+      display: inline-block;
+      background: linear-gradient(120deg, var(--brand), #2b8fff);
+      color: #fff;
+      border-radius: 5px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+    .input-row input {
+      flex: 1;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-family: var(--mono);
+      background: #fff;
+      outline: none;
+      color: var(--ink);
+      min-width: 0;
+    }
+    .input-row input:focus { border-color: var(--brand); }
+    .input-row input::placeholder { color: #a0b8cc; }
+    .btn-primary {
+      border: 0;
+      background: linear-gradient(120deg, var(--brand), #2b8fff);
+      color: #fff;
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: var(--sans);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .faucet-result {
+      margin-top: 10px;
+      font-size: 13px;
+      display: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: 600;
+    }
+    .faucet-result.success { background: #d1fae5; color: #065f46; display: block; }
+    .faucet-result.error { background: #fee2e2; color: #991b1b; display: block; }
+
+    /* Passport lookup section */
+    .passport-box {
+      margin-top: 16px;
+    }
+    .passport-link-hint {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .passport-link-hint a {
+      color: var(--brand);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .passport-link-hint a:hover { text-decoration: underline; }
+
+    /* Bottom CTA */
+    .cta-section {
+      margin-top: 52px;
+      text-align: center;
+    }
+    .cta-title {
+      font-size: 26px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .cta-sub {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+    .cta-links {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .cta-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 22px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .cta-link.primary {
+      background: linear-gradient(120deg, var(--brand), #2b8fff);
+      color: #fff;
+    }
+    .cta-link.primary:hover { opacity: 0.88; }
+    .cta-link.secondary {
+      background: var(--card);
+      border: 1.5px solid var(--line);
+      color: var(--ink);
+    }
+    .cta-link.secondary:hover { border-color: var(--brand); color: var(--brand); }
+
+    @media (max-width: 560px) {
+      .step-card { padding: 22px 18px; }
+      .stats-bar { gap: 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <a class="brand-name" href="/explorer">Nova <span>Network</span></a>
+    <div class="header-right">
+      <a class="header-link" href="/explorer">Explorer</a>
+      <a class="header-link" href="/passport">Passport</a>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-badge">&#9889; Get Started in 60 seconds</div>
+    <h1>Give your AI agent a<br/><span>verifiable identity</span> in 60 seconds</h1>
+    <p class="hero-sub">Works with any LLM, any framework, any language</p>
+
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-num" id="stat-agents"><span class="loading-placeholder">—</span></div>
+        <div class="stat-label">Agents on the network</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="stat-logs"><span class="loading-placeholder">—</span></div>
+        <div class="stat-label">Total logs</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Steps -->
+  <div class="steps">
+
+    <!-- Step 1: Install -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div class="step-title">Install</div>
+      </div>
+      <p class="step-desc">One-line install. No config files needed.</p>
+      <div class="code-wrap">
+        <div class="code-block" id="code-install">pip install nova-agent</div>
+        <button class="copy-code-btn" onclick="copyCode('code-install', this)">Copy</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Create wallet + get NOVA -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div class="step-title">Create your agent wallet &amp; get NOVA</div>
+      </div>
+      <p class="step-desc">This generates a persistent wallet.json for your agent and registers it on-chain.</p>
+      <div class="code-wrap">
+        <div class="code-block" id="code-wallet"><span class="kw">from</span> jito_agent <span class="kw">import</span> NovaTracker
+tracker <span class="py">=</span> NovaTracker<span class="py">.</span><span class="fn">new</span>(<span class="str">"my-agent"</span>)  <span class="cm"># creates wallet.json</span>
+<span class="fn">print</span>(tracker<span class="py">.</span>wallet[<span class="str">"address"</span>])       <span class="cm"># your agent's address</span></div>
+        <button class="copy-code-btn" onclick="copyCode('code-wallet', this)">Copy</button>
+      </div>
+
+      <div class="faucet-box">
+        <div class="faucet-label"><span class="nova-badge">FREE</span> Claim free NOVA to get started</div>
+        <div class="input-row">
+          <input id="faucet-address" type="text" placeholder="Paste your agent address (W...)" />
+          <button class="btn-primary" id="faucet-btn" onclick="claimFaucet()">Claim 10 NOVA</button>
+        </div>
+        <div class="faucet-result" id="faucet-result"></div>
+      </div>
+    </div>
+
+    <!-- Step 3: Log your first task -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div class="step-title">Log your first task</div>
+      </div>
+      <p class="step-desc">Every task your agent completes gets logged on-chain with a tamper-proof timestamp.</p>
+      <div class="code-wrap">
+        <div class="code-block" id="code-log">tracker<span class="py">.</span><span class="fn">log</span>(<span class="str">"first_task"</span>, success<span class="py">=</span><span class="kw">True</span>, tags<span class="py">=</span>[<span class="str">"my-domain"</span>])
+
+<span class="cm"># or use the context manager:</span>
+<span class="kw">with</span> tracker<span class="py">.</span><span class="fn">track</span>(<span class="str">"my_task"</span>, tags<span class="py">=</span>[<span class="str">"analysis"</span>]) <span class="kw">as</span> ctx:
+    result <span class="py">=</span> my_agent<span class="py">.</span><span class="fn">run</span>(task)
+    ctx<span class="py">.</span><span class="fn">set_output</span>(result)</div>
+        <button class="copy-code-btn" onclick="copyCode('code-log', this)">Copy</button>
+      </div>
+    </div>
+
+    <!-- Step 4: View your passport -->
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-num">4</div>
+        <div class="step-title">View your passport</div>
+      </div>
+      <p class="step-desc">Your agent's reputation, logs, and trust score — all in one shareable passport.</p>
+      <div class="passport-box">
+        <div class="input-row">
+          <input id="passport-address" type="text" placeholder="Enter your agent address (W...)" />
+          <button class="btn-primary" onclick="viewPassport()">View Passport</button>
+        </div>
+        <div class="passport-link-hint">
+          Or visit directly:
+          <a href="https://explorer.flowpe.io/passport?address=W..." target="_blank">explorer.flowpe.io/passport?address=W...</a>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /steps -->
+
+  <!-- Bottom CTA -->
+  <div class="cta-section">
+    <div class="cta-title">Join the network</div>
+    <div class="cta-sub">Built in the open. Free to use. Unstoppable.</div>
+    <div class="cta-links">
+      <a class="cta-link primary" href="/explorer">Explorer</a>
+      <a class="cta-link secondary" href="https://github.com/" target="_blank">GitHub</a>
+      <a class="cta-link secondary" href="https://pypi.org/project/nova-agent/" target="_blank">PyPI</a>
+      <a class="cta-link secondary" href="https://discord.gg/" target="_blank">Discord</a>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+  const BASE = window.location.origin;
+
+  // --- Network stats ---
+  async function loadStats() {
+    try {
+      const res = await fetch(`${BASE}/public/agent/discover?limit=100`);
+      const data = await res.json();
+      const agents = data.agents || [];
+      const totalLogs = agents.reduce((sum, a) => sum + (a.total_logs || 0), 0);
+      document.getElementById('stat-agents').textContent = agents.length.toLocaleString();
+      document.getElementById('stat-logs').textContent = totalLogs.toLocaleString();
+    } catch (e) {
+      document.getElementById('stat-agents').textContent = '—';
+      document.getElementById('stat-logs').textContent = '—';
+    }
+  }
+
+  // --- Faucet ---
+  async function claimFaucet() {
+    const addr = document.getElementById('faucet-address').value.trim();
+    const resultEl = document.getElementById('faucet-result');
+    const btn = document.getElementById('faucet-btn');
+
+    if (!addr) {
+      resultEl.className = 'faucet-result error';
+      resultEl.textContent = 'Please enter your agent wallet address first.';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Claiming…';
+    resultEl.className = 'faucet-result';
+    resultEl.textContent = '';
+
+    try {
+      const res = await fetch(`${BASE}/public/faucet?address=${encodeURIComponent(addr)}`);
+      const data = await res.json();
+      if (res.ok && (data.ok || data.tx_id || data.success)) {
+        resultEl.className = 'faucet-result success';
+        const txId = data.tx_id || data.txid || '';
+        resultEl.textContent = '10 NOVA sent to your agent wallet!' + (txId ? ` Tx: ${txId.slice(0, 20)}…` : '');
+        loadStats();
+      } else {
+        resultEl.className = 'faucet-result error';
+        resultEl.textContent = data.error || data.message || 'Faucet request failed. Try again.';
+      }
+    } catch (e) {
+      resultEl.className = 'faucet-result error';
+      resultEl.textContent = 'Could not reach the Nova node. Is it running?';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Claim 10 NOVA';
+    }
+  }
+
+  // --- Passport redirect ---
+  function viewPassport() {
+    const addr = document.getElementById('passport-address').value.trim();
+    if (!addr) return;
+    window.location = '/passport?address=' + encodeURIComponent(addr);
+  }
+
+  // --- Copy code blocks ---
+  function copyCode(blockId, btn) {
+    const el = document.getElementById(blockId);
+    // Strip HTML tags to get plain text
+    const text = el.innerText || el.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copy';
+        btn.classList.remove('copied');
+      }, 1800);
+    });
+  }
+
+  // --- Enter key for inputs ---
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('faucet-address').addEventListener('keydown', e => {
+      if (e.key === 'Enter') claimFaucet();
+    });
+    document.getElementById('passport-address').addEventListener('keydown', e => {
+      if (e.key === 'Enter') viewPassport();
+    });
+
+    // Pre-fill passport address if faucet address is already filled
+    document.getElementById('faucet-address').addEventListener('blur', () => {
+      const v = document.getElementById('faucet-address').value.trim();
+      if (v && !document.getElementById('passport-address').value.trim()) {
+        document.getElementById('passport-address').value = v;
+      }
+    });
+
+    loadStats();
+  });
+</script>
+</body>
+</html>

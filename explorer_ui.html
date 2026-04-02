@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JITO Explorer</title>
+  <title>Nova Explorer</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
     :root {
@@ -189,7 +189,7 @@
       <img id="chainLogo" class="logo" alt="Chain logo" />
       <img id="tokenLogo" class="logo" alt="Token logo" />
       <div>
-        <h1 class="title" id="chainTitle">JITO Explorer</h1>
+        <h1 class="title" id="chainTitle">Nova Explorer</h1>
         <div class="sub" id="chainSub">Track blocks, transfers, tokenized assets, and AI workflow events in one place.</div>
         <div class="top-nav">
           <a href="/rwa">Tokenize Asset</a>
@@ -274,7 +274,7 @@ async function loadChainInfo() {
     const branding = (chainInfo || {}).branding || {};
     const chainLogo = publicInfo.logo_url || branding.chain_logo_url || '';
     const tokenLogo = token.logo_url || branding.token_logo_url || '';
-    $('chainTitle').textContent = `${publicInfo.name || 'JITO'} Explorer`;
+    $('chainTitle').textContent = `${publicInfo.name || 'Nova'} Explorer`;
     $('chainSub').textContent = `${token.name || 'Native token'} (${token.symbol || '-'}) powers transfers + gas on public chain.`;
     if (chainLogo) {
       $('chainLogo').src = chainLogo;
@@ -340,11 +340,11 @@ async function viewDashboard() {
   $('viewMeta').textContent = 'Latest network state';
   const supplyBar = supply.total_supply ? `
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
-      <div class="statCard"><div class="statLabel">Total Supply</div><div class="statValue">${supply.total_supply.toLocaleString(undefined,{maximumFractionDigits:2})} JITO</div></div>
-      <div class="statCard"><div class="statLabel">Circulating</div><div class="statValue">${supply.circulating.toLocaleString(undefined,{maximumFractionDigits:2})} JITO</div></div>
-      <div class="statCard"><div class="statLabel">Treasury</div><div class="statValue">${supply.treasury.toLocaleString(undefined,{maximumFractionDigits:2})} JITO</div></div>
+      <div class="statCard"><div class="statLabel">Total Supply</div><div class="statValue">${supply.total_supply.toLocaleString(undefined,{maximumFractionDigits:2})} NOVA</div></div>
+      <div class="statCard"><div class="statLabel">Circulating</div><div class="statValue">${supply.circulating.toLocaleString(undefined,{maximumFractionDigits:2})} NOVA</div></div>
+      <div class="statCard"><div class="statLabel">Treasury</div><div class="statValue">${supply.treasury.toLocaleString(undefined,{maximumFractionDigits:2})} NOVA</div></div>
       <div class="statCard"><div class="statLabel">Blocks Mined</div><div class="statValue">${supply.blocks_mined.toLocaleString()}</div></div>
-      <div class="statCard"><div class="statLabel">Reward / Block</div><div class="statValue">${supply.reward_per_block} JITO</div></div>
+      <div class="statCard"><div class="statLabel">Reward / Block</div><div class="statValue">${supply.reward_per_block} NOVA</div></div>
     </div>` : '';
   $('content').innerHTML = `
     ${supplyBar}
@@ -600,7 +600,7 @@ async function viewValidators() {
     <tr>
       <td><span class="mono">${v.address}</span></td>
       <td>${v.blocks_mined ?? 0}</td>
-      <td>${(v.total_jito_earned ?? 0).toFixed(2)} JITO</td>
+      <td>${(v.total_nova_earned ?? 0).toFixed(2)} NOVA</td>
       <td>${v.uptime_pct != null ? v.uptime_pct.toFixed(1) + '%' : '-'}</td>
       <td>${v.last_active ? fmtTime(v.last_active) : '-'}</td>
       <td>${v.validator_since ? fmtTime(v.validator_since) : '-'}</td>
@@ -611,7 +611,7 @@ async function viewValidators() {
   const candRows = cs.map((c) => `
     <tr>
       <td><span class="mono">${c.address}</span></td>
-      <td>${(c.stake ?? 0).toFixed(2)} JITO</td>
+      <td>${(c.stake ?? 0).toFixed(2)} NOVA</td>
       <td>${c.reputation ?? '-'}</td>
       <td>${fmtTime(c.nominated_at)}</td>
     </tr>`).join('');
@@ -623,8 +623,8 @@ async function viewValidators() {
   $('content').innerHTML = `
     <div class="sectionTitle"><span>Treasury</span></div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:4px;">
-      <div class="statCard"><div class="statLabel">Balance</div><div class="statValue">${(treasury.balance ?? 0).toFixed(2)} JITO</div></div>
-      <div class="statCard"><div class="statLabel">Fee per Block</div><div class="statValue">${((treasury.fee_pct ?? 0) * 100).toFixed(0)}% (${((treasury.fee_pct ?? 0) * (stats.block_reward_jito ?? 25)).toFixed(1)} JITO)</div></div>
+      <div class="statCard"><div class="statLabel">Balance</div><div class="statValue">${(treasury.balance ?? 0).toFixed(2)} NOVA</div></div>
+      <div class="statCard"><div class="statLabel">Fee per Block</div><div class="statValue">${((treasury.fee_pct ?? 0) * 100).toFixed(0)}% (${((treasury.fee_pct ?? 0) * (stats.block_reward_jito ?? 25)).toFixed(1)} NOVA)</div></div>
       <div class="statCard"><div class="statLabel">Managed By</div><div class="statValue">${treasury.managed_by ?? 'governance'}</div></div>
     </div>
     <div class="detail small" style="padding:8px 12px;margin-bottom:10px;">

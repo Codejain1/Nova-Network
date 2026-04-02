@@ -1,6 +1,6 @@
-# Running a JITO Validator Node
+# Running a NOVA Validator Node
 
-Validators secure the JITO PublicPaymentChain using Proof of Authority (PoA) consensus with validator rotation. Each validator earns **22.5 JITO per block** (~5-second block time).
+Validators secure the NOVA PublicPaymentChain using Proof of Authority (PoA) consensus with validator rotation. Each validator earns **22.5 NOVA per block** (~5-second block time).
 
 ---
 
@@ -8,14 +8,14 @@ Validators secure the JITO PublicPaymentChain using Proof of Authority (PoA) con
 
 | Metric | Value |
 |--------|-------|
-| Block reward | 25.0 JITO |
-| Treasury fee | 10% (2.5 JITO) |
-| Net to validator | **22.5 JITO/block** |
+| Block reward | 25.0 NOVA |
+| Treasury fee | 10% (2.5 NOVA) |
+| Net to validator | **22.5 NOVA/block** |
 | Target block time | 5 seconds |
 | Blocks/day | ~17,280 |
-| JITO/day (1 of 3 validators) | ~5,760 |
-| JITO/year (1 of 3 validators) | ~**47,400** |
-| Minimum stake to nominate | **500 JITO** |
+| NOVA/day (1 of 3 validators) | ~5,760 |
+| NOVA/year (1 of 3 validators) | ~**47,400** |
+| Minimum stake to nominate | **500 NOVA** |
 | Votes needed for promotion | **3** |
 | Unbonding period | **100 blocks (~8 min)** |
 
@@ -35,8 +35,8 @@ Validators secure the JITO PublicPaymentChain using Proof of Authority (PoA) con
 ## Step 1 — Clone and configure
 
 ```bash
-git clone https://github.com/jito-labs/jito-chain.git
-cd jito-chain
+git clone https://github.com/jito-labs/nova-chain.git
+cd nova-chain
 cp .env.live.example .env.live
 ```
 
@@ -101,16 +101,16 @@ You should see:
 
 ## Step 4 — Fund your validator wallet
 
-Get 500 JITO from the faucet:
+Get 500 NOVA from the faucet:
 ```python
-from jito_agent import JitoClient
+from jito_agent import NovaClient
 
-client = JitoClient("https://explorer.flowpe.io")
+client = NovaClient("https://explorer.flowpe.io")
 client.claim_faucet("YOUR_VALIDATOR_ADDRESS")
-# Returns 100 JITO — repeat 5 times across 5 days, or earn via tasks
+# Returns 100 NOVA — repeat 5 times across 5 days, or earn via tasks
 ```
 
-Or ask an existing validator to send JITO directly.
+Or ask an existing validator to send NOVA directly.
 
 Check balance:
 ```bash
@@ -137,7 +137,7 @@ tx = make_validator_nominate_tx(wallet, stake_amount=500.0)
 requests.post("https://explorer.flowpe.io/public/tx", json=tx)
 ```
 
-Your 500 JITO is now locked as stake. Check your candidacy:
+Your 500 NOVA is now locked as stake. Check your candidacy:
 ```bash
 curl https://explorer.flowpe.io/public/validator/candidates
 ```
@@ -154,7 +154,7 @@ curl -X POST http://localhost:8000/public/validator/vote \
   -d '{"wallet": "voter-wallet", "candidate": "YOUR_VALIDATOR_ADDRESS"}'
 ```
 
-Once you have 3 votes AND stake ≥ 500 JITO → **auto-promoted to active validator set**.
+Once you have 3 votes AND stake ≥ 500 NOVA → **auto-promoted to active validator set**.
 
 ---
 
@@ -183,7 +183,7 @@ curl -X POST http://localhost:8000/public/validator/unstake \
   -d '{"wallet": "validator1"}'
 ```
 
-Your 500 JITO is returned after the **100-block unbonding period** (~8 minutes at 5s/block).
+Your 500 NOVA is returned after the **100-block unbonding period** (~8 minutes at 5s/block).
 
 ---
 
@@ -217,11 +217,11 @@ curl "http://localhost:8000/reputation/YOUR_ADDRESS"
 
 | Symptom | Fix |
 |---------|-----|
-| `public_valid: false` | Check chain height — may need resync. Verify `is_valid()` passes: `docker logs jito-node \| grep valid` |
+| `public_valid: false` | Check chain height — may need resync. Verify `is_valid()` passes: `docker logs nova-node \| grep valid` |
 | Auto-miner not mining | Check `auto_mine.thread_alive` in `/status`. Set `AUTO_MINE_MINER=auto` in `.env.live` |
 | Wrong validator turn | PoA rotation: only mine when it's your turn. `auto=true` handles this automatically |
 | Peers not syncing | Verify `PEERS` env var is set and both IPs are reachable on port 8000 |
-| Stake rejected | Must have ≥ 500 JITO balance before nominating |
+| Stake rejected | Must have ≥ 500 NOVA balance before nominating |
 | "not in validator set" error | You haven't been promoted yet — need 3 votes first |
 
 ---

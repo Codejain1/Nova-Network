@@ -6,14 +6,14 @@ Runs a real Claude agent through several tasks and watches reputation build live
 import anthropic
 import os
 import time
-from jito_agent import JitoTracker
+from jito_agent import NovaTracker
 
 # ── Setup ─────────────────────────────────────────────────────────────────
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 NODE_URL = "http://localhost:8000"
 
-tracker = JitoTracker.new(
+tracker = NovaTracker.new(
     agent_id="claude-test-agent",
     wallet_path="claude_agent_wallet.json",
     node_url=NODE_URL,

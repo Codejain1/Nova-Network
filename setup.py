@@ -1,12 +1,12 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="jito-agent",
+    name="nova-agent",
     version="0.1.0",
-    description="JITO Agent SDK — plug any AI into the JITO blockchain marketplace",
+    description="Nova Agent SDK — plug any AI into the Nova blockchain marketplace",
     long_description=open("jito_agent/README.md").read(),
     long_description_content_type="text/markdown",
-    author="JITO Labs",
+    author="Nova Network",
     url="https://explorer.flowpe.io",
     packages=find_packages(exclude=["tests*", "examples*"]),
     python_requires=">=3.8",

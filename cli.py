@@ -682,7 +682,7 @@ def cmd_agent_passport(args: argparse.Namespace) -> None:
 def cmd_agent_node_start(args: argparse.Namespace) -> None:
     """
     Lightweight agent data node — no block production, no chain sync.
-    Signs and submits activity logs to a remote JITO node on behalf of a wallet.
+    Signs and submits activity logs to a remote NOVA node on behalf of a wallet.
     Ideal for running alongside any AI agent with minimal overhead.
     """
     import http.server
@@ -1558,6 +1558,110 @@ def cmd_private_validate(args: argparse.Namespace) -> None:
     print("VALID" if private_chain.is_valid() else "INVALID")
 
 
+# ── Operator commands: nova init / run / status / env ─────────────────────────
+# These work for anyone RUNNING agents (not building them).
+# No SDK knowledge needed — just wrap any command with `nova run`.
+
+def cmd_agent_init(args: argparse.Namespace) -> None:
+    """Create a wallet for an agent and print the env vars to use it."""
+    import os as _os
+    from jito_agent.wallet import create_wallet as _cw, load_wallet as _lw, save_wallet as _sw
+
+    wallet_path = args.wallet or f"{args.agent_id.replace('/', '-')}_wallet.json"
+    if _os.path.exists(wallet_path):
+        wallet = _lw(wallet_path)
+        print(f"Wallet already exists at {wallet_path}")
+    else:
+        wallet = _cw(args.agent_id)
+        _sw(wallet, wallet_path)
+        print(f"Wallet created: {wallet_path}")
+
+    node_url = args.node_url or "https://explorer.flowpe.io"
+    print(f"\nAgent ID:  {args.agent_id}")
+    print(f"Address:   {wallet['address']}")
+    print(f"Node:      {node_url}")
+    print(f"\n# Paste these into your shell (or .env file):")
+    print(f"export NOVA_AGENT_ID={args.agent_id}")
+    print(f"export NOVA_WALLET_PATH={wallet_path}")
+    print(f"export NOVA_NODE_URL={node_url}")
+    print(f"\n# Then run any agent with:")
+    print(f"nova run --agent-id {args.agent_id} --tags <your-tags> -- <your command>")
+    print(f"\n# View passport:")
+    print(f"{node_url}/passport?address={wallet['address']}")
+
+
+def cmd_agent_run(args: argparse.Namespace) -> None:
+    """Wrap any agent command — log timing + exit code to Nova automatically."""
+    import subprocess as _sp
+    import time as _time
+    from jito_agent import NovaTracker
+
+    agent_id = args.agent_id or _os_getenv("NOVA_AGENT_ID")
+    if not agent_id:
+        raise SystemExit("--agent-id is required (or set NOVA_AGENT_ID)")
+
+    wallet_path = args.wallet or _os_getenv("NOVA_WALLET_PATH", f"{agent_id.replace('/', '-')}_wallet.json")
+    node_url = args.node_url or _os_getenv("NOVA_NODE_URL", "https://explorer.flowpe.io")
+    tags = [t.strip() for t in args.tags.split(",")] if args.tags else []
+    action = args.action or "agent_run"
+
+    if not args.cmd:
+        raise SystemExit("Provide the command to run after --  e.g.: nova run --agent-id x -- python agent.py")
+
+    tracker = NovaTracker.new(agent_id=agent_id, wallet_path=wallet_path, node_url=node_url)
+
+    print(f"[nova] Running: {' '.join(args.cmd)}")
+    start = _time.time()
+    result = _sp.run(args.cmd)
+    duration_ms = int((_time.time() - start) * 1000)
+    success = result.returncode == 0
+
+    tx_id = tracker.log(
+        action_type=action,
+        success=success,
+        duration_ms=duration_ms,
+        tags=tags,
+        note=args.note or "",
+    )
+    status_str = "ok" if success else f"failed (exit {result.returncode})"
+    print(f"[nova] Logged: {action} — {status_str} — {duration_ms}ms — tx:{tx_id}")
+
+    if not success:
+        raise SystemExit(result.returncode)
+
+
+def cmd_agent_status(args: argparse.Namespace) -> None:
+    """Show trust score and reputation for an agent."""
+    from jito_agent import NovaTracker
+
+    agent_id = args.agent_id or _os_getenv("NOVA_AGENT_ID")
+    if not agent_id:
+        raise SystemExit("--agent-id is required (or set NOVA_AGENT_ID)")
+    wallet_path = args.wallet or _os_getenv("NOVA_WALLET_PATH", f"{agent_id.replace('/', '-')}_wallet.json")
+    node_url = args.node_url or _os_getenv("NOVA_NODE_URL", "https://explorer.flowpe.io")
+
+    tracker = NovaTracker.new(agent_id=agent_id, wallet_path=wallet_path, node_url=node_url)
+    rep = tracker.get_reputation()
+    print(json.dumps(rep, indent=2))
+    addr = tracker.wallet["address"]
+    print(f"\nPassport: {node_url}/passport?address={addr}")
+
+
+def cmd_agent_env(args: argparse.Namespace) -> None:
+    """Print env vars for the current agent config — pipe into your shell."""
+    import os as _os
+    wallet_path = args.wallet or f"{args.agent_id.replace('/', '-')}_wallet.json"
+    node_url = args.node_url or "https://explorer.flowpe.io"
+    print(f"export NOVA_AGENT_ID={args.agent_id}")
+    print(f"export NOVA_WALLET_PATH={wallet_path}")
+    print(f"export NOVA_NODE_URL={node_url}")
+
+
+def _os_getenv(key: str, default: str = "") -> str:
+    import os as _os
+    return _os.environ.get(key, default)
+
+
 def cmd_network_add_peer(args: argparse.Namespace) -> None:
     response = post_json(
         f"{args.node_url.rstrip('/')}/network/peers/add",
@@ -1817,7 +1921,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_agent_log.add_argument("--external-ref", dest="external_ref", default="",
                               help="External reference (PR#123, job-id, etc.)")
     p_agent_log.add_argument("--tags", default="", help="Comma-separated tags e.g. finance,coding")
-    p_agent_log.add_argument("--stake", type=float, default=0.0, help="JITO to lock (increases trust tier)")
+    p_agent_log.add_argument("--stake", type=float, default=0.0, help="NOVA to lock (increases trust tier)")
     p_agent_log.add_argument("--failed", action="store_true", help="Mark activity as failed")
     p_agent_log.add_argument("--note", default="")
     p_agent_log.set_defaults(func=cmd_agent_log)
@@ -1825,7 +1929,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_agent_challenge = sub.add_parser("agent-challenge", help="Challenge a specific activity log")
     p_agent_challenge.add_argument("--wallet", required=True)
     p_agent_challenge.add_argument("--log-id", dest="log_id", required=True)
-    p_agent_challenge.add_argument("--stake", type=float, required=True, help="JITO stake to lock")
+    p_agent_challenge.add_argument("--stake", type=float, required=True, help="NOVA stake to lock")
     p_agent_challenge.add_argument("--reason", default="")
     p_agent_challenge.set_defaults(func=cmd_agent_challenge)
 
@@ -2260,9 +2364,9 @@ def build_parser() -> argparse.ArgumentParser:
         default=False,
         help="Enforce production guardrails: poa + >=2 validators + rotation + faucet disabled",
     )
-    p_node.add_argument("--chain-name", default="JITO Public Network")
-    p_node.add_argument("--token-name", default="JITO")
-    p_node.add_argument("--token-symbol", default="JITO")
+    p_node.add_argument("--chain-name", default="Nova Network")
+    p_node.add_argument("--token-name", default="NOVA")
+    p_node.add_argument("--token-symbol", default="NOVA")
     p_node.add_argument("--token-decimals", type=int, default=18)
     p_node.add_argument("--chain-logo-url", default="", help="Brand logo URL for explorer/scanner")
     p_node.add_argument("--token-logo-url", default="", help="Native token logo URL for explorer/scanner")
@@ -2335,6 +2439,35 @@ def build_parser() -> argparse.ArgumentParser:
     p_node.add_argument("--tls-require-client-cert", action="store_true", help="Enable mTLS client cert enforcement")
     p_node.add_argument("--peer-ca", default="", help="CA file for verifying HTTPS peer certificates")
     p_node.set_defaults(func=cmd_node_start)
+
+    # ── Operator commands ──────────────────────────────────────────────────────
+    p_init = sub.add_parser("init", help="Set up a Nova wallet for your agent — prints env vars to copy")
+    p_init.add_argument("--agent-id", required=True, help="Unique agent identifier e.g. my-research-agent")
+    p_init.add_argument("--wallet", default="", help="Wallet file path (default: <agent-id>_wallet.json)")
+    p_init.add_argument("--node-url", default="", help="Nova node URL (default: https://explorer.flowpe.io)")
+    p_init.set_defaults(func=cmd_agent_init)
+
+    p_run = sub.add_parser("run", help="Wrap any agent command — auto-logs timing and result to Nova")
+    p_run.add_argument("--agent-id", default="", help="Agent ID (or set NOVA_AGENT_ID env var)")
+    p_run.add_argument("--wallet", default="", help="Wallet path (or set NOVA_WALLET_PATH env var)")
+    p_run.add_argument("--node-url", default="", help="Nova node URL (or set NOVA_NODE_URL env var)")
+    p_run.add_argument("--tags", default="", help="Comma-separated tags e.g. biology,literature-review")
+    p_run.add_argument("--action", default="", help="Action label (default: agent_run)")
+    p_run.add_argument("--note", default="", help="Short description of what this run does")
+    p_run.add_argument("cmd", nargs=argparse.REMAINDER, help="Command to run, after --")
+    p_run.set_defaults(func=cmd_agent_run)
+
+    p_status = sub.add_parser("status", help="Show trust score and reputation for your agent")
+    p_status.add_argument("--agent-id", default="", help="Agent ID (or set NOVA_AGENT_ID)")
+    p_status.add_argument("--wallet", default="", help="Wallet path (or set NOVA_WALLET_PATH)")
+    p_status.add_argument("--node-url", default="", help="Nova node URL (or set NOVA_NODE_URL)")
+    p_status.set_defaults(func=cmd_agent_status)
+
+    p_env = sub.add_parser("env", help="Print Nova env vars for your agent — eval or copy into .env")
+    p_env.add_argument("--agent-id", required=True)
+    p_env.add_argument("--wallet", default="")
+    p_env.add_argument("--node-url", default="")
+    p_env.set_defaults(func=cmd_agent_env)
 
     p_rpc = sub.add_parser("evm-gateway-start", help="Start starter EVM JSON-RPC gateway against this chain")
     p_rpc.add_argument("--host", default="127.0.0.1")

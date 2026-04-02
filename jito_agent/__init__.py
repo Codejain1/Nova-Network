@@ -4,9 +4,9 @@ Nova Agent SDK — portable trust and reputation for AI agents.
 Works with any agent, any framework, any LLM.
 
 Quick start:
-    from jito_agent import JitoTracker
+    from jito_agent import NovaTracker
 
-    tracker = JitoTracker.new("my-agent")
+    tracker = NovaTracker.new("my-agent")
 
     # Log any work your agent does
     tracker.log("task_completed", success=True, tags=["analysis"])
@@ -20,11 +20,11 @@ Quick start:
 """
 
 from .wallet import create_wallet, load_wallet, save_wallet
-from .client import JitoClient
-from .agent import JitoAgent
-from .tracker import JitoTracker
+from .client import NovaClient
+from .agent import NovaAgent
+from .tracker import NovaTracker
 from .types import WalletInfo, TaskInfo, AgentInfo, ModelInfo, ProposalInfo
-from .callbacks import JitoCallbackHandler
+from .callbacks import NovaCallbackHandler
 from .crypto import (
     make_agent_activity_log_tx,
     make_agent_attest_tx,
@@ -38,10 +38,10 @@ from .crypto import (
 __version__ = "0.5.0"
 __all__ = [
     # Core
-    "JitoTracker",
-    "JitoCallbackHandler",
-    "JitoAgent",
-    "JitoClient",
+    "NovaTracker",
+    "NovaCallbackHandler",
+    "NovaAgent",
+    "NovaClient",
     # Wallet
     "create_wallet", "load_wallet", "save_wallet",
     # Types

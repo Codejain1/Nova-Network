@@ -15,8 +15,8 @@ Set these once in your environment, Docker, or .env file:
 
 Then in any Python agent — 2 lines:
 
-    from jito_agent import JitoTracker
-    tracker = JitoTracker.from_env()
+    from jito_agent import NovaTracker
+    tracker = NovaTracker.from_env()
     tracker.log("task_completed", success=True)
 
 ────────────────────────────────────────────────────────────────────────────
@@ -27,9 +27,9 @@ PATTERN 2: Manual setup (custom agents, raw API calls)
 # ── Any custom agent ──────────────────────────────────────────────────────
 
 def example_custom_agent():
-    from jito_agent import JitoTracker
+    from jito_agent import NovaTracker
 
-    tracker = JitoTracker.new("my-custom-agent")
+    tracker = NovaTracker.new("my-custom-agent")
 
     # Manual log — use after anything your agent does
     result = run_my_agent("analyze this document")
@@ -48,9 +48,9 @@ def example_custom_agent():
 def example_openai_raw():
     import time
     from openai import OpenAI
-    from jito_agent import JitoTracker
+    from jito_agent import NovaTracker
 
-    tracker = JitoTracker.from_env()
+    tracker = NovaTracker.from_env()
     client = OpenAI()
 
     start = time.time()
@@ -74,9 +74,9 @@ def example_openai_raw():
 def example_anthropic_raw():
     import time
     import anthropic
-    from jito_agent import JitoTracker
+    from jito_agent import NovaTracker
 
-    tracker = JitoTracker.from_env()
+    tracker = NovaTracker.from_env()
     client = anthropic.Anthropic()
 
     with tracker.track("llm_call", tags=["anthropic", "claude"]) as ctx:
@@ -91,13 +91,13 @@ def example_anthropic_raw():
 # ── LangChain (zero code change) ──────────────────────────────────────────
 
 def example_langchain():
-    from jito_agent import JitoTracker
-    from jito_agent.callbacks import JitoCallbackHandler
+    from jito_agent import NovaTracker
+    from jito_agent.callbacks import NovaCallbackHandler
     from langchain_openai import ChatOpenAI
     from langchain_core.messages import HumanMessage
 
-    tracker = JitoTracker.from_env()
-    handler = JitoCallbackHandler(tracker, tags=["langchain"])
+    tracker = NovaTracker.from_env()
+    handler = NovaCallbackHandler(tracker, tags=["langchain"])
 
     llm = ChatOpenAI(model="gpt-4o-mini")
     response = llm.invoke(
@@ -109,10 +109,10 @@ def example_langchain():
 # ── CrewAI ────────────────────────────────────────────────────────────────
 
 def example_crewai():
-    from jito_agent import JitoTracker
+    from jito_agent import NovaTracker
     from jito_agent.integrations.crewai import NovaCrewCallback
 
-    tracker = JitoTracker.from_env()
+    tracker = NovaTracker.from_env()
     callback = NovaCrewCallback(tracker, tags=["crewai"])
 
     # from crewai import Crew, Agent, Task
@@ -123,10 +123,10 @@ def example_crewai():
 # ── AutoGen ───────────────────────────────────────────────────────────────
 
 def example_autogen():
-    from jito_agent import JitoTracker
+    from jito_agent import NovaTracker
     from jito_agent.integrations.autogen import NovaAutogenHook
 
-    tracker = JitoTracker.from_env()
+    tracker = NovaTracker.from_env()
     hook = NovaAutogenHook(tracker, tags=["autogen"])
 
     # import autogen
@@ -138,10 +138,10 @@ def example_autogen():
 
 def example_openai_wrapper():
     from openai import OpenAI
-    from jito_agent import JitoTracker
+    from jito_agent import NovaTracker
     from jito_agent.integrations.openai import NovaOpenAIWrapper
 
-    tracker = JitoTracker.from_env()
+    tracker = NovaTracker.from_env()
     client = NovaOpenAIWrapper(tracker, OpenAI(), tags=["openai"])
 
     # Exact same API — every call is auto-logged

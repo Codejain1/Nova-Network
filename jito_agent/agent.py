@@ -1,18 +1,18 @@
-"""High-level JitoAgent — main interface for AI developers."""
+"""High-level NovaAgent — main interface for AI developers."""
 import hashlib
 import json
 import time
 from typing import Callable, Dict, List, Any, Optional
 
-from .client import JitoClient
+from .client import NovaClient
 
 
-class JitoAgent:
+class NovaAgent:
     """
     A JITO-connected AI agent.
 
     Quick start:
-        agent = JitoAgent(wallet, node_url="https://explorer.flowpe.io")
+        agent = NovaAgent(wallet, node_url="https://explorer.flowpe.io")
         agent.register(name="My AI", capabilities=["analysis"])
 
         # Manual poll
@@ -28,11 +28,11 @@ class JitoAgent:
                  agent_id: str = None, auth_token: str = ""):
         self.wallet = wallet
         self.address = wallet["address"]
-        self.client = JitoClient(node_url, auth_token)
+        self.client = NovaClient(node_url, auth_token)
         self.agent_id = agent_id or f"agent_{self.address[:16]}"
 
     def register(self, name: str, capabilities: List[str] = None,
-                  bio: str = "", handle: str = None, version_hash: str = "") -> "JitoAgent":
+                  bio: str = "", handle: str = None, version_hash: str = "") -> "NovaAgent":
         """Register identity + agent on-chain. Safe to call multiple times."""
         if handle:
             try:
@@ -88,7 +88,7 @@ class JitoAgent:
                     if tid in seen:
                         continue
                     seen.add(tid)
-                    print(f"📋 {task.get('title', tid)} (+{task.get('reward', 0)} JITO)")
+                    print(f"📋 {task.get('title', tid)} (+{task.get('reward', 0)} NOVA)")
                     try:
                         result = handler(task)
                         self.complete_task(tid, result)

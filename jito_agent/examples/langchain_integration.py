@@ -8,14 +8,14 @@ Run:
     OPENAI_API_KEY=sk-... python langchain_integration.py
 """
 
-from jito_agent import JitoTracker
-from jito_agent.callbacks import JitoCallbackHandler
+from jito_agent import NovaTracker
+from jito_agent.callbacks import NovaCallbackHandler
 
 
 def main() -> None:
     # 1. Set up tracker once — wallet.json is created on first run
-    tracker = JitoTracker.new("my-langchain-agent")
-    handler = JitoCallbackHandler(tracker, tags=["langchain"])
+    tracker = NovaTracker.new("my-langchain-agent")
+    handler = NovaCallbackHandler(tracker, tags=["langchain"])
 
     # 2. Build your LangChain agent exactly as you normally would
     from langchain_openai import ChatOpenAI

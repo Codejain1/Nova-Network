@@ -210,7 +210,7 @@ class NodeAdapter:
 class JsonRpcGatewayHandler(BaseHTTPRequestHandler):
     adapter: Optional[NodeAdapter] = None
     chain_id: int = 149
-    client_version: str = "JITO-EVM-Gateway/0.1"
+    client_version: str = "Nova-EVM-Gateway/0.1"
     gas_price_wei: int = 1_000_000_000
     cors_origin: str = "*"
 
@@ -827,7 +827,7 @@ def run_evm_gateway(
         ssl_context=ssl_context,
     )
     JsonRpcGatewayHandler.chain_id = chain_id
-    JsonRpcGatewayHandler.client_version = f"JITO-EVM-Gateway/0.1 chainId={chain_id}"
+    JsonRpcGatewayHandler.client_version = f"Nova-EVM-Gateway/0.1 chainId={chain_id}"
     JsonRpcGatewayHandler.cors_origin = cors_origin
 
     server = ThreadingHTTPServer((host, port), JsonRpcGatewayHandler)
@@ -838,7 +838,7 @@ def run_evm_gateway(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Starter EVM JSON-RPC gateway for JITO public chain")
+    parser = argparse.ArgumentParser(description="Starter EVM JSON-RPC gateway for Nova public chain")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8545)
     parser.add_argument("--node-url", default="http://127.0.0.1:8000")

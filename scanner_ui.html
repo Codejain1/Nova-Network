@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JITO Scanner</title>
+  <title>Nova Scanner</title>
   <style>
     @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
 
@@ -351,7 +351,7 @@
             <img id="chainLogo" class="logo" alt="Chain logo" />
             <img id="tokenLogo" class="logo" alt="Token logo" />
             <div>
-              <h1 id="chainTitle">JITO Scanner</h1>
+              <h1 id="chainTitle">Nova Scanner</h1>
               <div class="sub" id="chainSub">Live operations view for chain health, wallet activity, and private market status.</div>
               <div class="top-nav">
                 <a href="/rwa-market">RWA Market</a>
@@ -639,7 +639,7 @@
       const chainLogo = pub.logo_url || branding.chain_logo_url || "";
       const tokenLogo = token.logo_url || branding.token_logo_url || "";
 
-      $("chainTitle").textContent = `${pub.name || "JITO"} Scanner`;
+      $("chainTitle").textContent = `${pub.name || "Nova"} Scanner`;
       $("chainSub").textContent = `${token.name || "Native token"} (${token.symbol || "-"}) network explorer and activity scanner`;
       $("chainChip").textContent = `CHAIN #${pub.chain_id || "149"}`;
       $("mConsensus").textContent = pub.consensus || "-";

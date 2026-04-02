@@ -1,14 +1,14 @@
 """
-JitoTracker — Universal off-chain activity logger for AI agents.
+NovaTracker — Universal off-chain activity logger for AI agents.
 
-Any agent, any framework, any platform can log activity to JITO and
+Any agent, any framework, any platform can log activity to NOVA and
 build portable, verifiable reputation — without using JITO's task marketplace.
 
 Quick start:
-    from jito_agent import JitoTracker, load_wallet
+    from jito_agent import NovaTracker, load_wallet
 
     wallet = load_wallet("wallet.json")
-    tracker = JitoTracker(wallet, agent_id="my-agent", node_url="https://explorer.flowpe.io")
+    tracker = NovaTracker(wallet, agent_id="my-agent", node_url="https://explorer.flowpe.io")
 
     # Log any work your agent does
     tracker.log("task_completed", success=True, tags=["analysis", "finance"])
@@ -29,7 +29,7 @@ import time
 from contextlib import contextmanager
 from typing import Any, Dict, Generator, List, Optional
 
-from .client import JitoClient
+from .client import NovaClient
 from .wallet import create_wallet, save_wallet
 
 
@@ -62,17 +62,17 @@ class _TrackContext:
             self._note = note[:256]
 
 
-class JitoTracker:
+class NovaTracker:
     """
     Plug-and-play off-chain activity tracker.
-    Logs agent work to JITO public chain, building portable reputation
+    Logs agent work to Nova public chain, building portable reputation
     regardless of where the actual work happens.
 
     Works with: LangChain, CrewAI, AutoGen, custom agents, or anything else.
     """
 
     @classmethod
-    def from_env(cls) -> "JitoTracker":
+    def from_env(cls) -> "NovaTracker":
         """
         Zero-config setup from environment variables.
         Works for any agent on any platform — just set env vars once.
@@ -88,8 +88,8 @@ class JitoTracker:
             export NOVA_WALLET_PATH=/secrets/wallet.json
             export NOVA_NODE_URL=https://explorer.flowpe.io
 
-            from jito_agent import JitoTracker
-            tracker = JitoTracker.from_env()
+            from jito_agent import NovaTracker
+            tracker = NovaTracker.from_env()
             tracker.log("task_completed", success=True)
         """
         agent_id = os.environ.get("NOVA_AGENT_ID", "").strip()
@@ -107,11 +107,11 @@ class JitoTracker:
         wallet_path: str = "wallet.json",
         node_url: str = "https://explorer.flowpe.io",
         platform: str = "",
-    ) -> "JitoTracker":
+    ) -> "NovaTracker":
         """
         One-liner setup: creates a wallet if it doesn't exist, returns a ready tracker.
 
-        tracker = JitoTracker.new("my-agent")
+        tracker = NovaTracker.new("my-agent")
         tracker.log("task_done", output_hash=sha256(result))
         """
         if os.path.exists(wallet_path):
@@ -132,9 +132,9 @@ class JitoTracker:
         auto_hash_io: bool = True,
     ) -> None:
         """
-        wallet:        JITO wallet dict (from create_wallet / load_wallet)
-        agent_id:      your agent's registered ID on JITO
-        node_url:      JITO node URL
+        wallet:        NOVA wallet dict (from create_wallet / load_wallet)
+        agent_id:      your agent's registered ID on NOVA
+        node_url:      NOVA node URL
         platform:      optional platform tag e.g. "langchain", "crewai", "custom"
         auto_hash_io:  if True, input/output objects are auto-hashed before logging
         """
@@ -142,7 +142,7 @@ class JitoTracker:
         self.agent_id = agent_id
         self.platform = platform
         self.auto_hash_io = auto_hash_io
-        self.client = JitoClient(node_url, auth_token)
+        self.client = NovaClient(node_url, auth_token)
         self._wallet_name: Optional[str] = wallet.get("label") or wallet.get("address", "")[:16]
 
     # ── Core log method ────────────────────────────────────────────────────
@@ -166,7 +166,7 @@ class JitoTracker:
         stake: float = 0.0,
     ) -> Dict:
         """
-        Log a single agent activity to JITO chain.
+        Log a single agent activity to Nova chain.
 
         action_type:  what the agent did — e.g. "task_completed", "model_run",
                       "contract_deployed", "data_analyzed", "chain_built"
@@ -213,6 +213,30 @@ class JitoTracker:
         if isinstance(resp, dict):
             return resp.get("tx_id", resp)
         return resp
+
+    def batch_log(self, entries: List[Dict[str, Any]]) -> List[str]:
+        """
+        Submit multiple activity logs in a single network call.
+
+        entries: list of dicts, each with same keys as log():
+          action_type, success, tags, note, evidence_url, duration_ms, external_ref, stake
+
+        Returns list of tx_ids.
+        """
+        tx_ids = []
+        for entry in entries:
+            tx_id = self.log(
+                action_type=entry.get("action_type", "activity"),
+                success=entry.get("success", True),
+                tags=entry.get("tags"),
+                note=entry.get("note", ""),
+                evidence_url=entry.get("evidence_url", ""),
+                duration_ms=entry.get("duration_ms", 0),
+                external_ref=entry.get("external_ref", ""),
+                stake=entry.get("stake", 0.0),
+            )
+            tx_ids.append(tx_id)
+        return tx_ids
 
     # ── Context manager for automatic timing ──────────────────────────────
 
@@ -308,9 +332,9 @@ class JitoTracker:
     # ── Reputation ────────────────────────────────────────────────────────
 
     def get_reputation(self) -> Dict:
-        """Fetch this agent's current reputation from JITO chain."""
+        """Fetch this agent's current reputation from Nova chain."""
         return self.client.reputation(self.wallet["address"])
 
     def get_balance(self) -> float:
-        """Fetch current JITO token balance."""
+        """Fetch current NOVA token balance."""
         return self.client.balance(self.wallet["address"])

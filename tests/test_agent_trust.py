@@ -66,7 +66,7 @@ def _mine(chain: PublicPaymentChain, validator: dict, n: int = 1) -> None:
 
 
 def _fund(chain: PublicPaymentChain, validator: dict, target: dict, amount: float) -> None:
-    """Send JITO from validator to target, then mine."""
+    """Send NOVA from validator to target, then mine."""
     chain.add_transaction(make_payment_tx(validator, target["address"], amount))
     _mine(chain, validator)
 
@@ -96,7 +96,7 @@ class TestAgentTrust(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             chain, validator, agent, _ = _setup_chain(tmp)
             _mine(chain, validator)                    # fund validator
-            _fund(chain, validator, agent, 50.0)       # give agent JITO
+            _fund(chain, validator, agent, 50.0)       # give agent NOVA
 
             log_tx = make_agent_activity_log_tx(
                 agent, "agent-001", "task_completed", success=True, note="basic test"

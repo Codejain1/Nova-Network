@@ -1,4 +1,4 @@
-"""Wallet creation and management for JITO."""
+"""Wallet creation and management for NOVA."""
 import json
 import os
 from typing import Dict
@@ -8,7 +8,7 @@ from .crypto import create_wallet as _create_wallet
 
 def create_wallet(label: str = "") -> Dict:
     """
-    Generate a new JITO wallet.
+    Generate a new NOVA wallet.
     Returns dict with: address, public_key (JWK), private_key (JWK), label.
     Requires: pip install cryptography
     """

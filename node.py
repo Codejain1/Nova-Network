@@ -510,7 +510,7 @@ class DualChainNode:
         pass_id = "ACP-" + hashlib.sha256(
             f"{creator_address}:{listing_id}:{asset_id}:{domain_id}:{now}:{len(self.rwa_access_passes)}".encode("utf-8")
         ).hexdigest()[:16]
-        raw_code = "JITO-" + secrets.token_urlsafe(24).replace("-", "").replace("_", "")
+        raw_code = "NOVA-" + secrets.token_urlsafe(24).replace("-", "").replace("_", "")
         salt = secrets.token_bytes(16).hex()
         row = {
             "id": pass_id,
@@ -605,7 +605,7 @@ class DualChainNode:
             ).hexdigest(),
             "deployed_at": now,
             "chain_kind": "private",
-            "standard": "JITO-RWA-20",
+            "standard": "Nova-RWA-20",
             "transferability": "contract-governed",
         }
         replaced = False
@@ -1667,6 +1667,7 @@ class NodeHandler(BaseHTTPRequestHandler):
     app_hub_html: str = ""
     community_html: str = ""
     passport_html: str = ""
+    start_html: str = ""
     jwt_secret: str = ""
     jwt_required: bool = False
     chain_info: Dict[str, Any] = {}
@@ -1679,8 +1680,8 @@ class NodeHandler(BaseHTTPRequestHandler):
     def _rwa_settlement_asset_id(self) -> str:
         public = self.chain_info.get("public_chain", {}) if isinstance(self.chain_info, dict) else {}
         native = public.get("native_token", {}) if isinstance(public, dict) else {}
-        symbol = str(native.get("symbol", "JITO")).strip().upper()
-        return symbol or "JITO"
+        symbol = str(native.get("symbol", "NOVA")).strip().upper()
+        return symbol or "NOVA"
 
     def _rwa_settlement_price_usd(self) -> float:
         return 1.0
@@ -2528,7 +2529,7 @@ class NodeHandler(BaseHTTPRequestHandler):
                     "ok": True,
                     "address": address,
                     "balance": bal,
-                    "token": "JITO",
+                    "token": "NOVA",
                     "exists": address in balance_index,
                     "created_at_block": created_at_block,
                     "tx_count": tx_count,
@@ -2536,9 +2537,9 @@ class NodeHandler(BaseHTTPRequestHandler):
             else:
                 self._send_json({
                     "ok": True,
-                    "network": "JITO Public Network",
+                    "network": "Nova Network",
                     "chain_id": 149,
-                    "token": "JITO",
+                    "token": "NOVA",
                     "block_height": height,
                     "total_supply": total_supply,
                     "circulating": circulating,
@@ -2554,10 +2555,10 @@ class NodeHandler(BaseHTTPRequestHandler):
 
         if path == "/":
             self._send_json({
-                "name": "JITO Blockchain API",
-                "network": "JITO Public Network",
+                "name": "Nova Blockchain API",
+                "network": "Nova Network",
                 "chain_id": 149,
-                "token": "JITO",
+                "token": "NOVA",
                 "block_time_seconds": 5,
                 "docs": "https://explorer.flowpe.io/explorer",
                 "endpoints": {
@@ -2568,7 +2569,7 @@ class NodeHandler(BaseHTTPRequestHandler):
                         "GET /status": "Full node status",
                     },
                     "balances": {
-                        "GET /public/balance?address=W...": "JITO balance for address",
+                        "GET /public/balance?address=W...": "NOVA balance for address",
                         "GET /scan/address?address=W...": "Full address history",
                         "GET /public/supply": "Total supply, circulating, treasury",
                     },
@@ -2594,8 +2595,8 @@ class NodeHandler(BaseHTTPRequestHandler):
                     },
                     "prices": {
                         "GET /public/prices": "All token prices",
-                        "GET /public/price?symbol=JITO": "Single token price",
-                        "GET /scan/prices/history?symbol=JITO": "Price history",
+                        "GET /public/price?symbol=NOVA": "Single token price",
+                        "GET /scan/prices/history?symbol=NOVA": "Price history",
                     },
                     "zk_proofs": {
                         "GET /public/zk/circuits": "Registered ZK circuits",
@@ -2633,6 +2634,10 @@ class NodeHandler(BaseHTTPRequestHandler):
 
         if path == "/passport":
             self._send_html(self.passport_html)
+            return
+
+        if path == "/start":
+            self._send_html(self.start_html)
             return
 
         if path == "/rwa":
@@ -3251,7 +3256,7 @@ class NodeHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/public/validator/stats":
-            # Per-validator performance: blocks mined, JITO earned, uptime, last active
+            # Per-validator performance: blocks mined, NOVA earned, uptime, last active
             with self.node.lock:
                 active = sorted(self.node.public_chain.validators)
                 rep = dict(self.node.public_chain.reputation_index)
@@ -3266,7 +3271,7 @@ class NodeHandler(BaseHTTPRequestHandler):
                 stats.append({
                     "address": addr,
                     "blocks_mined": blocks_mined,
-                    "total_jito_earned": round(r.get("total_jito_earned", 0.0), 4),
+                    "total_nova_earned": round(r.get("total_nova_earned", 0.0), 4),
                     "last_active": r.get("last_active", 0.0),
                     "validator_since": r.get("validator_since"),
                     "stake": float(cand.get("stake", 0.0)),
@@ -3322,7 +3327,7 @@ class NodeHandler(BaseHTTPRequestHandler):
                 "treasury": treasury,
                 "blocks_mined": blocks,
                 "reward_per_block": reward,
-                "token_symbol": "JITO",
+                "token_symbol": "NOVA",
             })
             return
 
@@ -4920,6 +4925,42 @@ class NodeHandler(BaseHTTPRequestHandler):
                     self.node.broadcast_snapshot(source=self.base_url)
                 return
 
+            if path == "/public/agent/log/batch":
+                wallet_name = str(payload.get("wallet_name", "")).strip()
+                agent_id = str(payload.get("agent_id", "")).strip()
+                agent = str(payload.get("agent", "")).strip()
+                logs = list(payload.get("logs", []))
+                if not agent_id or not logs:
+                    raise ValueError("agent_id and logs are required.")
+                tx_ids = []
+                with self.node.lock:
+                    wallet = self._load_signing_wallet(wallet_name or agent_id)
+                    for log_entry in logs:
+                        action_type = str(log_entry.get("action_type", "activity")).strip()
+                        tx = make_agent_activity_log_tx(
+                            wallet,
+                            agent_id=agent_id,
+                            action_type=action_type,
+                            input_hash=str(log_entry.get("input_hash", "")),
+                            output_hash=str(log_entry.get("output_hash", "")),
+                            evidence_url=str(log_entry.get("evidence_url", "")),
+                            success=bool(log_entry.get("success", True)),
+                            duration_ms=int(log_entry.get("duration_ms", 0)),
+                            tags=list(log_entry.get("tags") or []),
+                            external_ref=str(log_entry.get("external_ref", "")),
+                            note=str(log_entry.get("note", "")),
+                            stake_locked=float(log_entry.get("stake_locked", 0.0)),
+                        )
+                        self.node.public_chain.add_transaction(tx)
+                        tx_ids.append(tx["id"])
+                self._send_json({"ok": True, "tx_ids": tx_ids, "count": len(tx_ids)})
+                self.node.publish_event("agent.activity.batch", {
+                    "agent_id": agent_id, "count": len(tx_ids),
+                })
+                if not propagated:
+                    self.node.broadcast_snapshot(source=self.base_url)
+                return
+
             if path == "/public/identity/verify":
                 wallet_name = str(payload.get("wallet_name", "")).strip()
                 target = str(payload.get("target_address", "")).strip()
@@ -5546,7 +5587,7 @@ class NodeHandler(BaseHTTPRequestHandler):
                     "asset_type": "settlement_token",
                     "token_symbol": asset_id,
                     "price_usd": self._rwa_settlement_price_usd(),
-                    "issuer_entity": "JITO Treasury",
+                    "issuer_entity": "Nova Treasury",
                     "issued_at": time.time(),
                 }
                 metadata_hash = self._compute_metadata_hash(metadata)
@@ -5736,7 +5777,7 @@ class NodeHandler(BaseHTTPRequestHandler):
                     ).strip().upper() or self._rwa_settlement_asset_id()
                     settlement_currency = str(listing.get("currency", settlement_asset_id)).strip().upper() or settlement_asset_id
                     gross_trade_value = quantity * float(listing.get("price_per_unit", 0.0))
-                    if settlement_currency in {settlement_asset_id, "JITO"}:
+                    if settlement_currency in {settlement_asset_id, "NOVA"}:
                         settlement_amount = gross_trade_value
                     elif settlement_currency == "USD":
                         peg = self._rwa_settlement_price_usd()
@@ -6534,9 +6575,9 @@ def run_node(
     public_faucet_cooldown_seconds: float = 3600.0,
     public_faucet_daily_cap: float = 0.0,
     mainnet_hardening: bool = False,
-    chain_name: str = "JITO Public Network",
-    token_name: str = "JITO",
-    token_symbol: str = "JITO",
+    chain_name: str = "Nova Network",
+    token_name: str = "NOVA",
+    token_symbol: str = "NOVA",
     token_decimals: int = 18,
     chain_logo_url: str = "",
     token_logo_url: str = "",
@@ -6624,6 +6665,7 @@ def run_node(
     NodeHandler.app_hub_html = load_html("app_hub_ui.html", "App Hub")
     NodeHandler.community_html = load_html("community_ui.html", "Community")
     NodeHandler.passport_html = load_html("passport_ui.html", "Passport")
+    NodeHandler.start_html = load_html("start_ui.html", "Get Started")
     NodeHandler.jwt_secret = jwt_secret
     NodeHandler.jwt_required = jwt_required
     NodeHandler.rate_limit_per_minute = max(0, int(rate_limit_per_minute))
@@ -6787,9 +6829,9 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help="Enforce production guardrails: poa + >=2 validators + rotation + faucet disabled",
     )
-    parser.add_argument("--chain-name", default="JITO Public Network")
-    parser.add_argument("--token-name", default="JITO")
-    parser.add_argument("--token-symbol", default="JITO")
+    parser.add_argument("--chain-name", default="Nova Network")
+    parser.add_argument("--token-name", default="NOVA")
+    parser.add_argument("--token-symbol", default="NOVA")
     parser.add_argument("--token-decimals", type=int, default=18)
     parser.add_argument("--chain-logo-url", default="", help="Brand logo URL for explorer/scanner")
     parser.add_argument("--token-logo-url", default="", help="Native token logo URL for explorer/scanner")

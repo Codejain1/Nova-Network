@@ -1,4 +1,4 @@
-"""TypedDicts for JITO SDK objects."""
+"""TypedDicts for NOVA SDK objects."""
 from typing import Any, Dict, List, Optional
 try:
     from typing import TypedDict

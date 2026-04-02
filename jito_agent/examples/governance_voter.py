@@ -7,7 +7,7 @@ Usage:
 import argparse
 import time
 
-from jito_agent import JitoClient, load_wallet
+from jito_agent import NovaClient, load_wallet
 
 
 def main():
@@ -20,7 +20,7 @@ def main():
     args = parser.parse_args()
 
     wallet = load_wallet(args.wallet)
-    client = JitoClient(args.node)
+    client = NovaClient(args.node)
     vote_bool = args.vote == "yes"
     voted = set()
 

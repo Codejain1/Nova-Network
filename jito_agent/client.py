@@ -1,4 +1,4 @@
-"""Low-level HTTP client for the JITO node API."""
+"""Low-level HTTP client for the NOVA node API."""
 import json
 import urllib.request
 import urllib.error
@@ -20,14 +20,17 @@ from .crypto import (
 )
 
 
-class JitoClient:
+class NovaClient:
     def __init__(self, node_url: str = "https://explorer.flowpe.io", auth_token: str = ""):
         self.node_url = node_url.rstrip("/")
         self.auth_token = auth_token
 
+    _UA = "jito-agent/0.5.0 (Nova Network; +https://explorer.flowpe.io)"
+
     def _get(self, path: str) -> Dict:
         url = f"{self.node_url}{path}"
         req = urllib.request.Request(url)
+        req.add_header("User-Agent", self._UA)
         if self.auth_token:
             req.add_header("Authorization", f"Bearer {self.auth_token}")
         try:
@@ -41,6 +44,7 @@ class JitoClient:
         body = json.dumps(data).encode()
         req = urllib.request.Request(url, data=body, method="POST")
         req.add_header("Content-Type", "application/json")
+        req.add_header("User-Agent", self._UA)
         if self.auth_token:
             req.add_header("Authorization", f"Bearer {self.auth_token}")
         try:

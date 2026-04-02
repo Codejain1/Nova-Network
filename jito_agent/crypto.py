@@ -1,4 +1,4 @@
-"""Cryptographic primitives and transaction builders for the JITO chain."""
+"""Cryptographic primitives and transaction builders for the Nova chain."""
 import base64
 import hashlib
 import json
@@ -51,7 +51,7 @@ def address_from_public_key(public_key: Dict[str, Any]) -> str:
 
 
 def create_wallet(label: str = "") -> Dict[str, Any]:
-    """Generate a new JITO wallet with Ed25519 keys in JWK format."""
+    """Generate a new NOVA wallet with Ed25519 keys in JWK format."""
     if not _HAS_CRYPTO:
         raise ImportError("pip install cryptography")
     sk = ed25519.Ed25519PrivateKey.generate()

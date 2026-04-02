@@ -20,7 +20,7 @@ from hexbytes import HexBytes
 
 
 SYSTEM_SENDER = "SYSTEM"
-MIN_VALIDATOR_STAKE: float = 500.0       # JITO required to nominate as validator candidate
+MIN_VALIDATOR_STAKE: float = 500.0       # NOVA required to nominate as validator candidate
 VALIDATOR_VOTE_THRESHOLD: int = 3        # votes needed for auto-promotion to active validator set
 VALIDATOR_UNBONDING_BLOCKS: int = 100    # blocks before stake is released after unstake
 AGENT_CHALLENGE_WINDOW_BLOCKS: int = 50   # blocks after which an unresolved challenge auto-slashes agent
@@ -1208,10 +1208,10 @@ def make_agent_activity_log_tx(
     stake_locked: float = 0.0,
 ) -> Dict[str, Any]:
     """
-    Log any off-chain (or cross-platform) agent activity to JITO chain.
+    Log any off-chain (or cross-platform) agent activity to Nova chain.
     Builds portable, stake-backed reputation regardless of where work happens.
 
-    stake_locked: JITO locked against this log. Higher stake → higher trust tier.
+    stake_locked: NOVA locked against this log. Higher stake → higher trust tier.
                   Can be challenged — fake logs are expensive.
     evidence_url: where the off-chain evidence lives (IPFS, S3, public URL).
                   Only the hash goes on-chain; content stays off-chain.
@@ -1410,7 +1410,7 @@ def make_agent_param_endorse_tx(
 
 def make_validator_nominate_tx(wallet: Dict, stake_amount: float = MIN_VALIDATOR_STAKE) -> Dict:
     if float(stake_amount) < MIN_VALIDATOR_STAKE:
-        raise ValueError(f"Minimum validator stake is {MIN_VALIDATOR_STAKE} JITO")
+        raise ValueError(f"Minimum validator stake is {MIN_VALIDATOR_STAKE} NOVA")
     payload = {
         "type": "validator_nominate",
         "candidate": wallet["address"],
@@ -2974,6 +2974,10 @@ class PublicPaymentChain:
         self._ensure_reputation(agent_addr)
         r = self.reputation_index[agent_addr]
         r["activity_logs"] = r.get("activity_logs", 0) + 1
+        # Update success rate (rolling)
+        total = r.get("activity_logs", 1)
+        prev_rate = r.get("success_rate", 1.0)
+        r["success_rate"] = round(((prev_rate * (total - 1)) + (1.0 if success else 0.0)) / total, 3)
         if stake > 0:
             r["stake_backed_logs"] = r.get("stake_backed_logs", 0) + 1
         if tx.get("evidence_url"):
@@ -3025,6 +3029,22 @@ class PublicPaymentChain:
         self._add_activity(
             f"[{icon}] Agent {agent_id or agent_addr[:12]} logged: {action_type}{platform_tag}", ts
         )
+
+    def _apply_agent_activity_log_batch_tx(self, tx: Dict[str, Any]) -> None:
+        """Apply a batch of activity logs submitted as a single transaction."""
+        logs = tx.get("logs", [])
+        for log_entry in logs:
+            # Merge batch-level fields as defaults for each log entry
+            merged = {
+                "type": "agent_activity_log",
+                "agent": tx.get("agent", ""),
+                "agent_id": tx.get("agent_id", ""),
+                "pubkey": tx.get("pubkey", ""),
+                "id": log_entry.get("id", ""),
+                "schema_version": tx.get("schema_version", "1.0"),
+                **log_entry,
+            }
+            self._apply_agent_activity_log_tx(merged)
 
     def _apply_agent_challenge_tx(self, tx: Dict[str, Any]) -> None:
         log_id = str(tx.get("log_id", "")).strip()
@@ -3250,6 +3270,11 @@ class PublicPaymentChain:
                     self._ensure_reputation(agent_addr)
                     r = self.reputation_index[agent_addr]
                     r["attested_logs"] = r.get("attested_logs", 0) + 1
+                    # Weight attestation by attester's trust score
+                    attester_rep = self.reputation_index.get(attester, {})
+                    attester_score = float(attester_rep.get("trust_score", 0.1))
+                    weight = max(0.1, attester_score)  # minimum weight 0.1 even for new agents
+                    r["weighted_attestation_score"] = round(r.get("weighted_attestation_score", 0.0) + weight * 0.1, 3)
                     self._compute_trust_score(agent_addr)
 
     def _ensure_reputation(self, address: str) -> None:
@@ -3260,7 +3285,7 @@ class PublicPaymentChain:
                 "badges": [],
                 "history": [],
                 "blocks_mined": 0,
-                "total_jito_earned": 0.0,
+                "total_nova_earned": 0.0,
                 "tasks_completed": 0,
                 "tasks_disputed": 0,
                 "quality_scores": [],
@@ -3278,6 +3303,9 @@ class PublicPaymentChain:
                 "trust_score": 0.0,
                 "trust_tier": "unverified",
                 "collab_sessions": 0,
+                "success_rate": 1.0,
+                "weighted_attestation_score": 0.0,
+                "evidence_coverage": 0.0,
             }
 
     def _compute_trust_score(self, addr: str) -> None:
@@ -3290,23 +3318,48 @@ class PublicPaymentChain:
         evidence_backed = r.get("evidence_backed_logs", 0)
         challenged = r.get("challenged_unanswered_logs", 0)
         slashed = r.get("slashed_logs", 0)
+
+        import math
+
+        # Read governance-controlled weights
         w = self.agent_trust_params.get("trust_score_weights", {})
-        score = round(
-            logs * w.get("activity_log", 0.1)
-            + attested * w.get("attested_log", 0.4)
-            + stake_backed * w.get("stake_backed_log", 0.3)
-            + evidence_backed * w.get("evidence_backed_log", 0.2)
-            + challenged * w.get("challenged_unanswered_log", -1.5)
-            + slashed * w.get("slashed_log", -3.0),
-            2
-        )
+        w_activity = float(w.get("activity_log", 0.1))
+        w_attested = float(w.get("attested_log", 0.4))
+        w_stake = float(w.get("stake_backed_log", 0.3))
+        w_evidence = float(w.get("evidence_backed_log", 0.2))
+        w_challenged = float(w.get("challenged_unanswered_log", -1.5))
+        w_slashed = float(w.get("slashed_log", -3.0))
+
+        # Layer 1 — Activity: diminishing returns on raw log count (stops spam)
+        base_score = math.log(logs + 1, 10) * w_activity * 5.0 if logs > 0 else 0.0
+
+        # Layer 2 — Quality: success rate × attested logs
+        success_rate = float(r.get("success_rate", 1.0))
+        quality_score = success_rate * attested * w_attested * 2.0
+
+        # Layer 3 — Network: attestations weighted by attester trust score
+        network_score = float(r.get("weighted_attestation_score", 0.0))
+
+        # Layer 4 — Evidence: what % of logs have proof
+        evidence_coverage = (evidence_backed / logs) if logs > 0 else 0.0
+        evidence_score = evidence_coverage * w_evidence * 10.0
+
+        # Layer 5 — Stake signal
+        stake_score = math.log(stake_backed + 1, 10) * w_stake if stake_backed > 0 else 0.0
+
+        # Penalties
+        penalty = challenged * abs(w_challenged) + slashed * abs(w_slashed)
+
+        score = round(base_score + quality_score + network_score + evidence_score + stake_score - penalty, 2)
+
+        # Trust tier — now requires evidence coverage thresholds
         if slashed > 0:
             tier = "slashed"
         elif challenged > 0:
             tier = "disputed"
-        elif stake_backed >= 1:
+        elif stake_backed >= 1 and evidence_coverage >= 0.2:
             tier = "stake-backed"
-        elif evidence_backed >= 1 and attested >= 1:
+        elif evidence_backed >= 2 and attested >= 1 and evidence_coverage >= 0.3:
             tier = "evidence-attested"
         elif attested >= 1:
             tier = "attested"
@@ -3314,8 +3367,11 @@ class PublicPaymentChain:
             tier = "self-reported"
         else:
             tier = "unverified"
+
         r["trust_score"] = max(0.0, score)
         r["trust_tier"] = tier
+        r["evidence_coverage"] = round(evidence_coverage, 3)
+        r["success_rate"] = success_rate
 
     def _add_reputation(self, address: str, delta: float, reason: str, ts: float) -> None:
         self._ensure_reputation(address)
@@ -3549,7 +3605,7 @@ class PublicPaymentChain:
         }
         self.balances[payload["owner"]] = self.get_balance(payload["owner"]) - payload["total_reward"]
         self._add_reputation(payload["owner"], 5.0, "pipeline_created", payload["ts"])
-        self._add_activity(f"🔗 Pipeline: {payload['title']} ({len(payload['steps'])} steps, {payload['total_reward']} JITO)", payload["ts"])
+        self._add_activity(f"🔗 Pipeline: {payload['title']} ({len(payload['steps'])} steps, {payload['total_reward']} NOVA)", payload["ts"])
 
     def _apply_pipeline_step_complete_tx(self, payload: Dict, block_height: int) -> None:
         pipeline = self.pipeline_registry[payload["pipeline_id"]]
@@ -3752,7 +3808,7 @@ class PublicPaymentChain:
         if "stake_amount" in payload:
             stake = float(payload["stake_amount"])
             if stake < MIN_VALIDATOR_STAKE:
-                raise ValueError(f"validator_nominate: stake {stake} below minimum {MIN_VALIDATOR_STAKE} JITO")
+                raise ValueError(f"validator_nominate: stake {stake} below minimum {MIN_VALIDATOR_STAKE} NOVA")
 
     def _validate_validator_unstake_tx(self, payload: Dict, signature: str, public_key: Dict) -> None:
         for f in ["type", "candidate", "ts", "nonce"]:
@@ -3833,7 +3889,7 @@ class PublicPaymentChain:
         else:
             self.balance_index[owner] = self.get_balance(owner) - reward
         self._add_reputation(owner, 2.0, "task_created", payload["ts"])
-        self._add_activity(f"📋 New task: {payload['title']} (reward: {reward} JITO)", payload["ts"])
+        self._add_activity(f"📋 New task: {payload['title']} (reward: {reward} NOVA)", payload["ts"])
 
     def _apply_task_complete_tx(self, payload: Dict, block_height: int) -> None:
         task = self.task_registry[payload["task_id"]]
@@ -3951,9 +4007,9 @@ class PublicPaymentChain:
         # Permissionless admission: sufficient stake → immediate promotion, no votes needed
         if stake >= MIN_VALIDATOR_STAKE and addr not in self.validators:
             self.validators.add(addr)
-            self._add_activity(f"✅ {addr[:12]}... joined validator set (stake: {stake} JITO)", payload["ts"])
+            self._add_activity(f"✅ {addr[:12]}... joined validator set (stake: {stake} NOVA)", payload["ts"])
         else:
-            self._add_activity(f"🗳️ {addr[:12]}... nominated as validator candidate (stake: {stake} JITO)", payload["ts"])
+            self._add_activity(f"🗳️ {addr[:12]}... nominated as validator candidate (stake: {stake} NOVA)", payload["ts"])
 
     def _apply_validator_election_vote_tx(self, payload: Dict, block_height: int) -> None:
         candidate_addr = payload["candidate"]
@@ -4186,6 +4242,8 @@ class PublicPaymentChain:
                     self._apply_agent_tx(tx)
                 elif tx.get("type") == "agent_activity_log":
                     self._apply_agent_activity_log_tx(tx)
+                elif tx.get("type") == "agent_activity_log_batch":
+                    self._apply_agent_activity_log_batch_tx(tx)
                 elif tx.get("type") == "agent_challenge":
                     self._apply_agent_challenge_tx(tx)
                 elif tx.get("type") == "agent_challenge_resolve":
@@ -4271,8 +4329,8 @@ class PublicPaymentChain:
                 r["blocks_mined"] = r.get("blocks_mined", 0) + 1
                 r["last_active"] = max(r.get("last_active", 0.0), block.timestamp)
                 if reward_txs:
-                    r["total_jito_earned"] = round(
-                        r.get("total_jito_earned", 0.0) + float(reward_txs[0].get("amount", 0.0)), 8
+                    r["total_nova_earned"] = round(
+                        r.get("total_nova_earned", 0.0) + float(reward_txs[0].get("amount", 0.0)), 8
                     )
                 if r.get("validator_since") is None and miner in self.validators:
                     r["validator_since"] = block.timestamp
@@ -4443,6 +4501,8 @@ class PublicPaymentChain:
             if not self._validate_agent_activity_log_tx(tx):
                 raise ValueError("Invalid agent activity log transaction.")
             self._apply_agent_activity_log_tx(tx)
+        elif tx_type == "agent_activity_log_batch":
+            self._apply_agent_activity_log_batch_tx(tx)
         elif tx_type == "agent_challenge":
             if not self._validate_agent_challenge_tx(tx):
                 raise ValueError("Invalid agent challenge transaction.")
@@ -4665,12 +4725,12 @@ class PublicPaymentChain:
             r = self.reputation_index[miner_address]
             r["blocks_mined"] = r.get("blocks_mined", 0) + 1
             r["last_active"] = block.timestamp
-            # Track JITO earned from this block's reward tx
+            # Track NOVA earned from this block's reward tx
             reward_txs = [t for t in block.transactions
                           if t.get("type") == "payment" and t.get("sender") == SYSTEM_SENDER]
             if reward_txs:
-                r["total_jito_earned"] = round(
-                    r.get("total_jito_earned", 0.0) + float(reward_txs[0].get("amount", 0.0)), 8
+                r["total_nova_earned"] = round(
+                    r.get("total_nova_earned", 0.0) + float(reward_txs[0].get("amount", 0.0)), 8
                 )
             if r.get("validator_since") is None and miner_address in self.validators:
                 r["validator_since"] = block.timestamp

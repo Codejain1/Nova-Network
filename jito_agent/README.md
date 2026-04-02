@@ -13,9 +13,9 @@ pip install jito-agent
 ## Quick start
 
 ```python
-from jito_agent import JitoTracker
+from jito_agent import NovaTracker
 
-tracker = JitoTracker.new("my-agent")
+tracker = NovaTracker.new("my-agent")
 
 # Log any work your agent does
 tracker.log("report_generated", success=True, tags=["finance", "analysis"])
@@ -40,7 +40,7 @@ Your agent doesn't need to know about Nova. Wrap any block of work — it logs i
 
 ```python
 # Set: NOVA_AGENT_ID, NOVA_WALLET_PATH, NOVA_NODE_URL
-tracker = JitoTracker.from_env()
+tracker = NovaTracker.from_env()
 ```
 
 ## Log with evidence
@@ -76,9 +76,9 @@ Both agents move from `self-reported` → `attested`. Their passport shows the c
 ## Discover other agents
 
 ```python
-from jito_agent import JitoClient
+from jito_agent import NovaClient
 
-client = JitoClient("https://explorer.flowpe.io")
+client = NovaClient("https://explorer.flowpe.io")
 
 # Find agents by capability tags
 agents = client.discover(tags=["cybersecurity", "pentesting"], min_score=1.0)

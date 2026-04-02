@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JITO RWA Market</title>
+  <title>Nova RWA Market</title>
   <style>
     :root {
       --bg: #f4f7fb;
@@ -79,7 +79,7 @@
 <body class="quick-mode">
   <div class="wrap">
     <section class="hero">
-      <h1>JITO Private RWA Market</h1>
+      <h1>Nova Private RWA Market</h1>
       <p>List tokenized assets, share access IDs with investors, and settle trades instantly on private chain.</p>
       <div class="pill">Gas Model: 0 gas on private chain</div>
       <div class="top-nav">
@@ -106,7 +106,7 @@
 
       <div class="card span-12">
         <div class="friendly-tip">
-          <strong>Trade flow:</strong> 1) log in or onboard user, 2) fund buyer with settlement token (JITO), 3) create listing,
+          <strong>Trade flow:</strong> 1) log in or onboard user, 2) fund buyer with settlement token (NOVA), 3) create listing,
           4) buy listing directly or with Access ID for invite-only sales.
         </div>
       </div>
@@ -139,7 +139,7 @@
           </div>
           <div class="span-2">
             <label>Access ID (optional)</label>
-            <input id="quickAccessCode" placeholder="JITO-..." />
+            <input id="quickAccessCode" placeholder="NOVA-..." />
           </div>
           <div class="span-12">
             <div id="quickPreview" class="small">Choose listing to see settlement amount.</div>
@@ -269,7 +269,7 @@
             <input id="walletPanelAddress" readonly />
           </div>
           <div class="span-3">
-            <label>Public JITO Balance</label>
+            <label>Public NOVA Balance</label>
             <input id="walletPanelPublicBalance" readonly />
           </div>
           <div class="span-3">
@@ -336,7 +336,7 @@
           </div>
 
           <div class="span-6">
-            <h3 style="margin:0 0 8px;">Send Public JITO</h3>
+            <h3 style="margin:0 0 8px;">Send Public NOVA</h3>
             <div class="grid">
               <div class="span-8">
                 <label>To (address or EVM:0x...)</label>
@@ -401,7 +401,7 @@
           </div>
           <div class="span-6">
             <label>Currency</label>
-            <input id="listCurrency" value="JITO" />
+            <input id="listCurrency" value="NOVA" />
           </div>
           <div class="span-6">
             <label>Access Mode</label>
@@ -452,7 +452,7 @@
           </div>
           <div class="span-12">
             <label>Access ID (required when listing access mode is access_id)</label>
-            <input id="buyAccessCode" placeholder="JITO-..." />
+            <input id="buyAccessCode" placeholder="NOVA-..." />
           </div>
           <div class="span-12">
             <label>Visibility (optional)</label>
@@ -505,7 +505,7 @@
         <div class="grid">
           <div class="span-3">
             <label>Redeem Access ID</label>
-            <input id="redeemAccessCode" placeholder="JITO-..." />
+            <input id="redeemAccessCode" placeholder="NOVA-..." />
           </div>
           <div class="span-3">
             <label>Buyer Wallet</label>
@@ -527,7 +527,7 @@
       </div>
 
       <div class="card span-12 advanced-zone">
-        <h2 style="margin:0 0 8px;">Fund Buyer With JITO (Settlement Token)</h2>
+        <h2 style="margin:0 0 8px;">Fund Buyer With NOVA (Settlement Token)</h2>
         <div class="grid">
           <div class="span-3">
             <label>Issuer/Treasury Wallet</label>
@@ -546,12 +546,12 @@
             <select id="fundNotaryWallet"></select>
           </div>
           <div class="span-3">
-            <label>Amount (JITO)</label>
+            <label>Amount (NOVA)</label>
             <input id="fundAmount" type="number" min="0" step="0.000001" value="1000" />
           </div>
           <div class="span-3">
             <label>Asset ID</label>
-            <input id="fundAssetId" value="JITO" />
+            <input id="fundAssetId" value="NOVA" />
           </div>
           <div class="span-3">
             <label>Domain</label>
@@ -609,7 +609,7 @@
       const raw = String(err && err.message ? err.message : err || 'Unknown error');
       const text = raw.toLowerCase();
       if (text.includes('invalid settlement transfer transaction')) {
-        return 'Payment could not be validated. Fund buyer with JITO and confirm the buyer can use this listing.';
+        return 'Payment could not be validated. Fund buyer with NOVA and confirm the buyer can use this listing.';
       }
       if (text.includes('invalid asset delivery transaction')) {
         return 'Asset delivery failed. Check seller holdings and listing quantity.';
@@ -843,7 +843,7 @@
 
       $('fundRecipientWallet').value = buyer;
       $('fundAmount').value = String(Number((amount * 1.1).toFixed(6))); // keep small buffer for repeated trades
-      $('fundAssetId').value = 'JITO';
+      $('fundAssetId').value = 'NOVA';
       $('fundDomain').value = 'jito-settlement';
       $('fundContractId').value = 'jito-settlement-v1';
       $('fundIssuerWallet').value = resolveWalletName('issuer1', resolveWalletName('validator1', $('fundIssuerWallet').value));
@@ -890,8 +890,8 @@
         `Gas model: <strong class="ok">${policy.gas_model}</strong>`,
         `Gas / tx: <strong class="ok">${policy.gas_fee_per_tx}</strong>`,
         `Settlement fee / tx: <strong class="ok">${policy.settlement_fee_per_tx}</strong>`,
-        `Settlement token: <strong class="ok">${settlement.asset_id || 'JITO'}</strong>`,
-        `JITO price: <strong class="ok">${fmt(settlement.price_usd || 1, 4)} USD</strong>`,
+        `Settlement token: <strong class="ok">${settlement.asset_id || 'NOVA'}</strong>`,
+        `NOVA price: <strong class="ok">${fmt(settlement.price_usd || 1, 4)} USD</strong>`,
       ].join('<br>');
     }
 
@@ -1187,19 +1187,19 @@
     }
 
     async function fundWallet() {
-      $('fundStatus').textContent = 'Funding wallet with JITO...';
+      $('fundStatus').textContent = 'Funding wallet with NOVA...';
       const body = {
         issuer_wallet_name: $('fundIssuerWallet').value,
         recipient_wallet_name: $('fundRecipientWallet').value,
         validator_wallet_name: $('fundValidatorWallet').value,
         notary_wallet_name: $('fundNotaryWallet').value,
         amount: Number($('fundAmount').value),
-        asset_id: $('fundAssetId').value.trim() || 'JITO',
+        asset_id: $('fundAssetId').value.trim() || 'NOVA',
         domain: $('fundDomain').value.trim() || 'jito-settlement',
         contract_id: $('fundContractId').value.trim() || 'jito-settlement-v1',
       };
       const out = await api('/ui/private/rwa/fund', 'POST', body);
-      $('fundStatus').innerHTML = '<span class="ok">Wallet funded with JITO on private chain.</span>';
+      $('fundStatus').innerHTML = '<span class="ok">Wallet funded with NOVA on private chain.</span>';
       $('resultOut').textContent = pretty(out);
       await refreshDashboard();
     }

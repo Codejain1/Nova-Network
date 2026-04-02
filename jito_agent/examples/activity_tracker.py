@@ -1,5 +1,5 @@
 """
-activity_tracker.py — Log off-chain agent work to JITO for portable reputation.
+activity_tracker.py — Log off-chain agent work to NOVA for portable reputation.
 
 This example shows how ANY agent (LangChain, CrewAI, custom, or even a human
 running scripts) can build verifiable on-chain reputation — without using
@@ -11,10 +11,10 @@ Usage:
 import argparse
 import time
 
-from jito_agent import JitoTracker, load_wallet, create_wallet, save_wallet
+from jito_agent import NovaTracker, load_wallet, create_wallet, save_wallet
 
 
-def simulate_agent_work(tracker: JitoTracker) -> None:
+def simulate_agent_work(tracker: NovaTracker) -> None:
     """Simulates various types of off-chain work being logged."""
 
     print("\n── Example 1: Simple log ────────────────────────────────────")
@@ -80,7 +80,7 @@ def main():
         save_wallet(wallet, args.wallet)
         print(f"Created wallet: {wallet['address']}")
 
-    tracker = JitoTracker(
+    tracker = NovaTracker(
         wallet,
         agent_id=args.agent_id,
         node_url=args.node,

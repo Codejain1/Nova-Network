@@ -1,7 +1,7 @@
 services:
   node:
     build: .
-    container_name: jito-node
+    container_name: nova-node
     restart: unless-stopped
     environment:
       NODE_HOST: 0.0.0.0
@@ -12,9 +12,9 @@ services:
       PUBLIC_CONSENSUS: ${PUBLIC_CONSENSUS:-poa}
       PUBLIC_VALIDATORS: ${PUBLIC_VALIDATORS:-}
       PUBLIC_VALIDATOR_ROTATION: ${PUBLIC_VALIDATOR_ROTATION:-true}
-      CHAIN_NAME: ${CHAIN_NAME:-JITO Public Network}
-      TOKEN_NAME: ${TOKEN_NAME:-JITO}
-      TOKEN_SYMBOL: ${TOKEN_SYMBOL:-JITO}
+      CHAIN_NAME: ${CHAIN_NAME:-Nova Network}
+      TOKEN_NAME: ${TOKEN_NAME:-NOVA}
+      TOKEN_SYMBOL: ${TOKEN_SYMBOL:-NOVA}
       TOKEN_DECIMALS: ${TOKEN_DECIMALS:-18}
       CHAIN_LOGO_URL: ${CHAIN_LOGO_URL:-}
       TOKEN_LOGO_URL: ${TOKEN_LOGO_URL:-}
@@ -49,7 +49,7 @@ services:
 
   gateway:
     build: .
-    container_name: jito-evm-gateway
+    container_name: nova-evm-gateway
     restart: unless-stopped
     depends_on:
       - node

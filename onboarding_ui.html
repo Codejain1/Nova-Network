@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>JITO — Get Started</title>
+  <title>Nova — Get Started</title>
   <style>
     :root {
       --bg:       #0a0a0f;
@@ -330,7 +330,7 @@
 
 <!-- ═══════════════════ NAVBAR ═══════════════════ -->
 <nav class="navbar">
-  <div class="navbar-brand">JITO Blockchain</div>
+  <div class="navbar-brand">Nova Blockchain</div>
   <div class="navbar-links">
     <a href="/community" class="navbar-link">Community Hub</a>
     <a href="/explorer" class="navbar-link">Explorer</a>
@@ -342,7 +342,7 @@
 
   <!-- ═══════════════════ HERO ═══════════════════ -->
   <div class="hero">
-    <div class="hero-title">Get Started with JITO</div>
+    <div class="hero-title">Get Started with NOVA</div>
     <p class="hero-sub">Follow four simple steps to create your wallet, claim tokens, and join the community.</p>
   </div>
 
@@ -376,7 +376,7 @@
     <div class="card">
       <div class="card-title">Step 1 of 4</div>
       <h2>Create Your Wallet</h2>
-      <p class="card-desc">Generate a new JITO wallet or import one you already own. Your wallet is your identity on the blockchain.</p>
+      <p class="card-desc">Generate a new NOVA wallet or import one you already own. Your wallet is your identity on the blockchain.</p>
 
       <!-- Generate new wallet -->
       <button class="btn btn-primary w-full" id="generateBtn" onclick="doGenerateWallet()">
@@ -440,14 +440,14 @@
     <div class="card">
       <div class="card-title">Step 2 of 4</div>
       <h2>Claim Free Tokens</h2>
-      <p class="card-desc">The JITO faucet gives new users 100 JITO tokens to get started. You can only claim once per address.</p>
+      <p class="card-desc">The NOVA faucet gives new users 100 NOVA tokens to get started. You can only claim once per address.</p>
 
       <div class="form-group">
         <label class="form-label">Wallet Address</label>
         <input class="form-control" id="faucetAddress" placeholder="Your wallet address…" oninput="onFaucetAddressChange()" />
         <div class="form-hint">Auto-filled from Step 1 if you created a wallet</div>
       </div>
-      <button class="btn btn-primary w-full" onclick="doClaimFaucet()">Claim 100 JITO</button>
+      <button class="btn btn-primary w-full" onclick="doClaimFaucet()">Claim 100 NOVA</button>
       <div class="form-msg" id="faucetMsg"></div>
 
       <hr class="divider" />
@@ -462,7 +462,7 @@
           <div class="balance-label">Current Balance</div>
           <div style="font-size:11px;color:var(--muted);font-family:'SF Mono',Consolas,monospace;" id="balanceAddr">—</div>
         </div>
-        <div class="balance-value" id="balanceValue">— JITO</div>
+        <div class="balance-value" id="balanceValue">— NOVA</div>
       </div>
       <div class="form-msg" id="balanceMsg"></div>
     </div>
@@ -522,7 +522,7 @@
     <div class="card">
       <div class="card-title">Step 4 of 4</div>
       <h2>You're Ready! 🎉</h2>
-      <p class="card-desc" style="margin-bottom:20px;">Your JITO account is set up. Here's a summary of your details.</p>
+      <p class="card-desc" style="margin-bottom:20px;">Your NOVA account is set up. Here's a summary of your details.</p>
 
       <div class="summary-card" id="summaryCard">
         <div class="summary-row">
@@ -539,7 +539,7 @@
         </div>
       </div>
 
-      <div class="section-label" style="margin-top:24px;">Explore JITO</div>
+      <div class="section-label" style="margin-top:24px;">Explore NOVA</div>
       <div class="quick-links">
         <a href="/community" class="quick-link">🌐 Community Hub</a>
         <a href="/explorer" class="quick-link">🔍 Explorer</a>
@@ -551,12 +551,12 @@
         <div class="action-card">
           <div class="action-icon">📋</div>
           <div class="action-title">Post a Task</div>
-          <div class="action-desc">Create tasks with JITO rewards for AI agents to complete. Build your on-chain track record.</div>
+          <div class="action-desc">Create tasks with NOVA rewards for AI agents to complete. Build your on-chain track record.</div>
         </div>
         <div class="action-card">
           <div class="action-icon">🗳️</div>
           <div class="action-title">Vote on Governance</div>
-          <div class="action-desc">Participate in community proposals that shape the future of the JITO protocol.</div>
+          <div class="action-desc">Participate in community proposals that shape the future of the NOVA protocol.</div>
         </div>
         <div class="action-card">
           <div class="action-icon">🤖</div>
@@ -761,7 +761,7 @@ async function doClaimFaucet() {
   showMsg("faucetMsg", "Claiming…", true);
   try {
     const data = await postJSON("/public/faucet", { address });
-    showMsg("faucetMsg", data.message || data.msg || "100 JITO claimed! Polling for balance…", true);
+    showMsg("faucetMsg", data.message || data.msg || "100 NOVA claimed! Polling for balance…", true);
     document.getElementById("balanceAddress").value = address;
     document.getElementById("nextBtn2").disabled = false;
     startBalancePolling(address);
@@ -779,7 +779,7 @@ async function doCheckBalance() {
     const bal = data.balance ?? data.amount ?? "—";
     _balance = bal;
     document.getElementById("balanceAddr").textContent  = address.slice(0,12) + "…" + address.slice(-6);
-    document.getElementById("balanceValue").textContent = Number(bal).toLocaleString(undefined,{maximumFractionDigits:4}) + " JITO";
+    document.getElementById("balanceValue").textContent = Number(bal).toLocaleString(undefined,{maximumFractionDigits:4}) + " NOVA";
     document.getElementById("balanceBox").classList.add("show");
     document.getElementById("nextBtn2").disabled = false;
   } catch(err) {
@@ -886,10 +886,10 @@ async function populateSummaryStep() {
       const data = await getJSON("/public/balance?address=" + encodeURIComponent(_wallet.address));
       const bal = data.balance ?? data.amount ?? "—";
       document.getElementById("summaryBalance").textContent =
-        Number(bal).toLocaleString(undefined,{maximumFractionDigits:4}) + " JITO";
+        Number(bal).toLocaleString(undefined,{maximumFractionDigits:4}) + " NOVA";
     } catch(_) {
       document.getElementById("summaryBalance").textContent = _balance != null
-        ? Number(_balance).toLocaleString(undefined,{maximumFractionDigits:4}) + " JITO"
+        ? Number(_balance).toLocaleString(undefined,{maximumFractionDigits:4}) + " NOVA"
         : "—";
     }
   } else {
@@ -927,7 +927,7 @@ function startBalancePolling(address) {
       const data = await getJSON("/public/balance?address=" + encodeURIComponent(address));
       const bal = parseFloat(data.balance ?? data.amount ?? 0);
       _balance = bal;
-      balVal.textContent = bal.toLocaleString(undefined, {maximumFractionDigits: 4}) + " JITO";
+      balVal.textContent = bal.toLocaleString(undefined, {maximumFractionDigits: 4}) + " NOVA";
       if (bal > 0 || attempts > 20) clearInterval(_balancePollTimer);
     } catch(_) {}
     if (attempts > 30) clearInterval(_balancePollTimer);

@@ -993,6 +993,15 @@ class DualChainNode:
         self.peer_health.setdefault(peer_url, self._new_peer_health())
         self._save_peers()
 
+    def remove_peer(self, peer: str) -> bool:
+        peer_url = peer.rstrip("/")
+        if peer_url not in self.peers:
+            return False
+        self.peers.discard(peer_url)
+        self.peer_health.pop(peer_url, None)
+        self._save_peers()
+        return True
+
     def _new_peer_health(self) -> Dict[str, Any]:
         return {
             "status": "unknown",
@@ -1215,9 +1224,8 @@ class DualChainNode:
                     self._save_ai_agents()
                     changed["ai_agents"] = True
 
-        for peer in snapshot.get("peers", []):
-            self.peers.add(peer.rstrip("/"))
-        self._save_peers()
+        # Peer lists are NOT propagated from snapshots — each node manages its own
+        # peers via the PEERS env var and /network/peers/add only.
         return changed
 
     def sync_from_peers(self) -> Dict[str, Any]:
@@ -4475,6 +4483,14 @@ class NodeHandler(BaseHTTPRequestHandler):
                     raise ValueError("peer is required")
                 self.node.add_peer(peer)
                 self._send_json({"ok": True, "peers": sorted(self.node.peers)})
+                return
+
+            if path == "/network/peers/remove":
+                peer = str(payload.get("peer", "")).rstrip("/")
+                if not peer:
+                    raise ValueError("peer is required")
+                removed = self.node.remove_peer(peer)
+                self._send_json({"ok": True, "removed": removed, "peers": sorted(self.node.peers)})
                 return
 
             if path == "/network/sync":

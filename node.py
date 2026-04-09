@@ -67,15 +67,18 @@ from dual_chain import (
 )
 
 
+_PEER_UA = "NovaNode/1.0 (peer-sync)"
+
+
 def http_post_json(
     url: str,
     payload: Dict[str, Any],
-    timeout: float = 4.0,
+    timeout: float = 15.0,
     auth_token: str = "",
     ssl_context: Optional[ssl.SSLContext] = None,
 ) -> Dict[str, Any]:
     data = json.dumps(payload).encode("utf-8")
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json", "User-Agent": _PEER_UA}
     if auth_token:
         headers["Authorization"] = f"Bearer {auth_token}"
     req = request.Request(url, data=data, headers=headers, method="POST")
@@ -86,11 +89,11 @@ def http_post_json(
 
 def http_get_json(
     url: str,
-    timeout: float = 4.0,
+    timeout: float = 15.0,
     auth_token: str = "",
     ssl_context: Optional[ssl.SSLContext] = None,
 ) -> Dict[str, Any]:
-    headers = {}
+    headers = {"User-Agent": _PEER_UA}
     if auth_token:
         headers["Authorization"] = f"Bearer {auth_token}"
     req = request.Request(url, headers=headers, method="GET")
@@ -1046,10 +1049,14 @@ class DualChainNode:
             )
             remote_public_height = int(status.get("public_height", -1))
             remote_private_height = int(status.get("private_height", -1))
+            remote_state_version = int(status.get("public_state_version", 0))
             local_public_height = self.public_chain.height - 1
             should_pull = (
                 remote_public_height >= 0
-                and (remote_public_height - local_public_height) >= self.peer_lag_resync_threshold
+                and (
+                    (remote_public_height - local_public_height) >= self.peer_lag_resync_threshold
+                    or (remote_state_version > 0 and remote_state_version > self.public_chain.state_version)
+                )
             )
             if should_pull:
                 snap = http_get_json(
@@ -1262,7 +1269,7 @@ class DualChainNode:
                 http_post_json,
                 f"{peer}/snapshot/push",
                 payload,
-                4.0,
+                20.0,
                 self.peer_token,
                 self.peer_ssl_context,
             )
@@ -2728,6 +2735,7 @@ class NodeHandler(BaseHTTPRequestHandler):
                 mempool_policy = self.node.public_chain.mempool_policy()
             payload = {
                 "public_height": self.node.public_chain.height - 1,
+                "public_state_version": self.node.public_chain.state_version,
                 "private_height": len(self.node.private_chain.chain) - 1,
                 "public_pending": len(self.node.public_chain.pending_transactions),
                 "private_pending": len(self.node.private_chain.pending_transactions),

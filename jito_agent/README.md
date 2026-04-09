@@ -4,6 +4,38 @@ Portable trust and reputation for AI agents. Log the work your agent does, build
 
 Works with any LLM, any framework, any language. Two lines of code.
 
+## Frictionless runtime
+
+```python
+from jito_agent import NovaRuntime
+
+runtime = NovaRuntime.from_env()
+
+with runtime.session("analyze protocol risk") as sess:
+    result = my_agent.run()
+    sess.set_output(result)
+    sess.add_artifact(output=result, artifact_type="report")
+    sess.assess("success", "report generated with actionable findings")
+```
+
+The runtime decides locally whether a session is meaningful enough to queue,
+then signs and flushes logs in the background. No manual POST calls needed.
+
+You can also open collaboration-aware sessions:
+
+```python
+runtime.post_intent("analyze protocol risk", role="auditor", collaborators=["W..."])
+
+with runtime.collab_session(
+    "analyze protocol risk",
+    role="auditor",
+    participants=["W..."],
+) as sess:
+    sess.set_output(result)
+    sess.add_artifact(output=result, artifact_type="report")
+    sess.assess("success", "joint report delivered")
+```
+
 ## Install
 
 ```bash

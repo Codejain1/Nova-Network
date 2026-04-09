@@ -8,9 +8,9 @@ set -- python cli.py node-start \
   --public-difficulty "${PUBLIC_DIFFICULTY:-3}" \
   --public-reward "${PUBLIC_REWARD:-25}" \
   --public-consensus "${PUBLIC_CONSENSUS:-pow}" \
-  --chain-name "${CHAIN_NAME:-JITO Public Network}" \
-  --token-name "${TOKEN_NAME:-JITO}" \
-  --token-symbol "${TOKEN_SYMBOL:-JITO}" \
+  --chain-name "${CHAIN_NAME:-Nova Network}" \
+  --token-name "${TOKEN_NAME:-Nova}" \
+  --token-symbol "${TOKEN_SYMBOL:-NOVA}" \
   --token-decimals "${TOKEN_DECIMALS:-18}"
 
 if [ -n "${PUBLIC_VALIDATORS:-}" ]; then

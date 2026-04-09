@@ -42,7 +42,7 @@ services:
       PEER_SYNC_INTERVAL: ${PEER_SYNC_INTERVAL:-6}
       PEER_LAG_RESYNC_THRESHOLD: ${PEER_LAG_RESYNC_THRESHOLD:-3}
     volumes:
-      - jito_node_data:/data
+      - nova_node_data:/data
       - ${WEBHOOK_WALLET_PATH:-/dev/null}:/app/webhook_wallet.json:ro
     ports:
       - "${NODE_BIND_ADDR:-0.0.0.0}:8000:8000"
@@ -66,4 +66,4 @@ services:
       - "${RPC_BIND_ADDR:-0.0.0.0}:8545:8545"
 
 volumes:
-  jito_node_data:
+  nova_node_data:

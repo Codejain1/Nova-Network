@@ -56,7 +56,7 @@ NODE_NAME=my-validator-node
 from jito_agent import create_wallet, save_wallet
 
 wallet = create_wallet(label="my-validator")
-save_wallet(wallet, "~/.jito/validator.json")
+save_wallet(wallet, "~/.nova/validator.json")
 print("Validator address:", wallet["address"])
 ```
 

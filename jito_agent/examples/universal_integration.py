@@ -19,6 +19,16 @@ Then in any Python agent — 2 lines:
     tracker = NovaTracker.from_env()
     tracker.log("task_completed", success=True)
 
+Or use the frictionless runtime:
+
+    from jito_agent import NovaRuntime
+    runtime = NovaRuntime.from_env()
+    with runtime.session("analyze this document") as sess:
+        result = my_agent.run(...)
+        sess.set_output(result)
+        sess.add_artifact(output=result, artifact_type="report")
+        sess.assess("success", "document analyzed successfully")
+
 ────────────────────────────────────────────────────────────────────────────
 PATTERN 2: Manual setup (custom agents, raw API calls)
 ────────────────────────────────────────────────────────────────────────────

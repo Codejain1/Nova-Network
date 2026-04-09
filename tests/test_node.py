@@ -1,3 +1,4 @@
+import json
 import tempfile
 import time
 import unittest
@@ -226,6 +227,166 @@ class NodeFeatureTests(unittest.TestCase):
             finally:
                 node.stop_auto_mining()
                 node.stop_background_workers()
+
+    def test_pruned_public_chain_reload_keeps_full_height_and_can_continue_mining(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            validator = create_wallet("validator")
+            node = DualChainNode(
+                data_dir=tmp,
+                public_difficulty=1,
+                public_reward=5.0,
+                public_consensus="poa",
+                public_validators=[validator["address"]],
+                public_validator_rotation=False,
+            )
+            try:
+                for _ in range(520):
+                    node.public_chain.mine_pending_transactions(validator["address"])
+                self.assertEqual(node.public_chain.height - 1, 520)
+            finally:
+                node.stop_background_workers()
+
+            reloaded = DualChainNode(
+                data_dir=tmp,
+                public_difficulty=1,
+                public_reward=5.0,
+                public_consensus="poa",
+                public_validators=[validator["address"]],
+                public_validator_rotation=False,
+            )
+            try:
+                self.assertEqual(reloaded.public_chain.height - 1, 520)
+                self.assertEqual(len(reloaded.public_chain.chain), 500)
+                self.assertGreater(reloaded.public_chain.chain[0].index, 0)
+                self.assertEqual(reloaded.public_chain.chain[-1].index, 520)
+
+                block = reloaded.public_chain.mine_pending_transactions(validator["address"])
+                self.assertEqual(block.index, 521)
+                self.assertEqual(reloaded.public_chain.height - 1, 521)
+                self.assertTrue(reloaded.public_chain.is_valid())
+            finally:
+                reloaded.stop_background_workers()
+
+            reloaded_again = DualChainNode(
+                data_dir=tmp,
+                public_difficulty=1,
+                public_reward=5.0,
+                public_consensus="poa",
+                public_validators=[validator["address"]],
+                public_validator_rotation=False,
+            )
+            try:
+                self.assertEqual(reloaded_again.public_chain.height - 1, 521)
+                self.assertEqual(reloaded_again.public_chain.chain[-1].index, 521)
+                self.assertTrue(reloaded_again.public_chain.is_valid())
+            finally:
+                reloaded_again.stop_background_workers()
+
+    def test_pruned_public_chain_preserves_supply_and_tx_counters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            validator_1 = create_wallet("validator1")
+            validator_2 = create_wallet("validator2")
+            node = DualChainNode(
+                data_dir=tmp,
+                public_difficulty=1,
+                public_reward=25.0,
+                public_consensus="poa",
+                public_validators=[validator_1["address"], validator_2["address"]],
+                public_validator_rotation=True,
+            )
+            try:
+                for _ in range(520):
+                    node.public_chain.mine_pending_transactions(node.public_chain.expected_next_validator())
+                expected_supply = 520 * 25.0
+                self.assertEqual(node.public_chain.blocks_mined_total(), 520)
+                self.assertEqual(node.public_chain.total_confirmed_public_transactions(), 520)
+                self.assertAlmostEqual(node.public_chain.total_minted_supply(), expected_supply)
+                self.assertAlmostEqual(
+                    sum(node.public_chain.balance_index.values()) + node.public_chain.treasury_balance,
+                    expected_supply,
+                )
+            finally:
+                node.stop_background_workers()
+
+            reloaded = DualChainNode(
+                data_dir=tmp,
+                public_difficulty=1,
+                public_reward=25.0,
+                public_consensus="poa",
+                public_validators=[validator_1["address"], validator_2["address"]],
+                public_validator_rotation=True,
+            )
+            try:
+                self.assertEqual(reloaded.public_chain.blocks_mined_total(), 520)
+                self.assertEqual(reloaded.public_chain.total_confirmed_public_transactions(), 520)
+                self.assertAlmostEqual(reloaded.public_chain.total_minted_supply(), 520 * 25.0)
+                self.assertAlmostEqual(
+                    sum(reloaded.public_chain.balance_index.values()) + reloaded.public_chain.treasury_balance,
+                    520 * 25.0,
+                )
+                self.assertTrue(reloaded.public_chain.is_valid())
+                self.assertAlmostEqual(reloaded.public_chain.total_minted_supply(), 520 * 25.0)
+                self.assertAlmostEqual(
+                    sum(reloaded.public_chain.balance_index.values()) + reloaded.public_chain.treasury_balance,
+                    520 * 25.0,
+                )
+
+                next_validator = reloaded.public_chain.expected_next_validator()
+                reloaded.public_chain.mine_pending_transactions(next_validator)
+
+                self.assertEqual(reloaded.public_chain.blocks_mined_total(), 521)
+                self.assertEqual(reloaded.public_chain.total_confirmed_public_transactions(), 521)
+                self.assertAlmostEqual(reloaded.public_chain.total_minted_supply(), 521 * 25.0)
+                self.assertAlmostEqual(
+                    sum(reloaded.public_chain.balance_index.values()) + reloaded.public_chain.treasury_balance,
+                    521 * 25.0,
+                )
+                self.assertAlmostEqual(
+                    reloaded.public_chain.get_balance(next_validator),
+                    261 * 22.5,
+                )
+            finally:
+                reloaded.stop_background_workers()
+
+    def test_pruned_public_chain_backfills_metric_fields_on_reload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            validator_1 = create_wallet("validator1")
+            validator_2 = create_wallet("validator2")
+            node = DualChainNode(
+                data_dir=tmp,
+                public_difficulty=1,
+                public_reward=25.0,
+                public_consensus="poa",
+                public_validators=[validator_1["address"], validator_2["address"]],
+                public_validator_rotation=True,
+            )
+            try:
+                for _ in range(520):
+                    node.public_chain.mine_pending_transactions(node.public_chain.expected_next_validator())
+            finally:
+                node.stop_background_workers()
+
+            state_path = f"{tmp}/public_chain.json"
+            with open(state_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            data.pop("public_tx_count_total", None)
+            data.pop("total_minted_supply", None)
+            with open(state_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, separators=(",", ":"))
+
+            reloaded = DualChainNode(
+                data_dir=tmp,
+                public_difficulty=1,
+                public_reward=25.0,
+                public_consensus="poa",
+                public_validators=[validator_1["address"], validator_2["address"]],
+                public_validator_rotation=True,
+            )
+            try:
+                self.assertEqual(reloaded.public_chain.total_confirmed_public_transactions(), 520)
+                self.assertAlmostEqual(reloaded.public_chain.total_minted_supply(), 520 * 25.0)
+            finally:
+                reloaded.stop_background_workers()
 
     def test_mainnet_hardening_requires_two_validators_and_no_faucet(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

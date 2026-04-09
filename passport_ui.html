@@ -205,6 +205,42 @@
     }
     .no-badges { font-size: 13px; color: var(--muted); }
 
+    /* Capability graph */
+    .capability-section { margin-bottom: 24px; }
+    .capability-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .capability-card {
+      background: #f8fbff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .capability-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 6px;
+    }
+    .capability-metrics {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .capability-subtle {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--brand2);
+      background: #ecfdf5;
+      border-radius: 6px;
+      padding: 3px 7px;
+      font-weight: 600;
+    }
+
     /* Platforms */
     .platform-tag {
       display: inline-block;
@@ -497,6 +533,12 @@
       <div class="badges-list" id="badges-list"></div>
     </div>
 
+    <!-- Capability graph -->
+    <div class="capability-section" id="capability-section" style="display:none">
+      <div class="section-title">Observed Capabilities</div>
+      <div class="capability-grid" id="capability-grid"></div>
+    </div>
+
     <!-- Activity logs -->
     <div class="logs-section">
       <div class="section-title">Activity Log <span id="log-count" style="font-weight:400;color:var(--muted)"></span></div>
@@ -514,8 +556,13 @@
       <div class="section-title">Discover Agents</div>
       <div class="discover-form">
         <input id="discover-tags" type="text" placeholder="Tags (e.g. cybersecurity, pentesting)" />
+        <input id="discover-capability" type="text" placeholder="Observed capability (e.g. security_audit)" />
+        <input id="discover-min-evidence" type="number" placeholder="Min proof" min="0" step="1" style="max-width:100px" />
         <input id="discover-min-score" type="number" placeholder="Min score" min="0" step="0.1" style="max-width:110px" />
         <button onclick="discoverAgents()">Search</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;">
+        <label><input id="discover-has-collab" type="checkbox" /> Prior collaborators only</label>
       </div>
       <div class="discover-results" id="discover-results"></div>
     </div>
@@ -657,6 +704,47 @@
       bl.innerHTML = '<span class="no-badges">No badges yet</span>';
     }
 
+    // Capability graph
+    const capabilitySection = document.getElementById('capability-section');
+    const capabilityGrid = document.getElementById('capability-grid');
+    const profile = d.capability_profile || {};
+    const cards = [];
+    const collect = (source, kindLabel) => {
+      Object.entries(source || {}).forEach(([name, stats]) => {
+        cards.push({
+          kindLabel,
+          name,
+          total: stats.total_logs || 0,
+          evidenced: stats.evidenced_logs || 0,
+          attested: stats.attested_logs || 0,
+          successRate: stats.success_rate || 0,
+          lastActive: stats.last_active || 0
+        });
+      });
+    };
+    collect(profile.by_action_type, 'action');
+    collect(profile.by_tag, 'tag');
+    cards.sort((a, b) => {
+      if (b.evidenced !== a.evidenced) return b.evidenced - a.evidenced;
+      if (b.total !== a.total) return b.total - a.total;
+      return b.lastActive - a.lastActive;
+    });
+    if (cards.length) {
+      capabilitySection.style.display = '';
+      capabilityGrid.innerHTML = cards.slice(0, 8).map(card => `
+        <div class="capability-card">
+          <div class="capability-name">${card.name}</div>
+          <div class="capability-metrics">
+            ${card.total} log${card.total !== 1 ? 's' : ''} · ${card.evidenced} with proof<br/>
+            ${card.attested} attested · ${Math.round(card.successRate * 100)}% success
+          </div>
+          <span class="capability-subtle">${card.kindLabel}</span>
+        </div>
+      `).join('');
+    } else {
+      capabilitySection.style.display = 'none';
+    }
+
     // Activity logs
     const logs = (d.logs_detail || []).slice().sort((a,b) => (b.timestamp||0)-(a.timestamp||0));
 
@@ -763,12 +851,18 @@
 
   async function discoverAgents() {
     const tags = document.getElementById('discover-tags').value.trim();
+    const capability = document.getElementById('discover-capability').value.trim();
+    const minEvidence = document.getElementById('discover-min-evidence').value.trim();
     const minScore = document.getElementById('discover-min-score').value.trim();
+    const hasCollab = document.getElementById('discover-has-collab').checked;
     const currentAddr = document.getElementById('agent-address')?.textContent?.trim() || '';
 
     let url = `${BASE}/public/agent/discover?limit=10`;
     if (tags) url += `&tags=${encodeURIComponent(tags)}`;
+    if (capability) url += `&capability=${encodeURIComponent(capability)}`;
+    if (minEvidence) url += `&min_evidence_count=${encodeURIComponent(minEvidence)}`;
     if (minScore) url += `&min_score=${encodeURIComponent(minScore)}`;
+    if (hasCollab) url += `&has_collaborated=true`;
     if (currentAddr) url += `&exclude=${encodeURIComponent(currentAddr)}`;
 
     const resultsEl = document.getElementById('discover-results');
@@ -785,12 +879,16 @@
       resultsEl.innerHTML = agents.map((a, i) => {
         const name = a.name || a.agent_id || (a.address.slice(0,10) + '…');
         const tags = (a.tags || []).slice(0,6).map(t => `<span class="discover-tag">${t}</span>`).join('');
+        const capStats = a.capability_stats
+          ? `<div class="discover-addr">${a.capability_stats.total_logs} logs · ${a.capability_stats.evidenced_logs} proved</div>`
+          : '';
         return `
           <div class="discover-agent-row" onclick="window.location='/passport?address=${a.address}'">
             <div class="discover-rank">#${i+1}</div>
             <div class="discover-info">
               <div class="discover-name">${name}</div>
               <div class="discover-addr">${a.address}</div>
+              ${capStats}
               <div class="discover-tags">${tags}</div>
             </div>
             <div class="discover-score">

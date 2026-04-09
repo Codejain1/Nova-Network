@@ -1,5 +1,5 @@
 """
-JITO LangChain callback handler.
+Nova Network LangChain callback handler.
 
 Automatically logs every LLM call, tool use, and chain run to NOVA,
 building portable reputation with zero changes to existing agent code.
@@ -19,12 +19,19 @@ Usage:
 """
 
 import time
+import warnings
 from typing import Any, Dict, List, Optional, Sequence, Union
 from uuid import UUID
 
 try:
-    from langchain_core.callbacks.base import BaseCallbackHandler
-    from langchain_core.outputs import LLMResult
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="Core Pydantic V1 functionality isn't compatible with Python 3.14 or greater.",
+            category=UserWarning,
+        )
+        from langchain_core.callbacks.base import BaseCallbackHandler
+        from langchain_core.outputs import LLMResult
     _LANGCHAIN_AVAILABLE = True
 except ImportError:
     BaseCallbackHandler = object  # type: ignore[misc,assignment]
@@ -293,3 +300,274 @@ class NovaCallbackHandler(BaseCallbackHandler):
                       note=str(log_str)[:256], extra_tags=["agent"])
         except Exception:
             pass
+
+
+class NovaSessionCallbackHandler(NovaCallbackHandler):
+    """
+    LangChain callback handler with full session intelligence.
+
+    Extends NovaCallbackHandler to accumulate everything that happens during
+    an agent run into a SessionContext, then logs a single "session_complete"
+    event on agent_finish — instead of (or in addition to) per-event logs.
+
+    The session log captures:
+      - task:              what the agent was asked to do
+      - tools_used:        {tool_name: call_count} for every tool invoked
+      - llm_calls:         total number of LLM calls made
+      - assessment:        "success" | "partial" | "failure"
+      - assessment_reason: extracted from the agent's final log/thought
+      - output_hash:       SHA256 of the agent's return values
+
+    Assessment logic (automatic, no code changes needed):
+      - Reads the agent's final "log" field (its reasoning before finishing)
+      - Checks for failure signals: "could not", "failed", "unable", "error",
+        "no result", "couldn't", "I don't know", "I cannot"
+      - Checks for partial signals: "partial", "incomplete", "some", "part of"
+      - Otherwise defaults to "success"
+
+    Usage:
+        tracker = NovaTracker.new("my-agent")
+        handler = NovaSessionCallbackHandler(tracker, task="Summarize Q3 earnings")
+
+        agent.invoke({"input": "..."}, config={"callbacks": [handler]})
+        # → logs session_complete with full intelligence on agent_finish
+
+    Args:
+        tracker:        A NovaTracker instance.
+        task:           What the agent was asked to do (logged as session task).
+        tags:           Default tags applied to every log entry.
+        log_llm:        Log individual LLM calls in addition to session (default False).
+        log_tools:      Log individual tool calls in addition to session (default False).
+        log_chains:     Log chain runs in addition to session (default False).
+        session_tags:   Extra tags added only to the session_complete log.
+    """
+
+    # Phrases in the agent's final thought that signal non-success
+    _FAILURE_SIGNALS = (
+        "could not", "couldn't", "failed", "unable to", "no result",
+        "i don't know", "i cannot", "i can't", "error", "not found",
+        "does not exist", "no information",
+    )
+    _PARTIAL_SIGNALS = (
+        "partial", "incomplete", "some of", "part of", "not all",
+        "missing", "unavailable",
+    )
+
+    def __init__(
+        self,
+        tracker: Any,
+        task: str = "",
+        tags: "Optional[List[str]]" = None,
+        log_llm: bool = False,
+        log_tools: bool = False,
+        log_chains: bool = False,
+        session_tags: "Optional[List[str]]" = None,
+    ) -> None:
+        _check_langchain()
+        super().__init__(
+            tracker=tracker,
+            tags=tags,
+            log_llm=log_llm,
+            log_tools=log_tools,
+            log_chains=log_chains,
+        )
+        self._task = task
+        self._session_tags: "List[str]" = list(session_tags or []) + ["session"]
+        self._reset_session_state()
+
+    def _reset_session_state(self) -> None:
+        self._session_tool_calls: "List[dict]" = []   # {name, duration_ms, success}
+        self._session_llm_calls: int = 0
+        self._session_start: float = 0.0
+        self._session_started: bool = False
+        self._tool_runs: "Dict[str, Dict[str, Any]]" = {}
+
+    def _ensure_session_started(self) -> None:
+        if not self._session_started:
+            self._session_start = time.time()
+            self._session_started = True
+
+    # ── Override tool hooks to accumulate session state ────────────────────
+
+    def on_tool_start(
+        self,
+        serialized: "Dict[str, Any]",
+        input_str: str,
+        *,
+        run_id: "UUID",
+        tags: "Optional[List[str]]" = None,
+        **kwargs: "Any",
+    ) -> None:
+        self._ensure_session_started()
+        name = serialized.get("name") or serialized.get("id", ["tool"])[-1]
+        self._tool_runs[str(run_id)] = {
+            "name": name,
+            "start": time.time(),
+        }
+        super().on_tool_start(serialized, input_str, run_id=run_id, tags=tags, **kwargs)
+
+    def on_tool_end(
+        self,
+        output: "Any",
+        *,
+        run_id: "UUID",
+        **kwargs: "Any",
+    ) -> None:
+        key = str(run_id)
+        tool_run = self._tool_runs.pop(key, {})
+        tool_duration_ms = int((time.time() - tool_run.get("start", time.time())) * 1000)
+        tool_name = tool_run.get("name") or self._runs.get(key, {}).get("name", "tool")
+        self._session_tool_calls.append({
+            "name": tool_name,
+            "duration_ms": tool_duration_ms,
+            "success": True,
+        })
+        super().on_tool_end(output, run_id=run_id, **kwargs)
+
+    def on_tool_error(
+        self,
+        error: "BaseException",
+        *,
+        run_id: "UUID",
+        **kwargs: "Any",
+    ) -> None:
+        key = str(run_id)
+        tool_run = self._tool_runs.pop(key, {})
+        tool_duration_ms = int((time.time() - tool_run.get("start", time.time())) * 1000)
+        tool_name = tool_run.get("name") or self._runs.get(key, {}).get("name", "tool")
+        self._session_tool_calls.append({
+            "name": tool_name,
+            "duration_ms": tool_duration_ms,
+            "success": False,
+        })
+        super().on_tool_error(error, run_id=run_id, **kwargs)
+
+    # ── Override LLM hooks to count calls ──────────────────────────────────
+
+    def on_llm_start(
+        self,
+        serialized: "Dict[str, Any]",
+        prompts: "List[str]",
+        *,
+        run_id: "UUID",
+        tags: "Optional[List[str]]" = None,
+        **kwargs: "Any",
+    ) -> None:
+        self._ensure_session_started()
+        super().on_llm_start(serialized, prompts, run_id=run_id, tags=tags, **kwargs)
+
+    def on_llm_end(
+        self,
+        response: "Any",
+        *,
+        run_id: "UUID",
+        tags: "Optional[List[str]]" = None,
+        **kwargs: "Any",
+    ) -> None:
+        self._ensure_session_started()
+        self._session_llm_calls += 1
+        super().on_llm_end(response, run_id=run_id, tags=tags, **kwargs)
+
+    def on_chat_model_start(
+        self,
+        serialized: "Dict[str, Any]",
+        messages: "List[List[Any]]",
+        *,
+        run_id: "UUID",
+        tags: "Optional[List[str]]" = None,
+        **kwargs: "Any",
+    ) -> None:
+        self._ensure_session_started()
+        super().on_chat_model_start(serialized, messages, run_id=run_id, tags=tags, **kwargs)
+
+    # ── Agent finish — emit the session_complete log ───────────────────────
+
+    def on_agent_finish(
+        self,
+        finish: "Any",
+        *,
+        run_id: "UUID",
+        **kwargs: "Any",
+    ) -> None:
+        # Let the base handler log its own agent_run event if configured
+        super().on_agent_finish(finish, run_id=run_id, **kwargs)
+
+        try:
+            from .tracker import _hash
+
+            output = getattr(finish, "return_values", {})
+            agent_thought = str(getattr(finish, "log", ""))
+
+            # ── Self-assessment from agent's final thought ─────────────────
+            thought_lower = agent_thought.lower()
+            if any(sig in thought_lower for sig in self._FAILURE_SIGNALS):
+                assessment = "failure"
+            elif any(sig in thought_lower for sig in self._PARTIAL_SIGNALS):
+                assessment = "partial"
+            else:
+                assessment = "success"
+
+            # Trim the thought to a useful reason string
+            reason = agent_thought.strip()
+            if reason.lower().startswith("final answer:"):
+                reason = reason[len("final answer:"):].strip()
+            reason = reason[:512]
+
+            # ── Build tools_used summary ───────────────────────────────────
+            tools_used: "Dict[str, int]" = {}
+            for tc in self._session_tool_calls:
+                tools_used[tc["name"]] = tools_used.get(tc["name"], 0) + 1
+
+            tool_success_rate = None
+            if self._session_tool_calls:
+                succeeded = sum(1 for tc in self._session_tool_calls if tc["success"])
+                tool_success_rate = round(succeeded / len(self._session_tool_calls), 4)
+
+            # ── Build the evidence dict (hashed, never on-chain verbatim) ──
+            evidence = {
+                "task": self._task,
+                "tools": self._session_tool_calls,
+                "tools_used": tools_used,
+                "llm_calls": self._session_llm_calls,
+                "assessment": assessment,
+                "assessment_reason": reason,
+                "tool_success_rate": tool_success_rate,
+                "notes": [],
+            }
+
+            # ── One-line note for the on-chain note field ──────────────────
+            tool_str = (
+                ", ".join(f"{name}x{count}" for name, count in tools_used.items())
+                or "none"
+            )
+            note = f"[{assessment}] tools={tool_str} | {reason}"[:256]
+
+            self._ensure_session_started()
+            duration_ms = int((time.time() - self._session_start) * 1000)
+            output_hash = _hash(output) if output else ""
+
+            session_log_id = self.tracker.log(
+                "session_complete",
+                input_data={"task": self._task} if self._task else None,
+                output_hash=output_hash,
+                evidence=evidence,
+                success=(assessment == "success"),
+                duration_ms=duration_ms,
+                tags=self.default_tags + self._session_tags,
+                note=note,
+            )
+
+            # ── Corroboration request ──────────────────────────────────────
+            # Emit a second log so peer agents know this session is open
+            # for attestation.  external_ref links back to the session log.
+            self.tracker.log(
+                "corroboration_request",
+                external_ref=str(session_log_id) if session_log_id else "",
+                tags=self.default_tags + ["corroboration"],
+                note=f"corroboration open for session {session_log_id}"[:256],
+                success=True,
+            )
+        except Exception:
+            pass  # Never let session logging break the agent
+        finally:
+            self._reset_session_state()

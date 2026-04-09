@@ -5,11 +5,12 @@ import time
 from typing import Callable, Dict, List, Any, Optional
 
 from .client import NovaClient
+from .self_description import SelfDescription, derive_self_description
 
 
 class NovaAgent:
     """
-    A JITO-connected AI agent.
+    A Nova Network-connected AI agent.
 
     Quick start:
         agent = NovaAgent(wallet, node_url="https://explorer.flowpe.io")
@@ -32,8 +33,39 @@ class NovaAgent:
         self.agent_id = agent_id or f"agent_{self.address[:16]}"
 
     def register(self, name: str, capabilities: List[str] = None,
-                  bio: str = "", handle: str = None, version_hash: str = "") -> "NovaAgent":
-        """Register identity + agent on-chain. Safe to call multiple times."""
+                  bio: str = "", handle: str = None, version_hash: str = "",
+                  system_prompt: str = "",
+                  llm_fn: Optional[Callable[[str], str]] = None) -> "NovaAgent":
+        """
+        Register identity + agent on-chain. Safe to call multiple times.
+
+        When ``system_prompt`` is provided the agent reads its own prompt and
+        derives its self-description (capabilities, task_types, refusals)
+        automatically.  Any ``capabilities`` you pass are merged with the
+        derived ones so manual overrides still work.
+
+        Args:
+            system_prompt:  The agent's system prompt.  The raw text never
+                            leaves the client — only its SHA-256 hash is stored
+                            on-chain.
+            llm_fn:         Optional callable ``(prompt: str) -> str`` for
+                            LLM-enhanced extraction.  Omit for heuristic mode.
+        """
+        self_desc: Optional[SelfDescription] = None
+        if system_prompt:
+            self_desc = derive_self_description(system_prompt, llm_fn=llm_fn)
+            method_label = self_desc.method
+            # Merge: explicit caps override derived ones, derived fill the rest
+            merged_caps = sorted(
+                set(self_desc.capabilities) | {c for c in (capabilities or []) if c}
+            )
+            print(f"🔍 Self-description derived ({method_label}): "
+                  f"{len(merged_caps)} capabilities, "
+                  f"{len(self_desc.task_types)} task types, "
+                  f"{len(self_desc.refusals)} refusals")
+        else:
+            merged_caps = list(capabilities or [])
+
         if handle:
             try:
                 self.client.claim_identity(self.wallet, handle, bio)
@@ -41,8 +73,14 @@ class NovaAgent:
             except Exception as e:
                 print(f"ℹ️  Identity: {e}")
         try:
-            self.client.register_agent(self.wallet, self.agent_id, name,
-                capabilities=capabilities or [], version_hash=version_hash)
+            self.client.register_agent(
+                self.wallet, self.agent_id, name,
+                capabilities=merged_caps,
+                task_types=self_desc.task_types if self_desc else [],
+                refusals=self_desc.refusals if self_desc else [],
+                system_prompt_hash=self_desc.system_prompt_hash if self_desc else "",
+                version_hash=version_hash,
+            )
             print(f"✅ Agent registered: {name} ({self.agent_id})")
         except Exception as e:
             print(f"ℹ️  Agent: {e}")

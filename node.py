@@ -22,8 +22,13 @@ from dual_chain import (
     create_wallet,
     load_wallet,
     make_agent_activity_log_tx,
+    make_agent_artifact_commit_tx,
     make_agent_attest_tx,
+    make_agent_intent_post_tx,
     make_agent_register_tx,
+    make_agent_session_close_tx,
+    make_agent_session_open_tx,
+    make_agent_session_settle_tx,
     make_ai_job_create_tx,
     make_ai_job_result_tx,
     make_ai_job_settle_tx,
@@ -142,6 +147,16 @@ def _tx_from_to(tx: Dict[str, Any]) -> tuple[str, str]:
         return str(tx.get("owner", tx.get("signer", ""))), str(tx.get("agent_id", ""))
     if tx_type == "agent_attest":
         return str(tx.get("attester", tx.get("signer", ""))), str(tx.get("agent_id", ""))
+    if tx_type == "agent_intent_post":
+        return str(tx.get("creator", tx.get("signer", ""))), str(tx.get("intent_id", ""))
+    if tx_type == "agent_session_open":
+        return str(tx.get("opener", tx.get("signer", ""))), str(tx.get("session_id", ""))
+    if tx_type == "agent_artifact_commit":
+        return str(tx.get("agent", tx.get("signer", ""))), str(tx.get("session_id", ""))
+    if tx_type == "agent_session_close":
+        return str(tx.get("closer", tx.get("signer", ""))), str(tx.get("session_id", ""))
+    if tx_type == "agent_session_settle":
+        return str(tx.get("settler", tx.get("signer", ""))), str(tx.get("session_id", ""))
     if tx_type == "identity_verify":
         return str(tx.get("notary", tx.get("signer", ""))), str(tx.get("target", ""))
     if tx_type == "task_delegate":
@@ -197,10 +212,19 @@ def _tx_addresses(tx: Dict[str, Any]) -> set[str]:
         "provider",
         "requester",
         "settler",
+        "creator",
+        "opener",
+        "agent",
+        "closer",
     ):
         value = tx.get(key)
         if isinstance(value, str) and value:
             out.add(value)
+    participants = tx.get("participants", [])
+    if isinstance(participants, list):
+        for item in participants:
+            if isinstance(item, str) and item:
+                out.add(item)
     visibility = tx.get("visibility", [])
     if isinstance(visibility, list):
         for item in visibility:
@@ -978,7 +1002,7 @@ class DualChainNode:
             "latency_ms": 0.0,
             "remote_public_height": -1,
             "remote_private_height": -1,
-            "local_public_height": len(self.public_chain.chain) - 1,
+            "local_public_height": self.public_chain.height - 1,
             "public_height_lag": 0,
             "last_update_changed": False,
         }
@@ -1013,7 +1037,7 @@ class DualChainNode:
             )
             remote_public_height = int(status.get("public_height", -1))
             remote_private_height = int(status.get("private_height", -1))
-            local_public_height = len(self.public_chain.chain) - 1
+            local_public_height = self.public_chain.height - 1
             should_pull = (
                 remote_public_height >= 0
                 and (remote_public_height - local_public_height) >= self.peer_lag_resync_threshold
@@ -1036,7 +1060,7 @@ class DualChainNode:
                 }
 
             finished = time.time()
-            local_public_height_after = len(self.public_chain.chain) - 1
+            local_public_height_after = self.public_chain.height - 1
             lag = max(0, remote_public_height - local_public_height_after) if remote_public_height >= 0 else 0
             entry.update(
                 {
@@ -2066,7 +2090,7 @@ class NodeHandler(BaseHTTPRequestHandler):
         since_24h = now - 86400.0
 
         with self.node.lock:
-            public_height = len(self.node.public_chain.chain) - 1
+            public_height = self.node.public_chain.height - 1
             private_height = len(self.node.private_chain.chain) - 1
             validators = sorted(self.node.public_chain.validators)
             governance = self.node.private_chain.list_governance()
@@ -2184,36 +2208,29 @@ class NodeHandler(BaseHTTPRequestHandler):
         if kind == "validators":
             rows: Dict[str, Dict[str, Any]] = {}
             with self.node.lock:
-                for block in self.node.public_chain.chain:
-                    meta = block.meta if isinstance(block.meta, dict) else {}
-                    validator = str(meta.get("validator", "")).strip()
-                    if not validator:
-                        continue
-                    row = rows.setdefault(
-                        validator,
-                        {
-                            "address": validator,
-                            "wallet_name": name_by_address.get(validator, ""),
-                            "blocks_mined": 0,
-                            "reward_total": 0.0,
-                            "last_block_index": -1,
-                        },
-                    )
-                    row["blocks_mined"] += 1
-                    row["last_block_index"] = max(int(row["last_block_index"]), int(block.index))
-                    for tx in block.transactions:
-                        if not isinstance(tx, dict):
-                            continue
-                        if (
-                            tx.get("type") == "payment"
-                            and tx.get("sender") == SYSTEM_SENDER
-                            and str(tx.get("recipient", "")).strip() == validator
-                        ):
-                            row["reward_total"] += float(tx.get("amount", 0.0))
-                            break
+                rep = dict(self.node.public_chain.reputation_index)
+                validators = sorted(self.node.public_chain.validators)
+                balances = {
+                    validator: float(self.node.public_chain.get_balance(validator))
+                    for validator in validators
+                }
+                for validator in validators:
+                    r = rep.get(validator, {})
+                    rows[validator] = {
+                        "address": validator,
+                        "wallet_name": name_by_address.get(validator, ""),
+                        "blocks_mined": int(r.get("blocks_mined", 0)),
+                        "reward_total": float(r.get("total_nova_earned", 0.0)),
+                        "balance": float(balances.get(validator, 0.0)),
+                        "last_block_index": -1,
+                    }
             sorted_rows = sorted(
                 rows.values(),
-                key=lambda r: (float(r.get("blocks_mined", 0)), float(r.get("reward_total", 0.0))),
+                key=lambda r: (
+                    float(r.get("blocks_mined", 0)),
+                    float(r.get("reward_total", 0.0)),
+                    float(r.get("balance", 0.0)),
+                ),
                 reverse=True,
             )[:limit]
             return {"type": kind, "count": len(sorted_rows), "rows": sorted_rows}
@@ -2510,10 +2527,10 @@ class NodeHandler(BaseHTTPRequestHandler):
             with self.node.lock:
                 chain = self.node.public_chain
                 balance_index = dict(chain.balance_index)
-                height = len(chain.chain)
+                height = chain.blocks_mined_total()
                 circulating = round(sum(balance_index.values()), 8)
                 treasury = round(chain.treasury_balance, 8)
-                total_supply = round(circulating + treasury, 8)
+                total_supply = round(max(chain.total_minted_supply(), circulating + treasury), 8)
             if address:
                 bal = round(balance_index.get(address, 0.0), 8)
                 # find first tx where this address appears to determine account creation block
@@ -2702,7 +2719,7 @@ class NodeHandler(BaseHTTPRequestHandler):
                 self.node.public_chain.prune_mempool()
                 mempool_policy = self.node.public_chain.mempool_policy()
             payload = {
-                "public_height": len(self.node.public_chain.chain) - 1,
+                "public_height": self.node.public_chain.height - 1,
                 "private_height": len(self.node.private_chain.chain) - 1,
                 "public_pending": len(self.node.public_chain.pending_transactions),
                 "private_pending": len(self.node.private_chain.pending_transactions),
@@ -2782,7 +2799,7 @@ class NodeHandler(BaseHTTPRequestHandler):
             lines = [
                 "# HELP jain_public_height Current public chain tip height.",
                 "# TYPE jain_public_height gauge",
-                f"jain_public_height {len(self.node.public_chain.chain) - 1}",
+                f"jain_public_height {self.node.public_chain.height - 1}",
                 "# HELP jain_private_height Current private chain tip height.",
                 "# TYPE jain_private_height gauge",
                 f"jain_private_height {len(self.node.private_chain.chain) - 1}",
@@ -3006,6 +3023,7 @@ class NodeHandler(BaseHTTPRequestHandler):
                     challenge_index = self.node.public_chain.challenge_index
                     collab_index = self.node.public_chain.collab_index
                     agent_logs = [v for v in log_index.values() if v.get("agent") == address]
+                    capability_profile = self.node.public_chain.capability_profile(address)
             if not_found:
                 self._send_json({"error": "agent_id not found"}, HTTPStatus.NOT_FOUND)
                 return
@@ -3029,6 +3047,10 @@ class NodeHandler(BaseHTTPRequestHandler):
                 "badges": rep.get("badges", []),
                 "last_active": rep.get("last_active", 0.0),
                 "collab_sessions": rep.get("collab_sessions", 0),
+                "declared_capabilities": agent_reg.get("capabilities", []),
+                "task_types": agent_reg.get("task_types", []),
+                "refusals": agent_reg.get("refusals", []),
+                "system_prompt_hash": agent_reg.get("system_prompt_hash", ""),
             }
             if verbose:
                 log_ids = {l.get("log_id") or l.get("id") for l in agent_logs}
@@ -3045,7 +3067,114 @@ class NodeHandler(BaseHTTPRequestHandler):
                     v for v in collab_index.values() if address in v.get("agents", [])
                 ]
                 response["collab_sessions"] = len(response["collab_sessions_detail"])
+                response["capability_profile"] = capability_profile
             self._send_json(response)
+            return
+
+        if path == "/public/agent/capability_profile":
+            parsed = parse.urlparse(self.path)
+            qs = parse.parse_qs(parsed.query)
+            raw_address = qs.get("address", [""])[0].strip()
+            raw_agent_id = qs.get("agent_id", [""])[0].strip()
+            if not raw_address and not raw_agent_id:
+                self._send_json({"error": "address or agent_id required"}, HTTPStatus.BAD_REQUEST)
+                return
+            with self.node.lock:
+                agent_reg = {}
+                if raw_agent_id and not raw_address:
+                    for ag in self.node.public_chain.agent_registry.values():
+                        if ag.get("agent_id") == raw_agent_id:
+                            raw_address = ag.get("owner") or ag.get("wallet_address", "")
+                            agent_reg = ag
+                            break
+                address = raw_address
+                if not address:
+                    self._send_json({"error": "agent_id not found"}, HTTPStatus.NOT_FOUND)
+                    return
+                if not agent_reg:
+                    agent_reg = self.node.public_chain._agent_registry_entry_for_address(address)
+                profile = self.node.public_chain.capability_profile(address)
+            self._send_json({
+                "ok": True,
+                **profile,
+                "agent_id": profile.get("agent_id") or agent_reg.get("agent_id", ""),
+                "name": profile.get("name") or agent_reg.get("name", ""),
+            })
+            return
+
+        if path == "/public/agent/intents":
+            parsed = parse.urlparse(self.path)
+            qs = parse.parse_qs(parsed.query)
+            creator = qs.get("creator", [""])[0].strip()
+            status = qs.get("status", [""])[0].strip().lower()
+            capability = qs.get("capability", [""])[0].strip().lower()
+            try:
+                limit = min(int(qs.get("limit", ["20"])[0]), 100)
+            except (TypeError, ValueError):
+                limit = 20
+            with self.node.lock:
+                intents = self.node.public_chain.list_agent_intents(
+                    creator=creator,
+                    status=status,
+                    capability=capability,
+                    limit=limit,
+                )
+            self._send_json({
+                "ok": True,
+                "intents": intents,
+                "total": len(intents),
+                "filters": {
+                    "creator": creator,
+                    "status": status,
+                    "capability": capability,
+                    "limit": limit,
+                },
+            })
+            return
+
+        if path == "/public/agent/sessions":
+            parsed = parse.urlparse(self.path)
+            qs = parse.parse_qs(parsed.query)
+            participant = qs.get("participant", [""])[0].strip()
+            status = qs.get("status", [""])[0].strip().lower()
+            intent_id = qs.get("intent_id", [""])[0].strip()
+            try:
+                limit = min(int(qs.get("limit", ["20"])[0]), 100)
+            except (TypeError, ValueError):
+                limit = 20
+            with self.node.lock:
+                sessions = self.node.public_chain.list_agent_sessions(
+                    participant=participant,
+                    status=status,
+                    intent_id=intent_id,
+                    limit=limit,
+                )
+            self._send_json({
+                "ok": True,
+                "sessions": sessions,
+                "total": len(sessions),
+                "filters": {
+                    "participant": participant,
+                    "status": status,
+                    "intent_id": intent_id,
+                    "limit": limit,
+                },
+            })
+            return
+
+        if path == "/public/agent/session":
+            parsed = parse.urlparse(self.path)
+            qs = parse.parse_qs(parsed.query)
+            session_id = qs.get("session_id", [""])[0].strip()
+            if not session_id:
+                self._send_json({"error": "session_id required"}, HTTPStatus.BAD_REQUEST)
+                return
+            with self.node.lock:
+                session = self.node.public_chain.get_agent_session(session_id)
+            if not session:
+                self._send_json({"error": "session not found"}, HTTPStatus.NOT_FOUND)
+                return
+            self._send_json({"ok": True, **session})
             return
 
         if path == "/public/agent/leaderboard":
@@ -3117,75 +3246,97 @@ class NodeHandler(BaseHTTPRequestHandler):
                 limit = min(int(qs.get("limit", ["20"])[0]), 100)
             except (ValueError, TypeError):
                 limit = 20
+            capability = qs.get("capability", [""])[0].strip().lower()
+            try:
+                min_log_count = max(1, int(qs.get("min_log_count", ["1"])[0]))
+            except (ValueError, TypeError):
+                min_log_count = 1
+            try:
+                min_evidence_count = max(0, int(qs.get("min_evidence_count", ["0"])[0]))
+            except (ValueError, TypeError):
+                min_evidence_count = 0
+            has_collaborated = qs.get("has_collaborated", ["false"])[0].strip().lower() == "true"
+            collaborated_with = qs.get("collaborated_with", [""])[0].strip()
             raw_exclude = qs.get("exclude", [""])[0].strip()
             exclude_set = {a.strip() for a in raw_exclude.split(",") if a.strip()} if raw_exclude else set()
-            TIER_ORDER = ["unverified", "self-reported", "attested", "evidence-attested", "stake-backed"]
-            if min_tier in TIER_ORDER:
-                allowed_tiers = set(TIER_ORDER[TIER_ORDER.index(min_tier):])
-            else:
-                allowed_tiers = None
             with self.node.lock:
-                rep_index = dict(self.node.public_chain.reputation_index)
-                log_index = dict(self.node.public_chain.activity_log_index)
-                agent_reg = dict(self.node.public_chain.agent_registry)
-            agents = []
-            for addr, r in rep_index.items():
-                if addr in exclude_set:
-                    continue
-                if r.get("activity_logs", 0) == 0:
-                    continue
-                tier = r.get("trust_tier", "unverified")
-                if tier in ("disputed", "slashed"):
-                    continue
-                if allowed_tiers is not None and tier not in allowed_tiers:
-                    continue
-                if r.get("trust_score", 0.0) < min_score:
-                    continue
-                agent_logs = [l for l in log_index.values() if l.get("agent") == addr]
-                if filter_tags:
-                    log_tag_sets = [{t.lower() for t in l.get("tags", [])} for l in agent_logs]
-                    if not any(any(ft in ts for ft in filter_tags) for ts in log_tag_sets):
-                        continue
-                if filter_platform:
-                    if not any(l.get("platform", "").lower() == filter_platform for l in agent_logs):
-                        continue
-                unique_tags = list({t for l in agent_logs for t in l.get("tags", [])})
-                unique_platforms = list({l.get("platform") for l in agent_logs if l.get("platform")})
-                collab_sessions = sum(
-                    1 for l in agent_logs if str(l.get("external_ref", "")).startswith("collab:")
+                agents = self.node.public_chain.discover_agents(
+                    tags=filter_tags,
+                    min_score=min_score,
+                    min_tier=min_tier,
+                    platform=filter_platform,
+                    limit=limit,
+                    exclude=list(exclude_set),
+                    capability=capability,
+                    min_log_count=min_log_count,
+                    min_evidence_count=min_evidence_count,
+                    has_collaborated=has_collaborated,
+                    collaborated_with=collaborated_with,
                 )
-                agent_info = next(
-                    (a for a in agent_reg.values()
-                     if a.get("owner") == addr or a.get("wallet_address") == addr),
-                    {}
-                )
-                agents.append({
-                    "address": addr,
-                    "agent_id": agent_info.get("agent_id", ""),
-                    "name": agent_info.get("name", ""),
-                    "trust_score": r.get("trust_score", 0.0),
-                    "trust_tier": tier,
-                    "total_logs": r.get("activity_logs", 0),
-                    "attested_logs": r.get("attested_logs", 0),
-                    "evidence_backed_logs": r.get("evidence_backed_logs", 0),
-                    "tags": unique_tags,
-                    "platforms": unique_platforms,
-                    "last_active": r.get("last_active", 0.0),
-                    "collab_sessions": collab_sessions,
-                })
-            agents.sort(key=lambda a: a["trust_score"], reverse=True)
             self._send_json({
                 "ok": True,
-                "agents": agents[:limit],
+                "agents": agents,
                 "total": len(agents),
                 "filters": {
                     "tags": filter_tags,
                     "min_score": min_score,
                     "min_tier": min_tier,
                     "platform": filter_platform,
+                    "capability": capability,
+                    "min_log_count": min_log_count,
+                    "min_evidence_count": min_evidence_count,
+                    "has_collaborated": has_collaborated,
+                    "collaborated_with": collaborated_with,
                     "limit": limit,
                     "exclude": list(exclude_set),
                 },
+            })
+            return
+
+        if path == "/public/agent/capability_history":
+            # Returns the full version history of declared capabilities for an agent.
+            # Each entry is one agent_register transaction, in chronological order.
+            # Query params: address=<wallet_address>  OR  agent_id=<agent_id>
+            parsed = parse.urlparse(self.path)
+            qs = parse.parse_qs(parsed.query)
+            raw_address = qs.get("address", [""])[0].strip()
+            raw_agent_id = qs.get("agent_id", [""])[0].strip()
+            if not raw_address and not raw_agent_id:
+                self._send_json({"error": "address or agent_id query param required"}, HTTPStatus.BAD_REQUEST)
+                return
+            with self.node.lock:
+                history = list(self.node.public_chain.agent_register_history)
+                agent_reg = dict(self.node.public_chain.agent_registry)
+            # Resolve agent_id → owner address if only agent_id supplied
+            if raw_agent_id and not raw_address:
+                for ag in agent_reg.values():
+                    if ag.get("agent_id") == raw_agent_id:
+                        raw_address = ag.get("owner") or ag.get("wallet_address", "")
+                        break
+            # Filter history entries that belong to this agent
+            entries = [
+                h for h in history
+                if (raw_agent_id and h.get("agent_id") == raw_agent_id)
+                or (raw_address and h.get("owner") == raw_address)
+            ]
+            entries.sort(key=lambda e: e.get("registered_at", 0.0))
+            # Re-sequence version numbers from 1 (history pre-dates this index for old nodes)
+            versioned = []
+            for i, entry in enumerate(entries, start=1):
+                versioned.append({
+                    "version": i,
+                    "capabilities": entry.get("capabilities", []),
+                    "task_types": entry.get("task_types", []),
+                    "refusals": entry.get("refusals", []),
+                    "system_prompt_hash": entry.get("system_prompt_hash", ""),
+                    "registered_at": entry.get("registered_at", 0.0),
+                    "tx_id": entry.get("tx_id", ""),
+                })
+            self._send_json({
+                "agent_id": raw_agent_id,
+                "address": raw_address,
+                "history": versioned,
+                "total_versions": len(versioned),
             })
             return
 
@@ -3258,10 +3409,11 @@ class NodeHandler(BaseHTTPRequestHandler):
         if path == "/public/validator/stats":
             # Per-validator performance: blocks mined, NOVA earned, uptime, last active
             with self.node.lock:
-                active = sorted(self.node.public_chain.validators)
-                rep = dict(self.node.public_chain.reputation_index)
-                height = len(self.node.public_chain.chain) - 1
-                candidates = dict(self.node.public_chain.validator_candidates)
+                chain = self.node.public_chain
+                active = sorted(chain.validators)
+                rep = dict(chain.reputation_index)
+                height = chain.blocks_mined_total()
+                candidates = dict(chain.validator_candidates)
             stats = []
             for addr in active:
                 r = rep.get(addr, {})
@@ -3272,6 +3424,7 @@ class NodeHandler(BaseHTTPRequestHandler):
                     "address": addr,
                     "blocks_mined": blocks_mined,
                     "total_nova_earned": round(r.get("total_nova_earned", 0.0), 4),
+                    "balance": round(chain.get_balance(addr), 4),
                     "last_active": r.get("last_active", 0.0),
                     "validator_since": r.get("validator_since"),
                     "stake": float(cand.get("stake", 0.0)),
@@ -3318,8 +3471,8 @@ class NodeHandler(BaseHTTPRequestHandler):
                 chain = self.node.public_chain
                 circulating = round(sum(chain.balance_index.values()), 8)
                 treasury = round(chain.treasury_balance, 8)
-                total_supply = round(circulating + treasury, 8)
-                blocks = len(chain.chain)
+                total_supply = round(max(chain.total_minted_supply(), circulating + treasury), 8)
+                blocks = chain.blocks_mined_total()
                 reward = chain.mining_reward
             self._send_json({
                 "total_supply": total_supply,
@@ -3503,11 +3656,11 @@ class NodeHandler(BaseHTTPRequestHandler):
 
         if path == "/scan/summary":
             can_view_private = self._can_view_private_scanner(query)
-            public_txs = sum(len(block.transactions) for block in self.node.public_chain.chain)
+            public_txs = self.node.public_chain.total_confirmed_public_transactions()
             private_txs = sum(len(block.transactions) for block in self.node.private_chain.chain) if can_view_private else 0
             self._send_json(
                 {
-                    "public_height": len(self.node.public_chain.chain) - 1,
+                    "public_height": self.node.public_chain.blocks_mined_total(),
                     "private_height": (len(self.node.private_chain.chain) - 1) if can_view_private else None,
                     "public_tx_count": public_txs,
                     "private_tx_count": private_txs,

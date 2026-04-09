@@ -16,9 +16,14 @@ from dual_chain import (
     make_agent_attest_tx,
     make_agent_challenge_resolve_tx,
     make_agent_challenge_tx,
+    make_agent_intent_post_tx,
     make_agent_param_endorse_tx,
     make_agent_param_propose_tx,
     make_agent_register_tx,
+    make_agent_artifact_commit_tx,
+    make_agent_session_close_tx,
+    make_agent_session_open_tx,
+    make_agent_session_settle_tx,
     make_payment_tx,
 )
 
@@ -532,6 +537,222 @@ class TestAgentGovernance(unittest.TestCase):
             # Verify trust score is on the owner address
             rep = chain.reputation_index.get(agent["address"], {})
             self.assertEqual(rep.get("activity_logs"), 1)
+
+    def test_agent_register_accepts_self_description_fields(self) -> None:
+        """New agent register metadata must validate and persist on-chain."""
+        with tempfile.TemporaryDirectory() as tmp:
+            chain, validator, agent, _ = _setup_chain(tmp)
+            _mine(chain, validator)
+
+            reg_tx = make_agent_register_tx(
+                agent,
+                agent_id="my-agent-008",
+                name="Prompt-Aware Agent",
+                capabilities=["analysis"],
+                task_types=["summarize reports"],
+                refusals=["give legal advice"],
+                system_prompt_hash="abc123",
+                version_hash="v1",
+            )
+            chain.add_transaction(reg_tx)
+            _mine(chain, validator)
+
+            reg = chain.agent_registry.get("my-agent-008", {})
+            self.assertEqual(reg.get("owner"), agent["address"])
+            self.assertEqual(reg.get("task_types"), ["summarize reports"])
+            self.assertEqual(reg.get("refusals"), ["give legal advice"])
+            self.assertEqual(reg.get("system_prompt_hash"), "abc123")
+
+    def test_capability_profile_summarizes_logs_and_collaboration(self) -> None:
+        """Capability profile should derive action/tag stats and collaboration partners."""
+        with tempfile.TemporaryDirectory() as tmp:
+            chain, validator, agent, collaborator = _setup_chain(tmp)
+            _mine(chain, validator)
+            _fund(chain, validator, agent, 50.0)
+            _fund(chain, validator, collaborator, 50.0)
+
+            collab_id = "collab:case-001"
+            log_1 = make_agent_activity_log_tx(
+                agent,
+                "agent-cap",
+                "security_audit",
+                success=True,
+                evidence_url="ipfs://proof-1",
+                tags=["security", "audit"],
+                external_ref=collab_id,
+            )
+            log_2 = make_agent_activity_log_tx(
+                agent,
+                "agent-cap",
+                "security_audit",
+                success=False,
+                evidence_url="ipfs://proof-2",
+                tags=["security"],
+            )
+            collab_log = make_agent_activity_log_tx(
+                collaborator,
+                "agent-collab",
+                "threat_intel_lookup",
+                success=True,
+                external_ref=collab_id,
+                tags=["intel"],
+            )
+            chain.add_transaction(log_1)
+            chain.add_transaction(log_2)
+            chain.add_transaction(collab_log)
+            chain.add_transaction(make_agent_attest_tx(collaborator, log_1["id"], "positive"))
+            _mine(chain, validator)
+
+            profile = chain.capability_profile(agent["address"])
+
+            self.assertEqual(profile["by_action_type"]["security_audit"]["total_logs"], 2)
+            self.assertEqual(profile["by_action_type"]["security_audit"]["evidenced_logs"], 2)
+            self.assertEqual(profile["by_tag"]["security"]["total_logs"], 2)
+            self.assertEqual(profile["collab_partners"], [collaborator["address"]])
+
+    def test_discover_agents_filters_by_observed_capability_and_collaboration(self) -> None:
+        """Rich discovery should filter on observed capability counts, proof, and collab graph."""
+        with tempfile.TemporaryDirectory() as tmp:
+            chain, validator, agent, collaborator = _setup_chain(tmp)
+            _mine(chain, validator)
+            _fund(chain, validator, agent, 50.0)
+            _fund(chain, validator, collaborator, 50.0)
+
+            collab_id = "collab:case-002"
+            chain.add_transaction(make_agent_activity_log_tx(
+                agent,
+                "agent-cap",
+                "security_audit",
+                success=True,
+                evidence_url="ipfs://proof-1",
+                tags=["security"],
+                external_ref=collab_id,
+            ))
+            chain.add_transaction(make_agent_activity_log_tx(
+                agent,
+                "agent-cap",
+                "security_audit",
+                success=True,
+                evidence_url="ipfs://proof-2",
+                tags=["security"],
+            ))
+            chain.add_transaction(make_agent_activity_log_tx(
+                collaborator,
+                "agent-collab",
+                "research",
+                success=True,
+                external_ref=collab_id,
+                tags=["analysis"],
+            ))
+            _mine(chain, validator)
+
+            results = chain.discover_agents(
+                capability="security_audit",
+                min_log_count=2,
+                min_evidence_count=2,
+                has_collaborated=True,
+                collaborated_with=collaborator["address"],
+            )
+
+            self.assertEqual([row["address"] for row in results], [agent["address"]])
+            self.assertEqual(results[0]["capability_stats"]["evidenced_logs"], 2)
+
+    def test_native_coordination_flow_tracks_intents_sessions_artifacts_and_settlement(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            chain, validator, agent, collaborator = _setup_chain(tmp)
+            _mine(chain, validator)
+            _fund(chain, validator, agent, 50.0)
+            _fund(chain, validator, collaborator, 50.0)
+
+            intent_tx = make_agent_intent_post_tx(
+                agent,
+                agent_id="agent-coord",
+                intent="Analyze protocol risk",
+                role="security-auditor",
+                capability_tags=["security", "analysis"],
+                desired_collaborators=[collaborator["address"]],
+                reward=3.0,
+            )
+            chain.add_transaction(intent_tx)
+
+            session_tx = make_agent_session_open_tx(
+                agent,
+                session_id="collab:test-native-001",
+                intent_id=intent_tx["intent_id"],
+                objective="Joint audit run",
+                participants=[collaborator["address"]],
+            )
+            chain.add_transaction(session_tx)
+
+            artifact_tx = make_agent_artifact_commit_tx(
+                collaborator,
+                session_id=session_tx["session_id"],
+                artifact_type="report",
+                output_hash="report-hash-001",
+                evidence_url="ipfs://coord-proof-1",
+                label="Joint Report",
+            )
+            chain.add_transaction(artifact_tx)
+
+            close_tx = make_agent_session_close_tx(
+                agent,
+                session_id=session_tx["session_id"],
+                outcome="success",
+                summary_hash="summary-hash-001",
+                note="Risk report delivered",
+            )
+            chain.add_transaction(close_tx)
+
+            collaborator_balance_before = chain.get_balance(collaborator["address"])
+            settle_tx = make_agent_session_settle_tx(
+                agent,
+                session_id=session_tx["session_id"],
+                payouts={collaborator["address"]: 2.0},
+                contribution_weights={agent["address"]: 0.4, collaborator["address"]: 0.6},
+                verdict="success",
+                note="Collaborator delivered final artifact",
+            )
+            chain.add_transaction(settle_tx)
+            _mine(chain, validator)
+
+            self.assertEqual(chain.intent_index[intent_tx["intent_id"]]["status"], "settled")
+            session = chain.get_agent_session(session_tx["session_id"])
+            self.assertEqual(session["status"], "settled")
+            self.assertEqual(session["intent_id"], intent_tx["intent_id"])
+            self.assertEqual(session["artifact_ids"], [artifact_tx["artifact_id"]])
+            self.assertEqual(session["settlement"]["payouts"][collaborator["address"]], 2.0)
+            self.assertIn(artifact_tx["artifact_id"], chain.artifact_index)
+            self.assertAlmostEqual(chain.get_balance(collaborator["address"]), collaborator_balance_before + 2.0)
+
+            intents = chain.list_agent_intents(creator=agent["address"], status="settled")
+            self.assertEqual([row["intent_id"] for row in intents], [intent_tx["intent_id"]])
+
+            sessions = chain.list_agent_sessions(participant=collaborator["address"], status="settled")
+            self.assertEqual([row["session_id"] for row in sessions], [session_tx["session_id"]])
+
+    def test_session_settlement_requires_closed_session(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            chain, validator, agent, collaborator = _setup_chain(tmp)
+            _mine(chain, validator)
+            _fund(chain, validator, agent, 50.0)
+            _fund(chain, validator, collaborator, 50.0)
+
+            session_tx = make_agent_session_open_tx(
+                agent,
+                session_id="collab:test-native-002",
+                objective="Open session only",
+                participants=[collaborator["address"]],
+            )
+            chain.add_transaction(session_tx)
+
+            settle_tx = make_agent_session_settle_tx(
+                agent,
+                session_id=session_tx["session_id"],
+                payouts={collaborator["address"]: 1.0},
+                contribution_weights={collaborator["address"]: 1.0},
+            )
+            with self.assertRaises(ValueError):
+                chain.add_transaction(settle_tx)
 
 
 if __name__ == "__main__":

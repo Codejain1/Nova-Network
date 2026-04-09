@@ -45,7 +45,7 @@ PROVIDER="$(jq -r '.address' "$WALLET_DIR/provider.json")"
 
 "$PYTHON_BIN" cli.py node-start \
   --host 127.0.0.1 --port 8010 --data-dir "$DATA_DIR" \
-  --chain-name "JITO E2E" \
+  --chain-name "Nova E2E" \
   --public-consensus poa \
   --public-validator "$VAL1" \
   --public-validator-rotation \

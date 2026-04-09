@@ -601,6 +601,7 @@ async function viewValidators() {
       <td><span class="mono">${v.address}</span></td>
       <td>${v.blocks_mined ?? 0}</td>
       <td>${(v.total_nova_earned ?? 0).toFixed(2)} NOVA</td>
+      <td>${(v.balance ?? 0).toFixed(2)} NOVA</td>
       <td>${v.uptime_pct != null ? v.uptime_pct.toFixed(1) + '%' : '-'}</td>
       <td>${v.last_active ? fmtTime(v.last_active) : '-'}</td>
       <td>${v.validator_since ? fmtTime(v.validator_since) : '-'}</td>
@@ -635,11 +636,11 @@ async function viewValidators() {
     <div class="tableWrap">
       <table>
         <thead><tr>
-          <th>Address</th><th>Blocks</th><th>Earned</th>
+          <th>Address</th><th>Blocks</th><th>Earned</th><th>Balance</th>
           <th>Uptime</th><th>Last Active</th><th>Validator Since</th>
           <th>Stake</th><th>Badges</th>
         </tr></thead>
-        <tbody>${rows || '<tr><td colspan="8" class="small">No validators yet</td></tr>'}</tbody>
+        <tbody>${rows || '<tr><td colspan="9" class="small">No validators yet</td></tr>'}</tbody>
       </table>
     </div>
     ${cs.length ? `

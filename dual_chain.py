@@ -1175,6 +1175,9 @@ def make_agent_register_tx(
     agent_id: str,
     name: str,
     capabilities: Optional[List[str]] = None,
+    task_types: Optional[List[str]] = None,
+    refusals: Optional[List[str]] = None,
+    system_prompt_hash: str = "",
     version_hash: str = "",
 ) -> Dict[str, Any]:
     payload = {
@@ -1183,6 +1186,9 @@ def make_agent_register_tx(
         "agent_id": str(agent_id).strip(),
         "name": str(name).strip(),
         "capabilities": sorted({str(c).strip() for c in (capabilities or []) if str(c).strip()}),
+        "task_types": [str(t).strip() for t in (task_types or []) if str(t).strip()],
+        "refusals": [str(r).strip() for r in (refusals or []) if str(r).strip()],
+        "system_prompt_hash": str(system_prompt_hash or "").strip(),
         "version_hash": str(version_hash or "").strip(),
         "timestamp": time.time(),
     }
@@ -1342,6 +1348,9 @@ _AGENT_PARAM_ALLOWED: Dict[str, type] = {
     "auto_slash_on_window_expiry": bool,
     "slash_outcome": str,
     "param_update_min_endorsements": int,
+    "validator_max_missed_blocks": int,
+    "validator_missed_block_slash_pct": float,
+    "zk_proof_max_age_seconds": int,
     # trust_score_weights handled separately (nested dict)
 }
 
@@ -1404,6 +1413,192 @@ def make_agent_param_endorse_tx(
     tx_id = sha256_hex(canonical_json({**payload, "signature": signature}))
     return {**payload, "id": tx_id, "signer": endorser_wallet["address"],
             "pubkey": endorser_wallet["public_key"], "signature": signature}
+
+
+def make_agent_intent_post_tx(
+    creator_wallet: Dict[str, Any],
+    agent_id: str,
+    intent: str,
+    role: str = "",
+    capability_tags: Optional[List[str]] = None,
+    desired_collaborators: Optional[List[str]] = None,
+    constraints_hash: str = "",
+    reward: float = 0.0,
+    expires_at: float = 0.0,
+    note: str = "",
+) -> Dict[str, Any]:
+    payload = {
+        "type": "agent_intent_post",
+        "schema_version": 1,
+        "intent_id": "ait_" + secrets.token_hex(8),
+        "creator": creator_wallet["address"],
+        "agent_id": str(agent_id).strip(),
+        "intent": str(intent).strip()[:256],
+        "role": str(role or "").strip()[:128],
+        "capability_tags": sorted(
+            {str(tag).strip().lower() for tag in (capability_tags or []) if str(tag).strip()}
+        ),
+        "desired_collaborators": sorted(
+            {str(addr).strip() for addr in (desired_collaborators or []) if str(addr).strip()}
+        ),
+        "constraints_hash": str(constraints_hash or "").strip(),
+        "reward": max(0.0, float(reward or 0.0)),
+        "expires_at": max(0.0, float(expires_at or 0.0)),
+        "note": str(note or "").strip()[:256],
+        "timestamp": time.time(),
+        "nonce": secrets.token_hex(8),
+    }
+    signature = sign_with_wallet(payload, creator_wallet)
+    tx_id = sha256_hex(canonical_json({**payload, "signature": signature}))
+    return {
+        **payload,
+        "id": tx_id,
+        "signer": creator_wallet["address"],
+        "pubkey": creator_wallet["public_key"],
+        "signature": signature,
+    }
+
+
+def make_agent_session_open_tx(
+    opener_wallet: Dict[str, Any],
+    session_id: str = "",
+    intent_id: str = "",
+    objective: str = "",
+    participants: Optional[List[str]] = None,
+    note: str = "",
+) -> Dict[str, Any]:
+    participants_set = {opener_wallet["address"]}
+    participants_set.update(str(addr).strip() for addr in (participants or []) if str(addr).strip())
+    payload = {
+        "type": "agent_session_open",
+        "schema_version": 1,
+        "session_id": str(session_id).strip() or ("collab:" + secrets.token_hex(8)),
+        "intent_id": str(intent_id or "").strip(),
+        "opener": opener_wallet["address"],
+        "objective": str(objective or "").strip()[:256],
+        "participants": sorted(participants_set),
+        "note": str(note or "").strip()[:256],
+        "timestamp": time.time(),
+        "nonce": secrets.token_hex(8),
+    }
+    signature = sign_with_wallet(payload, opener_wallet)
+    tx_id = sha256_hex(canonical_json({**payload, "signature": signature}))
+    return {
+        **payload,
+        "id": tx_id,
+        "signer": opener_wallet["address"],
+        "pubkey": opener_wallet["public_key"],
+        "signature": signature,
+    }
+
+
+def make_agent_artifact_commit_tx(
+    agent_wallet: Dict[str, Any],
+    session_id: str,
+    artifact_type: str,
+    output_hash: str = "",
+    evidence_hash: str = "",
+    evidence_url: str = "",
+    label: str = "",
+    note: str = "",
+) -> Dict[str, Any]:
+    payload = {
+        "type": "agent_artifact_commit",
+        "schema_version": 1,
+        "artifact_id": "aar_" + secrets.token_hex(8),
+        "session_id": str(session_id).strip(),
+        "agent": agent_wallet["address"],
+        "artifact_type": str(artifact_type or "artifact").strip()[:64],
+        "output_hash": str(output_hash or "").strip(),
+        "evidence_hash": str(evidence_hash or "").strip(),
+        "evidence_url": str(evidence_url or "").strip()[:512],
+        "label": str(label or artifact_type or "artifact").strip()[:128],
+        "note": str(note or "").strip()[:256],
+        "timestamp": time.time(),
+        "nonce": secrets.token_hex(8),
+    }
+    signature = sign_with_wallet(payload, agent_wallet)
+    tx_id = sha256_hex(canonical_json({**payload, "signature": signature}))
+    return {
+        **payload,
+        "id": tx_id,
+        "signer": agent_wallet["address"],
+        "pubkey": agent_wallet["public_key"],
+        "signature": signature,
+    }
+
+
+def make_agent_session_close_tx(
+    closer_wallet: Dict[str, Any],
+    session_id: str,
+    outcome: str = "success",
+    summary_hash: str = "",
+    note: str = "",
+) -> Dict[str, Any]:
+    normalized_outcome = str(outcome or "success").strip().lower()
+    if normalized_outcome not in {"success", "partial", "failure", "cancelled"}:
+        raise ValueError("outcome must be one of success, partial, failure, cancelled")
+    payload = {
+        "type": "agent_session_close",
+        "schema_version": 1,
+        "session_id": str(session_id).strip(),
+        "closer": closer_wallet["address"],
+        "outcome": normalized_outcome,
+        "summary_hash": str(summary_hash or "").strip(),
+        "note": str(note or "").strip()[:256],
+        "timestamp": time.time(),
+        "nonce": secrets.token_hex(8),
+    }
+    signature = sign_with_wallet(payload, closer_wallet)
+    tx_id = sha256_hex(canonical_json({**payload, "signature": signature}))
+    return {
+        **payload,
+        "id": tx_id,
+        "signer": closer_wallet["address"],
+        "pubkey": closer_wallet["public_key"],
+        "signature": signature,
+    }
+
+
+def make_agent_session_settle_tx(
+    settler_wallet: Dict[str, Any],
+    session_id: str,
+    payouts: Optional[Dict[str, float]] = None,
+    contribution_weights: Optional[Dict[str, float]] = None,
+    verdict: str = "success",
+    note: str = "",
+) -> Dict[str, Any]:
+    normalized_payouts = {
+        str(addr).strip(): max(0.0, float(amount or 0.0))
+        for addr, amount in dict(payouts or {}).items()
+        if str(addr).strip()
+    }
+    normalized_weights = {
+        str(addr).strip(): max(0.0, float(weight or 0.0))
+        for addr, weight in dict(contribution_weights or {}).items()
+        if str(addr).strip()
+    }
+    payload = {
+        "type": "agent_session_settle",
+        "schema_version": 1,
+        "session_id": str(session_id).strip(),
+        "settler": settler_wallet["address"],
+        "payouts": normalized_payouts,
+        "contribution_weights": normalized_weights,
+        "verdict": str(verdict or "success").strip().lower()[:64],
+        "note": str(note or "").strip()[:256],
+        "timestamp": time.time(),
+        "nonce": secrets.token_hex(8),
+    }
+    signature = sign_with_wallet(payload, settler_wallet)
+    tx_id = sha256_hex(canonical_json({**payload, "signature": signature}))
+    return {
+        **payload,
+        "id": tx_id,
+        "signer": settler_wallet["address"],
+        "pubkey": settler_wallet["public_key"],
+        "signature": signature,
+    }
 
 
 # ── Treasury / Validator Election ──────────────────────────────────────────
@@ -1749,6 +1944,7 @@ class PublicPaymentChain:
         self.identity_registry: Dict[str, Dict[str, Any]] = {}
         self.handle_index: Dict[str, str] = {}
         self.agent_registry: Dict[str, Dict[str, Any]] = {}
+        self.agent_register_history: List[Dict[str, Any]] = []
         # Layer 2 — Reputation
         self.reputation_index: Dict[str, Dict[str, Any]] = {}
         # Layer 3 — AI Job Marketplace
@@ -1776,6 +1972,8 @@ class PublicPaymentChain:
         self.activity_log_index: Dict[str, Dict[str, Any]] = {}   # log_id -> log record + trust state
         self.challenge_index: Dict[str, Dict[str, Any]] = {}      # challenge_id -> challenge record
         self.collab_index: Dict[str, Dict[str, Any]] = {}  # collab_id -> {agents, logs, created_at, last_active}
+        self.intent_index: Dict[str, Dict[str, Any]] = {}  # intent_id -> intent record
+        self.artifact_index: Dict[str, Dict[str, Any]] = {}  # artifact_id -> committed session artifact
         self.agent_param_proposals: Dict[str, Dict[str, Any]] = {}  # proposal_id -> proposal record
         # Agent trust governance: all parameters that affect scoring/disputes live here.
         # Changes require an agent_param_propose tx + M-of-N validator endorsements.
@@ -1789,15 +1987,31 @@ class PublicPaymentChain:
                 "evidence_backed_log": 0.2,
                 "challenged_unanswered_log": -1.5,
                 "slashed_log": -3.0,
+                "negative_attestation": -0.3,  # per negative peer review
             },
             "auto_slash_on_window_expiry": True,
             "slash_outcome": "agent_stake_to_challenger_plus_refund",
-            "param_update_min_endorsements": 2,  # including the proposer's implicit yes
+            "param_update_min_endorsements": 2,
+            # Time-decay: trust score decays when an agent is inactive.
+            # Every decay_epoch_blocks idle blocks, the score is multiplied by
+            # (1 - decay_rate_per_epoch). Agents active each epoch are unaffected.
+            "decay_epoch_blocks": 1000,      # ~83 min at 5 s/block
+            "decay_rate_per_epoch": 0.01,    # 1 % loss per idle epoch (floor 10 %)  # including the proposer's implicit yes
+            # Validator liveness: missed-block tracking and slashing
+            "validator_max_missed_blocks": 5,        # consecutive misses before removal
+            "validator_missed_block_slash_pct": 0.1, # fraction of balance slashed on removal
+            # ZK proof freshness: reject proofs older than this many seconds
+            "zk_proof_max_age_seconds": 3600,
         }
         self.agent_trust_params_history: List[Dict[str, Any]] = []  # [{block, endorsements, changes, ts}]
+        # Orphaned blocks: competing tips received from peers during fork detection.
+        # Keyed by block index → list of {hash, validator, timestamp, previous_hash}.
+        self.orphan_blocks: Dict[int, List[Dict[str, Any]]] = {}
         self.balance_index: Dict[str, float] = {}
         self.pending_spend_index: Dict[str, float] = {}
         self.evm_next_nonce_index: Dict[str, int] = {}
+        self._public_tx_count_total = 0
+        self._total_minted_supply = 0.0
         self.state_version = 0
         self.persist_batch_seconds = max(0.05, float(persist_batch_seconds))
         self.max_dirty_ops_before_flush = max(1, int(max_dirty_ops_before_flush))
@@ -1805,6 +2019,10 @@ class PublicPaymentChain:
         self._dirty_ops = 0
         self._pow_pool: Optional[ProcessPoolExecutor] = None
         self._pow_pool_workers = 0
+
+        # Replay-prevention set for ZK proofs — populated by _rebuild_runtime_indexes
+        # on file load, or stays empty for a fresh chain (no proofs yet)
+        self.zk_proof_hashes: set = set()
 
         if os.path.exists(self.chain_file):
             self._load()
@@ -1932,7 +2150,10 @@ class PublicPaymentChain:
                             self.pending_transactions = []
                             changed = True
             if changed:
-                self._rebuild_runtime_indexes()
+                if self.height == len(self.chain):
+                    self._rebuild_runtime_indexes()
+                else:
+                    self._reindex_pending_runtime_state()
             return changed
         except Exception:
             return False
@@ -1956,6 +2177,46 @@ class PublicPaymentChain:
         )
         genesis.hash = genesis.compute_hash()
         self.chain = [genesis]
+        self._chain_full_height = 1
+        self._public_tx_count_total = 0
+        self._total_minted_supply = 0.0
+
+    def _estimated_public_tx_count_from_retained_chain(self) -> int:
+        retained_total = sum(len(block.transactions) for block in self.chain)
+        non_genesis_blocks = max(0, self.height - 1)
+        visible_extra = sum(
+            max(0, len(block.transactions) - 1)
+            for block in self.chain
+            if int(getattr(block, "index", 0)) > 0
+        )
+        return max(retained_total, non_genesis_blocks + visible_extra)
+
+    def _estimated_total_minted_supply_from_retained_state(self) -> float:
+        visible_supply = round(sum(self.balance_index.values()) + float(self.treasury_balance), 8)
+        non_genesis_blocks = max(0, self.height - 1)
+        reward_floor = float(non_genesis_blocks) * float(self.mining_reward)
+        visible_system_mints = 0.0
+        for block in self.chain:
+            if int(getattr(block, "index", 0)) <= 0:
+                continue
+            system_payments = [
+                tx for tx in block.transactions
+                if tx.get("type") == "payment" and tx.get("sender") == SYSTEM_SENDER
+            ]
+            if not system_payments:
+                continue
+            reward_tx = system_payments[-1]
+            visible_system_mints += max(
+                0.0,
+                sum(float(tx.get("amount", 0.0)) for tx in system_payments)
+                - float(reward_tx.get("amount", 0.0)),
+            )
+        return round(max(visible_supply, reward_floor + visible_system_mints), 8)
+
+    def _reindex_pending_runtime_state(self) -> None:
+        self.pending_spend_index = {}
+        for tx in self.pending_transactions:
+            self._index_pending_transaction(tx)
 
     def _tx_seen(self, tx_id: str) -> bool:
         for tx in self.pending_transactions:
@@ -2037,7 +2298,7 @@ class PublicPaymentChain:
         }
 
     def _signable_agent_register(self, tx: Dict[str, Any]) -> Dict[str, Any]:
-        return {
+        signable = {
             "type": "agent_register",
             "owner": str(tx.get("owner", "")),
             "agent_id": str(tx.get("agent_id", "")),
@@ -2046,6 +2307,13 @@ class PublicPaymentChain:
             "version_hash": str(tx.get("version_hash", "")),
             "timestamp": float(tx.get("timestamp", 0.0)),
         }
+        if "task_types" in tx:
+            signable["task_types"] = list(tx.get("task_types", []))
+        if "refusals" in tx:
+            signable["refusals"] = list(tx.get("refusals", []))
+        if "system_prompt_hash" in tx:
+            signable["system_prompt_hash"] = str(tx.get("system_prompt_hash", ""))
+        return signable
 
     def _payment_fee(self, tx: Dict[str, Any]) -> float:
         try:
@@ -2075,10 +2343,10 @@ class PublicPaymentChain:
         return active[int(block_height) % len(active)]
 
     def expected_next_validator(self) -> str:
-        return self.expected_proposer_for_height(len(self.chain))
+        return self.expected_proposer_for_height(self.height)
 
     def latest_finalized_height(self) -> int:
-        tip = len(self.chain) - 1
+        tip = self.height - 1
         return max(0, tip - self.finality_confirmations)
 
     def _checkpoint_height_at(self, block_index: int) -> int:
@@ -2213,7 +2481,7 @@ class PublicPaymentChain:
 
     def performance_summary(self, window_blocks: int = 60) -> Dict[str, Any]:
         window = max(1, int(window_blocks))
-        height = len(self.chain) - 1
+        height = self.height - 1
         tip = self.chain[-1] if self.chain else None
         selected = self.chain[-window:] if self.chain else []
 
@@ -2568,6 +2836,37 @@ class PublicPaymentChain:
             "type", "schema_version", "resolver", "challenge_id", "verdict", "note", "timestamp", "nonce"
         ] if k in tx}
 
+    def _signable_agent_intent_post(self, tx: Dict[str, Any]) -> Dict[str, Any]:
+        return {k: tx[k] for k in [
+            "type", "schema_version", "intent_id", "creator", "agent_id", "intent", "role",
+            "capability_tags", "desired_collaborators", "constraints_hash", "reward",
+            "expires_at", "note", "timestamp", "nonce",
+        ] if k in tx}
+
+    def _signable_agent_session_open(self, tx: Dict[str, Any]) -> Dict[str, Any]:
+        return {k: tx[k] for k in [
+            "type", "schema_version", "session_id", "intent_id", "opener", "objective",
+            "participants", "note", "timestamp", "nonce",
+        ] if k in tx}
+
+    def _signable_agent_artifact_commit(self, tx: Dict[str, Any]) -> Dict[str, Any]:
+        return {k: tx[k] for k in [
+            "type", "schema_version", "artifact_id", "session_id", "agent", "artifact_type",
+            "output_hash", "evidence_hash", "evidence_url", "label", "note", "timestamp", "nonce",
+        ] if k in tx}
+
+    def _signable_agent_session_close(self, tx: Dict[str, Any]) -> Dict[str, Any]:
+        return {k: tx[k] for k in [
+            "type", "schema_version", "session_id", "closer", "outcome", "summary_hash",
+            "note", "timestamp", "nonce",
+        ] if k in tx}
+
+    def _signable_agent_session_settle(self, tx: Dict[str, Any]) -> Dict[str, Any]:
+        return {k: tx[k] for k in [
+            "type", "schema_version", "session_id", "settler", "payouts", "contribution_weights",
+            "verdict", "note", "timestamp", "nonce",
+        ] if k in tx}
+
     # ── Agent Param Governance (multi-validator propose + endorse) ────────────
 
     def _signable_agent_param_propose(self, tx: Dict[str, Any]) -> Dict[str, Any]:
@@ -2619,6 +2918,21 @@ class PublicPaymentChain:
                 if not isinstance(v, int):
                     return False
                 if not (1 <= v <= 100):
+                    return False
+            elif k == "validator_max_missed_blocks":
+                if not isinstance(v, int):
+                    return False
+                if not (1 <= v <= 1000):
+                    return False
+            elif k == "validator_missed_block_slash_pct":
+                if not isinstance(v, (int, float)):
+                    return False
+                if not (0.0 < float(v) <= 1.0):
+                    return False
+            elif k == "zk_proof_max_age_seconds":
+                if not isinstance(v, int):
+                    return False
+                if not (0 <= v <= 86400):
                     return False
         return True
 
@@ -2914,6 +3228,125 @@ class PublicPaymentChain:
                 f"[AUTO-SLASH] Agent {agent_addr[:12]} auto-slashed: challenge window expired", time.time()
             )
 
+    def _check_missed_blocks(self, block: "Block") -> None:
+        """
+        Called once per newly appended live block (not during replay).
+
+        Detects when a PoA validator skips their rotation turn.  Each skip
+        increments ``reputation_index[addr]["consecutive_missed_blocks"]``.
+        Once that counter reaches ``agent_trust_params["validator_max_missed_blocks"]``,
+        the offending validator is:
+          1. Slashed ``validator_missed_block_slash_pct`` of their balance
+             (proceeds sent to the treasury).
+          2. Removed from the active ``self.validators`` set.
+          3. Their consecutive counter is reset to zero.
+
+        A successful proposal resets the consecutive counter to zero, so a
+        single skipped turn is not permanently damaging.
+        """
+        if self.consensus != "poa" or not self.validator_rotation_enabled:
+            return
+        expected = str(block.meta.get("expected_validator", "")).strip()
+        actual = str(block.meta.get("validator", "")).strip()
+        if not expected:
+            return
+
+        max_missed = int(self.agent_trust_params.get("validator_max_missed_blocks", 5))
+        slash_pct = float(self.agent_trust_params.get("validator_missed_block_slash_pct", 0.1))
+
+        if actual and actual != expected:
+            # The expected validator skipped their turn.
+            self._ensure_reputation(expected)
+            r = self.reputation_index[expected]
+            r["missed_blocks"] = r.get("missed_blocks", 0) + 1
+            r["consecutive_missed_blocks"] = r.get("consecutive_missed_blocks", 0) + 1
+            consecutive = r["consecutive_missed_blocks"]
+            self._add_activity(
+                f"[MISSED-BLOCK] Validator {expected[:12]} skipped turn at block {block.index} "
+                f"(consecutive: {consecutive}/{max_missed})",
+                block.timestamp,
+            )
+            if consecutive >= max_missed and expected in self.validators:
+                current_balance = self.balance_index.get(expected, 0.0)
+                slash_amount = round(current_balance * slash_pct, 8)
+                if slash_amount > 0:
+                    self.balance_index[expected] = round(current_balance - slash_amount, 8)
+                    self.treasury_balance = round(self.treasury_balance + slash_amount, 8)
+                self.validators.discard(expected)
+                r["consecutive_missed_blocks"] = 0
+                self._award_badge(expected, "validator_slashed", "Validator Slashed", block.timestamp)
+                self._add_activity(
+                    f"[VALIDATOR-SLASH] {expected[:12]} removed from validator set after "
+                    f"{consecutive} consecutive missed blocks. "
+                    f"Slashed {slash_amount:.4f} NOVA to treasury.",
+                    block.timestamp,
+                )
+        elif actual:
+            # Successful proposal — reset the miss counter for this validator.
+            self._ensure_reputation(actual)
+            self.reputation_index[actual]["consecutive_missed_blocks"] = 0
+
+    def _try_fork_recovery(self, incoming_chain: List["Block"]) -> Optional[int]:
+        """
+        Detect a 1-deep reorg candidate: an incoming chain that shares our
+        second-to-last block as its ancestor but diverges at the tip.
+
+        Returns the fork-point height when a reorg is possible, else None.
+
+        Triggered when::
+            incoming_chain[-1].previous_hash == self.chain[-2].hash
+        """
+        if len(incoming_chain) < 2 or len(self.chain) < 2:
+            return None
+        if incoming_chain[-1].previous_hash == self.chain[-2].hash:
+            return self.chain[-2].index
+        return None
+
+    def _prefer_incoming_chain(self, incoming_chain: List["Block"]) -> bool:
+        """
+        Tie-breaking rule for same-length fork resolution.
+
+        PoA (rotation enabled):
+            Prefer the chain whose tip was proposed by the round-correct
+            validator.  If both or neither match, fall through to hash tie-break.
+
+        PoW:
+            Prefer the chain with higher cumulative work (leading-zero count
+            summed across all block hashes is a lightweight proxy for total work).
+
+        Tie / fallback:
+            Prefer the chain with the lexicographically lower tip hash —
+            deterministic and consistent across all honest nodes.
+        """
+        if not incoming_chain or not self.chain:
+            return False
+        incoming_tip = incoming_chain[-1]
+        our_tip = self.chain[-1]
+        if incoming_tip.hash == our_tip.hash:
+            return False  # identical tips — no preference
+
+        if self.consensus == "poa" and self.validator_rotation_enabled:
+            tip_height = len(incoming_chain) - 1
+            expected = self.expected_proposer_for_height(tip_height)
+            if expected:
+                incoming_correct = incoming_tip.meta.get("validator") == expected
+                ours_correct = our_tip.meta.get("validator") == expected
+                if incoming_correct and not ours_correct:
+                    return True
+                if ours_correct and not incoming_correct:
+                    return False
+        elif self.consensus == "pow":
+            def _chain_work(chain: List["Block"]) -> int:
+                # Leading zero hex digits per hash = cheap cumulative PoW proxy
+                return sum(len(b.hash) - len(b.hash.lstrip("0")) for b in chain)
+            incoming_work = _chain_work(incoming_chain)
+            our_work = _chain_work(self.chain)
+            if incoming_work != our_work:
+                return incoming_work > our_work
+
+        # Deterministic tie-break: lower hash wins (all honest nodes agree)
+        return incoming_tip.hash < our_tip.hash
+
     def _validate_agent_activity_log_tx(self, tx: Dict[str, Any]) -> bool:
         required = {"id", "type", "agent", "agent_id", "action_type", "timestamp",
                     "nonce", "signer", "pubkey", "signature"}
@@ -2931,6 +3364,217 @@ class PublicPaymentChain:
         if address_from_public_key(tx["pubkey"]) != signer:
             return False
         return verify_signature(self._signable_agent_activity_log(tx), tx["signature"], tx["pubkey"])
+
+    def _ensure_collab_record(self, collab_id: str, created_at: float = 0.0) -> Dict[str, Any]:
+        cid = str(collab_id).strip()
+        if not cid:
+            raise ValueError("collab_id is required")
+        record = self.collab_index.setdefault(
+            cid,
+            {
+                "collab_id": cid,
+                "session_id": cid,
+                "agents": [],
+                "log_ids": [],
+                "artifact_ids": [],
+                "artifacts": [],
+                "created_at": float(created_at or time.time()),
+                "opened_at": float(created_at or time.time()),
+                "last_active": float(created_at or time.time()),
+                "intent_id": "",
+                "objective": "",
+                "opened_by": "",
+                "status": "observed",
+                "closed_at": 0.0,
+                "closed_by": "",
+                "outcome": "",
+                "note": "",
+                "summary_hash": "",
+                "settlement": {},
+            },
+        )
+        record.setdefault("collab_id", cid)
+        record.setdefault("session_id", cid)
+        record.setdefault("agents", [])
+        record.setdefault("log_ids", [])
+        record.setdefault("artifact_ids", [])
+        record.setdefault("artifacts", [])
+        record.setdefault("created_at", float(created_at or time.time()))
+        record.setdefault("opened_at", float(record.get("created_at", created_at or time.time())))
+        record.setdefault("last_active", float(record.get("opened_at", created_at or time.time())))
+        record.setdefault("intent_id", "")
+        record.setdefault("objective", "")
+        record.setdefault("opened_by", "")
+        record.setdefault("status", "observed")
+        record.setdefault("closed_at", 0.0)
+        record.setdefault("closed_by", "")
+        record.setdefault("outcome", "")
+        record.setdefault("note", "")
+        record.setdefault("summary_hash", "")
+        record.setdefault("settlement", {})
+        return record
+
+    def _refresh_collab_session_counts(self, addresses: List[str]) -> None:
+        for addr in {str(value).strip() for value in addresses if str(value).strip()}:
+            self._ensure_reputation(addr)
+            sessions_for_agent = sum(1 for rec in self.collab_index.values() if addr in rec.get("agents", []))
+            self.reputation_index[addr]["collab_sessions"] = sessions_for_agent
+
+    def _effective_intent_status(self, intent: Dict[str, Any]) -> str:
+        status = str(intent.get("status", "open")).strip().lower() or "open"
+        expires_at = float(intent.get("expires_at", 0.0) or 0.0)
+        if status not in {"fulfilled", "settled", "cancelled"} and expires_at > 0 and expires_at <= time.time():
+            return "expired"
+        return status
+
+    def _validate_agent_intent_post_tx(self, tx: Dict[str, Any]) -> bool:
+        required = {"id", "type", "intent_id", "creator", "agent_id", "intent", "timestamp",
+                    "nonce", "signer", "pubkey", "signature"}
+        if not required.issubset(tx.keys()):
+            return False
+        if tx.get("type") != "agent_intent_post":
+            return False
+        creator = str(tx.get("creator", "")).strip()
+        signer = str(tx.get("signer", "")).strip()
+        intent_id = str(tx.get("intent_id", "")).strip()
+        if not creator or creator != signer or not intent_id or not str(tx.get("intent", "")).strip():
+            return False
+        if intent_id in self.intent_index:
+            return False
+        if float(tx.get("reward", 0.0)) < 0:
+            return False
+        if address_from_public_key(tx["pubkey"]) != signer:
+            return False
+        return verify_signature(self._signable_agent_intent_post(tx), tx["signature"], tx["pubkey"])
+
+    def _validate_agent_session_open_tx(self, tx: Dict[str, Any]) -> bool:
+        required = {"id", "type", "session_id", "opener", "participants", "timestamp",
+                    "nonce", "signer", "pubkey", "signature"}
+        if not required.issubset(tx.keys()):
+            return False
+        if tx.get("type") != "agent_session_open":
+            return False
+        opener = str(tx.get("opener", "")).strip()
+        signer = str(tx.get("signer", "")).strip()
+        session_id = str(tx.get("session_id", "")).strip()
+        participants = [str(addr).strip() for addr in tx.get("participants", []) if str(addr).strip()]
+        existing = self.collab_index.get(session_id, {})
+        if not opener or opener != signer or not session_id or not participants:
+            return False
+        if opener not in participants:
+            return False
+        if len(set(participants)) != len(participants):
+            return False
+        if existing and existing.get("opened_by"):
+            return False
+        intent_id = str(tx.get("intent_id", "")).strip()
+        if intent_id and intent_id not in self.intent_index:
+            return False
+        if address_from_public_key(tx["pubkey"]) != signer:
+            return False
+        return verify_signature(self._signable_agent_session_open(tx), tx["signature"], tx["pubkey"])
+
+    def _validate_agent_artifact_commit_tx(self, tx: Dict[str, Any]) -> bool:
+        required = {"id", "type", "artifact_id", "session_id", "agent", "artifact_type", "timestamp",
+                    "nonce", "signer", "pubkey", "signature"}
+        if not required.issubset(tx.keys()):
+            return False
+        if tx.get("type") != "agent_artifact_commit":
+            return False
+        artifact_id = str(tx.get("artifact_id", "")).strip()
+        session_id = str(tx.get("session_id", "")).strip()
+        agent = str(tx.get("agent", "")).strip()
+        signer = str(tx.get("signer", "")).strip()
+        session = self.collab_index.get(session_id, {})
+        if not artifact_id or artifact_id in self.artifact_index or not session_id or agent != signer:
+            return False
+        if not session or agent not in session.get("agents", []):
+            return False
+        if str(session.get("status", "")).lower() in {"closed", "settled"}:
+            return False
+        if not any(str(tx.get(key, "")).strip() for key in ("output_hash", "evidence_hash", "evidence_url")):
+            return False
+        if address_from_public_key(tx["pubkey"]) != signer:
+            return False
+        return verify_signature(self._signable_agent_artifact_commit(tx), tx["signature"], tx["pubkey"])
+
+    def _validate_agent_session_close_tx(self, tx: Dict[str, Any]) -> bool:
+        required = {"id", "type", "session_id", "closer", "outcome", "timestamp",
+                    "nonce", "signer", "pubkey", "signature"}
+        if not required.issubset(tx.keys()):
+            return False
+        if tx.get("type") != "agent_session_close":
+            return False
+        closer = str(tx.get("closer", "")).strip()
+        signer = str(tx.get("signer", "")).strip()
+        session_id = str(tx.get("session_id", "")).strip()
+        outcome = str(tx.get("outcome", "")).strip().lower()
+        session = self.collab_index.get(session_id, {})
+        allowed = {str(value).strip() for value in session.get("agents", []) if str(value).strip()}
+        if session.get("opened_by"):
+            allowed.add(str(session.get("opened_by", "")).strip())
+        intent_id = str(session.get("intent_id", "")).strip()
+        if intent_id:
+            intent = self.intent_index.get(intent_id, {})
+            creator = str(intent.get("creator", "")).strip()
+            if creator:
+                allowed.add(creator)
+        if not closer or closer != signer or not session_id or outcome not in {"success", "partial", "failure", "cancelled"}:
+            return False
+        if not session or closer not in allowed:
+            return False
+        if str(session.get("status", "")).lower() in {"closed", "settled"}:
+            return False
+        if address_from_public_key(tx["pubkey"]) != signer:
+            return False
+        return verify_signature(self._signable_agent_session_close(tx), tx["signature"], tx["pubkey"])
+
+    def _validate_agent_session_settle_tx(self, tx: Dict[str, Any]) -> bool:
+        required = {"id", "type", "session_id", "settler", "payouts", "contribution_weights", "timestamp",
+                    "nonce", "signer", "pubkey", "signature"}
+        if not required.issubset(tx.keys()):
+            return False
+        if tx.get("type") != "agent_session_settle":
+            return False
+        settler = str(tx.get("settler", "")).strip()
+        signer = str(tx.get("signer", "")).strip()
+        session_id = str(tx.get("session_id", "")).strip()
+        session = self.collab_index.get(session_id, {})
+        participants = {str(addr).strip() for addr in session.get("agents", []) if str(addr).strip()}
+        allowed = set(participants)
+        opener = str(session.get("opened_by", "")).strip()
+        if opener:
+            allowed.add(opener)
+        intent_id = str(session.get("intent_id", "")).strip()
+        if intent_id:
+            creator = str(self.intent_index.get(intent_id, {}).get("creator", "")).strip()
+            if creator:
+                allowed.add(creator)
+        try:
+            total_payout = sum(max(0.0, float(amount or 0.0)) for amount in dict(tx.get("payouts", {})).values())
+            weight_values = [max(0.0, float(value or 0.0)) for value in dict(tx.get("contribution_weights", {})).values()]
+        except (TypeError, ValueError):
+            return False
+        if not settler or settler != signer or not session_id:
+            return False
+        if not session or str(session.get("status", "")).lower() not in {"closed", "settled"}:
+            return False
+        if session.get("settlement"):
+            return False
+        if settler not in allowed:
+            return False
+        if any(str(addr).strip() not in participants for addr in dict(tx.get("payouts", {})).keys()):
+            return False
+        if any(str(addr).strip() not in participants for addr in dict(tx.get("contribution_weights", {})).keys()):
+            return False
+        if any(value < 0 for value in weight_values):
+            return False
+        available_balance = self.get_balance(settler) - self._pending_spent(settler)
+        if total_payout > 0 and available_balance + 1e-12 < total_payout:
+            return False
+        if address_from_public_key(tx["pubkey"]) != signer:
+            return False
+        return verify_signature(self._signable_agent_session_settle(tx), tx["signature"], tx["pubkey"])
 
     def _apply_agent_activity_log_tx(self, tx: Dict[str, Any]) -> None:
         log_id = str(tx.get("id", "")).strip()
@@ -2983,30 +3627,19 @@ class PublicPaymentChain:
         if tx.get("evidence_url"):
             r["evidence_backed_logs"] = r.get("evidence_backed_logs", 0) + 1
         r["last_active"] = ts
+        r["last_active_block"] = int(getattr(self, "height", 0))
         self._compute_trust_score(agent_addr)
 
         # Track collaboration sessions
         external_ref = str(tx.get("external_ref", ""))
         if external_ref.startswith("collab:"):
-            collab_id = external_ref  # e.g. "collab:session_abc123"
-            if collab_id not in self.collab_index:
-                self.collab_index[collab_id] = {
-                    "collab_id": collab_id,
-                    "agents": [],
-                    "log_ids": [],
-                    "created_at": ts,
-                    "last_active": ts,
-                }
-            rec = self.collab_index[collab_id]
+            rec = self._ensure_collab_record(external_ref, created_at=ts)
             if agent_addr not in rec["agents"]:
                 rec["agents"].append(agent_addr)
             if log_id not in rec["log_ids"]:
                 rec["log_ids"].append(log_id)
             rec["last_active"] = max(rec.get("last_active", ts), ts)
-            # Update reputation collab count
-            self._ensure_reputation(agent_addr)
-            sessions_for_agent = sum(1 for rec in self.collab_index.values() if agent_addr in rec["agents"])
-            self.reputation_index[agent_addr]["collab_sessions"] = sessions_for_agent
+            self._refresh_collab_session_counts([agent_addr])
 
         # Update agent registry if registered
         if agent_id and agent_id in self.agent_registry:
@@ -3045,6 +3678,149 @@ class PublicPaymentChain:
                 **log_entry,
             }
             self._apply_agent_activity_log_tx(merged)
+
+    def _apply_agent_intent_post_tx(self, tx: Dict[str, Any]) -> None:
+        intent_id = str(tx.get("intent_id", "")).strip()
+        creator = str(tx.get("creator", "")).strip()
+        ts = float(tx.get("timestamp", time.time()))
+        self.intent_index[intent_id] = {
+            "intent_id": intent_id,
+            "creator": creator,
+            "agent_id": str(tx.get("agent_id", "")).strip(),
+            "intent": str(tx.get("intent", "")).strip(),
+            "role": str(tx.get("role", "")).strip(),
+            "capability_tags": list(tx.get("capability_tags", [])),
+            "desired_collaborators": list(tx.get("desired_collaborators", [])),
+            "constraints_hash": str(tx.get("constraints_hash", "")).strip(),
+            "reward": max(0.0, float(tx.get("reward", 0.0))),
+            "expires_at": max(0.0, float(tx.get("expires_at", 0.0))),
+            "note": str(tx.get("note", "")).strip(),
+            "status": "open",
+            "created_at": ts,
+            "updated_at": ts,
+            "tx_id": str(tx.get("id", "")),
+            "session_ids": [],
+        }
+        self._add_activity(f"[INTENT] {creator[:12]} posted collaboration intent", ts)
+
+    def _apply_agent_session_open_tx(self, tx: Dict[str, Any]) -> None:
+        session_id = str(tx.get("session_id", "")).strip()
+        ts = float(tx.get("timestamp", time.time()))
+        participants = [str(addr).strip() for addr in tx.get("participants", []) if str(addr).strip()]
+        rec = self._ensure_collab_record(session_id, created_at=ts)
+        for participant in participants:
+            if participant not in rec["agents"]:
+                rec["agents"].append(participant)
+        rec["intent_id"] = str(tx.get("intent_id", "")).strip()
+        rec["objective"] = str(tx.get("objective", "")).strip()
+        rec["opened_by"] = str(tx.get("opener", "")).strip()
+        rec["opened_at"] = float(rec.get("opened_at", ts) or ts)
+        rec["last_active"] = max(float(rec.get("last_active", 0.0) or 0.0), ts)
+        rec["status"] = "open"
+        if tx.get("note"):
+            rec["note"] = str(tx.get("note", "")).strip()
+        intent_id = str(tx.get("intent_id", "")).strip()
+        if intent_id in self.intent_index:
+            intent = self.intent_index[intent_id]
+            intent.setdefault("session_ids", [])
+            if session_id not in intent["session_ids"]:
+                intent["session_ids"].append(session_id)
+            intent["updated_at"] = ts
+            if self._effective_intent_status(intent) == "open":
+                intent["status"] = "in_progress"
+        self._refresh_collab_session_counts(participants)
+        self._add_activity(f"[SESSION] {session_id[:18]} opened with {len(rec['agents'])} participants", ts)
+
+    def _apply_agent_artifact_commit_tx(self, tx: Dict[str, Any]) -> None:
+        artifact_id = str(tx.get("artifact_id", "")).strip()
+        session_id = str(tx.get("session_id", "")).strip()
+        agent = str(tx.get("agent", "")).strip()
+        ts = float(tx.get("timestamp", time.time()))
+        artifact = {
+            "artifact_id": artifact_id,
+            "session_id": session_id,
+            "agent": agent,
+            "artifact_type": str(tx.get("artifact_type", "")).strip(),
+            "output_hash": str(tx.get("output_hash", "")).strip(),
+            "evidence_hash": str(tx.get("evidence_hash", "")).strip(),
+            "evidence_url": str(tx.get("evidence_url", "")).strip(),
+            "label": str(tx.get("label", "")).strip(),
+            "note": str(tx.get("note", "")).strip(),
+            "timestamp": ts,
+            "tx_id": str(tx.get("id", "")),
+        }
+        self.artifact_index[artifact_id] = artifact
+        rec = self._ensure_collab_record(session_id, created_at=ts)
+        if artifact_id not in rec["artifact_ids"]:
+            rec["artifact_ids"].append(artifact_id)
+            rec["artifacts"].append(artifact)
+        rec["last_active"] = max(float(rec.get("last_active", 0.0) or 0.0), ts)
+        self._add_activity(f"[ARTIFACT] {agent[:12]} committed {artifact.get('artifact_type', 'artifact')}", ts)
+
+    def _apply_agent_session_close_tx(self, tx: Dict[str, Any]) -> None:
+        session_id = str(tx.get("session_id", "")).strip()
+        ts = float(tx.get("timestamp", time.time()))
+        rec = self._ensure_collab_record(session_id, created_at=ts)
+        rec["closed_at"] = ts
+        rec["closed_by"] = str(tx.get("closer", "")).strip()
+        rec["outcome"] = str(tx.get("outcome", "")).strip().lower()
+        rec["summary_hash"] = str(tx.get("summary_hash", "")).strip()
+        rec["last_active"] = max(float(rec.get("last_active", 0.0) or 0.0), ts)
+        rec["status"] = "closed"
+        if tx.get("note"):
+            rec["note"] = str(tx.get("note", "")).strip()
+        intent_id = str(rec.get("intent_id", "")).strip()
+        if intent_id in self.intent_index:
+            intent = self.intent_index[intent_id]
+            intent["updated_at"] = ts
+            if rec["outcome"] == "success":
+                intent["status"] = "fulfilled"
+            elif self._effective_intent_status(intent) != "expired":
+                open_sessions = [
+                    sid for sid in intent.get("session_ids", [])
+                    if str(self.collab_index.get(sid, {}).get("status", "")).lower() == "open"
+                ]
+                intent["status"] = "in_progress" if open_sessions else "open"
+        self._add_activity(f"[SESSION] {session_id[:18]} closed ({rec['outcome']})", ts)
+
+    def _apply_agent_session_settle_tx(self, tx: Dict[str, Any]) -> None:
+        session_id = str(tx.get("session_id", "")).strip()
+        settler = str(tx.get("settler", "")).strip()
+        ts = float(tx.get("timestamp", time.time()))
+        rec = self._ensure_collab_record(session_id, created_at=ts)
+        payouts = {
+            str(addr).strip(): max(0.0, float(amount or 0.0))
+            for addr, amount in dict(tx.get("payouts", {})).items()
+            if str(addr).strip()
+        }
+        contribution_weights = {
+            str(addr).strip(): max(0.0, float(weight or 0.0))
+            for addr, weight in dict(tx.get("contribution_weights", {})).items()
+            if str(addr).strip()
+        }
+        total_payout = round(sum(payouts.values()), 8)
+        if total_payout > 0:
+            self.balance_index[settler] = round(self.balance_index.get(settler, 0.0) - total_payout, 8)
+            for participant, amount in payouts.items():
+                self.balance_index[participant] = round(self.balance_index.get(participant, 0.0) + amount, 8)
+        rec["settlement"] = {
+            "settler": settler,
+            "payouts": payouts,
+            "contribution_weights": contribution_weights,
+            "verdict": str(tx.get("verdict", "")).strip().lower(),
+            "note": str(tx.get("note", "")).strip(),
+            "timestamp": ts,
+            "tx_id": str(tx.get("id", "")),
+        }
+        rec["status"] = "settled"
+        rec["last_active"] = max(float(rec.get("last_active", 0.0) or 0.0), ts)
+        intent_id = str(rec.get("intent_id", "")).strip()
+        if intent_id in self.intent_index:
+            intent = self.intent_index[intent_id]
+            intent["updated_at"] = ts
+            if str(rec.get("outcome", "")).lower() == "success":
+                intent["status"] = "settled"
+        self._add_activity(f"[SETTLEMENT] {session_id[:18]} settled ({len(payouts)} payouts)", ts)
 
     def _apply_agent_challenge_tx(self, tx: Dict[str, Any]) -> None:
         log_id = str(tx.get("log_id", "")).strip()
@@ -3239,17 +4015,36 @@ class PublicPaymentChain:
             if not agent_id:
                 return
             owner = str(tx.get("owner", "")).strip()
+            _registered_at = float(tx.get("timestamp", time.time()))
+            _tx_id = str(tx.get("id", ""))
             self.agent_registry[agent_id] = {
                 "agent_id": agent_id,
                 "name": str(tx.get("name", "")),
                 "owner": owner,
                 "capabilities": list(tx.get("capabilities", [])),
+                "task_types": list(tx.get("task_types", [])),
+                "refusals": list(tx.get("refusals", [])),
+                "system_prompt_hash": str(tx.get("system_prompt_hash", "")),
                 "version_hash": str(tx.get("version_hash", "")),
                 "wallet_address": owner,
-                "registered_at": float(tx.get("timestamp", time.time())),
-                "tx_id": str(tx.get("id", "")),
+                "registered_at": _registered_at,
+                "tx_id": _tx_id,
                 "attestations": [],
             }
+            # Append to immutable version history — survives re-registration overwrites
+            _prior = sum(1 for h in self.agent_register_history if h.get("agent_id") == agent_id)
+            self.agent_register_history.append({
+                "agent_id": agent_id,
+                "owner": owner,
+                "capabilities": list(tx.get("capabilities", [])),
+                "task_types": list(tx.get("task_types", [])),
+                "refusals": list(tx.get("refusals", [])),
+                "system_prompt_hash": str(tx.get("system_prompt_hash", "")),
+                "version_hash": str(tx.get("version_hash", "")),
+                "registered_at": _registered_at,
+                "tx_id": _tx_id,
+                "version": _prior + 1,
+            })
         elif tx_type == "agent_attest":
             log_id = str(tx.get("log_id", "")).strip()
             sentiment = str(tx.get("sentiment", "")).strip()
@@ -3275,6 +4070,19 @@ class PublicPaymentChain:
                     attester_score = float(attester_rep.get("trust_score", 0.1))
                     weight = max(0.1, attester_score)  # minimum weight 0.1 even for new agents
                     r["weighted_attestation_score"] = round(r.get("weighted_attestation_score", 0.0) + weight * 0.1, 3)
+                    self._compute_trust_score(agent_addr)
+                elif sentiment == "negative":
+                    # Negative attestation: peer is saying this log is low-quality or false.
+                    # Penalise proportional to attester's own trust score (high-trust peers
+                    # carry more weight when they flag bad work).
+                    self._ensure_reputation(agent_addr)
+                    r = self.reputation_index[agent_addr]
+                    r["negative_attestations"] = r.get("negative_attestations", 0) + 1
+                    attester_rep = self.reputation_index.get(attester, {})
+                    attester_score = float(attester_rep.get("trust_score", 0.1))
+                    weight = max(0.1, attester_score)
+                    # Negative review reduces the weighted attestation score (can go below 0)
+                    r["weighted_attestation_score"] = round(r.get("weighted_attestation_score", 0.0) - weight * 0.05, 3)
                     self._compute_trust_score(agent_addr)
 
     def _ensure_reputation(self, address: str) -> None:
@@ -3306,6 +4114,8 @@ class PublicPaymentChain:
                 "success_rate": 1.0,
                 "weighted_attestation_score": 0.0,
                 "evidence_coverage": 0.0,
+                "negative_attestations": 0,   # peer negative reviews received
+                "last_active_block": 0,        # chain height at last activity log
             }
 
     def _compute_trust_score(self, addr: str) -> None:
@@ -3318,6 +4128,7 @@ class PublicPaymentChain:
         evidence_backed = r.get("evidence_backed_logs", 0)
         challenged = r.get("challenged_unanswered_logs", 0)
         slashed = r.get("slashed_logs", 0)
+        neg_attested = r.get("negative_attestations", 0)
 
         import math
 
@@ -3329,6 +4140,7 @@ class PublicPaymentChain:
         w_evidence = float(w.get("evidence_backed_log", 0.2))
         w_challenged = float(w.get("challenged_unanswered_log", -1.5))
         w_slashed = float(w.get("slashed_log", -3.0))
+        w_neg_attest = float(w.get("negative_attestation", -0.3))
 
         # Layer 1 — Activity: diminishing returns on raw log count (stops spam)
         base_score = math.log(logs + 1, 10) * w_activity * 5.0 if logs > 0 else 0.0
@@ -3347,10 +4159,29 @@ class PublicPaymentChain:
         # Layer 5 — Stake signal
         stake_score = math.log(stake_backed + 1, 10) * w_stake if stake_backed > 0 else 0.0
 
-        # Penalties
-        penalty = challenged * abs(w_challenged) + slashed * abs(w_slashed)
+        # Penalties (challenges, slashes, negative peer reviews)
+        penalty = (
+            challenged * abs(w_challenged)
+            + slashed * abs(w_slashed)
+            + neg_attested * abs(w_neg_attest)
+        )
 
-        score = round(base_score + quality_score + network_score + evidence_score + stake_score - penalty, 2)
+        raw_score = base_score + quality_score + network_score + evidence_score + stake_score - penalty
+
+        # Time-decay: score erodes when an agent goes idle.
+        # Each decay_epoch_blocks of inactivity multiplies the score by
+        # (1 - decay_rate_per_epoch), floored at 10 % of raw_score.
+        last_active_block = int(r.get("last_active_block", 0))
+        current_block = int(getattr(self, "height", 0))
+        decay_epoch_blocks = int(self.agent_trust_params.get("decay_epoch_blocks", 1000))
+        decay_rate = float(self.agent_trust_params.get("decay_rate_per_epoch", 0.01))
+        if decay_epoch_blocks > 0 and current_block > last_active_block:
+            epochs_idle = (current_block - last_active_block) / decay_epoch_blocks
+            decay_multiplier = max(0.1, (1.0 - decay_rate) ** epochs_idle)
+        else:
+            decay_multiplier = 1.0
+
+        score = round(raw_score * decay_multiplier, 2)
 
         # Trust tier — now requires evidence coverage thresholds
         if slashed > 0:
@@ -3372,6 +4203,256 @@ class PublicPaymentChain:
         r["trust_tier"] = tier
         r["evidence_coverage"] = round(evidence_coverage, 3)
         r["success_rate"] = success_rate
+
+    def _agent_registry_entry_for_address(self, address: str) -> Dict[str, Any]:
+        for agent in self.agent_registry.values():
+            owner = str(agent.get("owner", "")).strip()
+            wallet_address = str(agent.get("wallet_address", "")).strip()
+            if address == owner or address == wallet_address:
+                return dict(agent)
+        return {}
+
+    def _finalize_capability_stats(self, stats_by_key: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        finalized: Dict[str, Dict[str, Any]] = {}
+        for key, stats in stats_by_key.items():
+            total = int(stats.get("total_logs", 0))
+            evidenced_logs = int(stats.get("evidenced_logs", 0))
+            successes = int(stats.get("successes", 0))
+            finalized[key] = {
+                "total_logs": total,
+                "evidenced_logs": evidenced_logs,
+                "attested_logs": int(stats.get("attested_logs", 0)),
+                "success_rate": round(successes / total, 4) if total else 0.0,
+                "evidence_rate": round(evidenced_logs / total, 4) if total else 0.0,
+                "last_active": float(stats.get("last_active", 0.0)),
+            }
+        return finalized
+
+    def capability_profile(self, address: str) -> Dict[str, Any]:
+        """
+        Evidence-backed capability profile derived from actual activity logs.
+        This is the on-chain behavioral graph used by richer discovery surfaces.
+        """
+        address = str(address).strip()
+        by_action_type: Dict[str, Dict[str, Any]] = {}
+        by_tag: Dict[str, Dict[str, Any]] = {}
+        logs = [v for v in self.activity_log_index.values() if v.get("agent") == address]
+
+        def _accumulate(bucket: Dict[str, Dict[str, Any]], key: str, log: Dict[str, Any]) -> None:
+            rec = bucket.setdefault(
+                key,
+                {
+                    "total_logs": 0,
+                    "evidenced_logs": 0,
+                    "attested_logs": 0,
+                    "successes": 0,
+                    "last_active": 0.0,
+                },
+            )
+            evidenced = bool(log.get("evidence_hash") or log.get("evidence_url"))
+            attested = any(
+                str(att.get("sentiment", "")).lower() == "positive"
+                for att in log.get("attestations", [])
+            )
+            rec["total_logs"] += 1
+            rec["evidenced_logs"] += int(evidenced)
+            rec["attested_logs"] += int(attested)
+            rec["successes"] += int(bool(log.get("success", True)))
+            rec["last_active"] = max(float(rec.get("last_active", 0.0)), float(log.get("timestamp", 0.0)))
+
+        for log in logs:
+            action_type = str(log.get("action_type", "")).strip().lower()
+            if action_type:
+                _accumulate(by_action_type, action_type, log)
+            for raw_tag in log.get("tags", []):
+                tag = str(raw_tag).strip().lower()
+                if tag:
+                    _accumulate(by_tag, tag, log)
+
+        collab_sessions_detail = [
+            dict(rec) for rec in self.collab_index.values() if address in rec.get("agents", [])
+        ]
+        collab_partners = sorted({
+            str(agent).strip()
+            for rec in collab_sessions_detail
+            for agent in rec.get("agents", [])
+            if str(agent).strip() and str(agent).strip() != address
+        })
+        reg = self._agent_registry_entry_for_address(address)
+        return {
+            "address": address,
+            "agent_id": reg.get("agent_id", ""),
+            "name": reg.get("name", ""),
+            "declared_capabilities": list(reg.get("capabilities", [])),
+            "task_types": list(reg.get("task_types", [])),
+            "refusals": list(reg.get("refusals", [])),
+            "system_prompt_hash": str(reg.get("system_prompt_hash", "")),
+            "by_action_type": self._finalize_capability_stats(by_action_type),
+            "by_tag": self._finalize_capability_stats(by_tag),
+            "collab_partners": collab_partners,
+            "collab_sessions_detail": collab_sessions_detail,
+        }
+
+    def discover_agents(
+        self,
+        tags: Optional[List[str]] = None,
+        min_score: float = 0.0,
+        min_tier: str = "",
+        platform: str = "",
+        limit: int = 20,
+        exclude: Optional[List[str]] = None,
+        capability: str = "",
+        min_log_count: int = 1,
+        min_evidence_count: int = 0,
+        has_collaborated: bool = False,
+        collaborated_with: str = "",
+    ) -> List[Dict[str, Any]]:
+        """Discover agents by trust, observed capabilities, and collaboration history."""
+        filter_tags = [str(tag).strip().lower() for tag in (tags or []) if str(tag).strip()]
+        filter_platform = str(platform or "").strip().lower()
+        capability = str(capability or "").strip().lower()
+        exclude_set = {str(addr).strip() for addr in (exclude or []) if str(addr).strip()}
+        collaborated_with = str(collaborated_with or "").strip()
+
+        tier_order = ["unverified", "self-reported", "attested", "evidence-attested", "stake-backed"]
+        if min_tier in tier_order:
+            allowed_tiers = set(tier_order[tier_order.index(min_tier):])
+        else:
+            allowed_tiers = None
+
+        results: List[Dict[str, Any]] = []
+        for addr, rep in self.reputation_index.items():
+            if addr in exclude_set:
+                continue
+            if rep.get("activity_logs", 0) == 0:
+                continue
+            tier = str(rep.get("trust_tier", "unverified"))
+            if tier in {"disputed", "slashed"}:
+                continue
+            if allowed_tiers is not None and tier not in allowed_tiers:
+                continue
+            if float(rep.get("trust_score", 0.0)) < float(min_score):
+                continue
+
+            agent_logs = [log for log in self.activity_log_index.values() if log.get("agent") == addr]
+            if filter_tags:
+                tag_sets = [{str(tag).lower() for tag in log.get("tags", [])} for log in agent_logs]
+                if not any(any(tag in tag_set for tag in filter_tags) for tag_set in tag_sets):
+                    continue
+            if filter_platform and not any(
+                str(log.get("platform", "")).lower() == filter_platform for log in agent_logs
+            ):
+                continue
+
+            capability_profile = None
+            capability_stats = None
+            if capability or has_collaborated or collaborated_with:
+                capability_profile = self.capability_profile(addr)
+
+            if capability:
+                capability_stats = (
+                    capability_profile["by_action_type"].get(capability)
+                    or capability_profile["by_tag"].get(capability)
+                )
+                if capability_stats is None:
+                    continue
+                if int(capability_stats.get("total_logs", 0)) < max(1, int(min_log_count)):
+                    continue
+                if int(capability_stats.get("evidenced_logs", 0)) < max(0, int(min_evidence_count)):
+                    continue
+
+            if has_collaborated and not capability_profile.get("collab_partners", []):
+                continue
+            if collaborated_with and collaborated_with not in capability_profile.get("collab_partners", []):
+                continue
+
+            reg = self._agent_registry_entry_for_address(addr)
+            result = {
+                "address": addr,
+                "agent_id": reg.get("agent_id", ""),
+                "name": reg.get("name", ""),
+                "trust_score": float(rep.get("trust_score", 0.0)),
+                "trust_tier": tier,
+                "total_logs": int(rep.get("activity_logs", 0)),
+                "attested_logs": int(rep.get("attested_logs", 0)),
+                "stake_backed_logs": int(rep.get("stake_backed_logs", 0)),
+                "evidence_backed_logs": int(rep.get("evidence_backed_logs", 0)),
+                "challenged_logs": int(rep.get("challenged_unanswered_logs", 0)),
+                "slashed_logs": int(rep.get("slashed_logs", 0)),
+                "platforms": sorted({log.get("platform") for log in agent_logs if log.get("platform")}),
+                "tags": sorted({tag for log in agent_logs for tag in log.get("tags", [])}),
+                "last_active": float(rep.get("last_active", 0.0)),
+                "collab_sessions": sum(
+                    1 for rec in self.collab_index.values() if addr in rec.get("agents", [])
+                ),
+                "declared_capabilities": list(reg.get("capabilities", [])),
+                "task_types": list(reg.get("task_types", [])),
+            }
+            if capability_stats is not None:
+                result["capability_stats"] = capability_stats
+            if capability_profile is not None:
+                result["capability_profile"] = capability_profile
+            results.append(result)
+
+        results.sort(key=lambda item: item["trust_score"], reverse=True)
+        return results[: max(1, min(int(limit), 100))]
+
+    def list_agent_intents(
+        self,
+        creator: str = "",
+        status: str = "",
+        capability: str = "",
+        limit: int = 20,
+    ) -> List[Dict[str, Any]]:
+        creator = str(creator or "").strip()
+        status = str(status or "").strip().lower()
+        capability = str(capability or "").strip().lower()
+        rows: List[Dict[str, Any]] = []
+        for intent in self.intent_index.values():
+            if creator and str(intent.get("creator", "")).strip() != creator:
+                continue
+            effective_status = self._effective_intent_status(intent)
+            if status and effective_status != status:
+                continue
+            tags = [str(tag).strip().lower() for tag in intent.get("capability_tags", []) if str(tag).strip()]
+            if capability and capability not in tags:
+                continue
+            rows.append({**dict(intent), "status": effective_status})
+        rows.sort(key=lambda item: float(item.get("created_at", 0.0)), reverse=True)
+        return rows[: max(1, min(int(limit), 100))]
+
+    def get_agent_session(self, session_id: str) -> Dict[str, Any]:
+        session_id = str(session_id or "").strip()
+        if not session_id:
+            return {}
+        rec = self.collab_index.get(session_id)
+        if not rec:
+            return {}
+        return dict(rec)
+
+    def list_agent_sessions(
+        self,
+        participant: str = "",
+        status: str = "",
+        intent_id: str = "",
+        limit: int = 20,
+    ) -> List[Dict[str, Any]]:
+        participant = str(participant or "").strip()
+        status = str(status or "").strip().lower()
+        intent_id = str(intent_id or "").strip()
+        rows: List[Dict[str, Any]] = []
+        for rec in self.collab_index.values():
+            participants = {str(addr).strip() for addr in rec.get("agents", []) if str(addr).strip()}
+            rec_status = str(rec.get("status", "")).strip().lower()
+            if participant and participant not in participants:
+                continue
+            if status and rec_status != status:
+                continue
+            if intent_id and str(rec.get("intent_id", "")).strip() != intent_id:
+                continue
+            rows.append(dict(rec))
+        rows.sort(key=lambda item: float(item.get("last_active", item.get("created_at", 0.0))), reverse=True)
+        return rows[: max(1, min(int(limit), 100))]
 
     def _add_reputation(self, address: str, delta: float, reason: str, ts: float) -> None:
         self._ensure_reputation(address)
@@ -3664,12 +4745,41 @@ class PublicPaymentChain:
             raise ValueError("zk_proof: ZK verification not available (install py_ecc)")
         if not groth16_verify(vk, payload["proof"], payload["public_inputs"]):
             raise ValueError("zk_proof: proof verification failed")
+        # Replay prevention: reject if this exact proof was already accepted.
+        # The proof hash is a SHA256 of the canonical serialised proof points —
+        # any re-submission of the same (A, B, C) tuple is rejected even with
+        # different public inputs, because the cryptographic binding is on the
+        # proof itself.
+        import hashlib as _hashlib, json as _json
+        _proof_content = _json.dumps(payload["proof"], sort_keys=True)
+        _proof_hash = _hashlib.sha256(_proof_content.encode()).hexdigest()
+        if hasattr(self, "zk_proof_hashes") and _proof_hash in self.zk_proof_hashes:
+            raise ValueError(f"zk_proof: replay detected — proof already submitted (hash={_proof_hash[:16]}...)")
+        # Freshness check: reject proofs whose timestamp is outside the allowed age window.
+        # This prevents delayed or pre-generated proofs from being submitted long after
+        # the underlying computation occurred.
+        max_age = int(self.agent_trust_params.get("zk_proof_max_age_seconds", 3600))
+        if max_age > 0:
+            proof_age = abs(time.time() - float(payload.get("ts", 0)))
+            if proof_age > max_age:
+                raise ValueError(
+                    f"zk_proof: proof timestamp too old "
+                    f"({proof_age:.0f}s > {max_age}s allowed)"
+                )
 
     def _apply_zk_proof_tx(self, payload: Dict, block_height: int) -> None:
+        import hashlib as _hashlib, json as _json
+        _proof_content = _json.dumps(payload["proof"], sort_keys=True)
+        _proof_hash = _hashlib.sha256(_proof_content.encode()).hexdigest()
+        # Register in the permanent replay-prevention set
+        if not hasattr(self, "zk_proof_hashes"):
+            self.zk_proof_hashes: set = set()
+        self.zk_proof_hashes.add(_proof_hash)
         entry = {
             "circuit_id": payload["circuit_id"],
             "prover": payload["prover"],
             "public_inputs": payload["public_inputs"],
+            "proof_hash": _proof_hash,   # stored for audit + replay guard rebuild
             "metadata": payload.get("metadata", {}),
             "block_height": block_height,
             "ts": payload["ts"],
@@ -4110,6 +5220,15 @@ class PublicPaymentChain:
             if provider:
                 amount = float(tx.get("amount", 0.0))
                 self.pending_spend_index[provider] = self.pending_spend_index.get(provider, 0.0) + max(0.0, amount)
+            return
+        if tx_type == "agent_session_settle":
+            settler = self._normalize_address(str(tx.get("settler", "")))
+            if settler:
+                total_payout = sum(
+                    max(0.0, float(amount or 0.0))
+                    for amount in dict(tx.get("payouts", {})).values()
+                )
+                self.pending_spend_index[settler] = self.pending_spend_index.get(settler, 0.0) + total_payout
 
     def prune_mempool(self, now: Optional[float] = None, force_persist: bool = False) -> Dict[str, int]:
         now_ts = float(now if now is not None else time.time())
@@ -4163,7 +5282,10 @@ class PublicPaymentChain:
         ) + float(evicted)
 
         if changed:
-            self._rebuild_runtime_indexes()
+            if self.height == len(self.chain):
+                self._rebuild_runtime_indexes()
+            else:
+                self._reindex_pending_runtime_state()
             self._touch_and_save(force=bool(force_persist))
         return {"expired": expired, "evicted": evicted, "pending": len(self.pending_transactions)}
 
@@ -4174,6 +5296,8 @@ class PublicPaymentChain:
         latest_prices: Dict[str, Dict[str, Any]] = {}
         active_validators: Set[str] = set(self.initial_validators) if self.initial_validators else set(self.validators)
         evm_next: Dict[str, int] = {}
+        total_tx_count = 0
+        total_minted_supply = 0.0
         self.identity_registry = {}
         self.handle_index = {}
         self.agent_registry = {}
@@ -4188,10 +5312,14 @@ class PublicPaymentChain:
         self.pipeline_registry = {}
         self.zk_circuit_registry = {}
         self.zk_proof_log = []
+        self.zk_proof_hashes: set = set()  # permanent replay-prevention set
         self.activity_log_index = {}
         self.challenge_index = {}
         self.collab_index = {}
+        self.intent_index = {}
+        self.artifact_index = {}
         self.agent_param_proposals = {}
+        self.balance_index = balances
         self.agent_trust_params = {
             "schema_version": 1,
             "challenge_window_blocks": AGENT_CHALLENGE_WINDOW_BLOCKS,
@@ -4206,11 +5334,19 @@ class PublicPaymentChain:
             "auto_slash_on_window_expiry": True,
             "slash_outcome": "agent_stake_to_challenger_plus_refund",
             "param_update_min_endorsements": 2,
+            "validator_max_missed_blocks": 5,
+            "validator_missed_block_slash_pct": 0.1,
+            "zk_proof_max_age_seconds": 3600,
         }
         self.agent_trust_params_history = []
 
         for block in self.chain:
             self._replay_block_index = block.index
+            total_tx_count += len(block.transactions)
+            system_payments = [
+                tx for tx in block.transactions
+                if tx.get("type") == "payment" and tx.get("sender") == SYSTEM_SENDER
+            ]
             for tx in block.transactions:
                 self._apply_payment_tx(tx, balances)
                 self._apply_ai_provider_tx(tx, balances, provider_stakes, slash_events=slash_events)
@@ -4244,6 +5380,16 @@ class PublicPaymentChain:
                     self._apply_agent_activity_log_tx(tx)
                 elif tx.get("type") == "agent_activity_log_batch":
                     self._apply_agent_activity_log_batch_tx(tx)
+                elif tx.get("type") == "agent_intent_post":
+                    self._apply_agent_intent_post_tx(tx)
+                elif tx.get("type") == "agent_session_open":
+                    self._apply_agent_session_open_tx(tx)
+                elif tx.get("type") == "agent_artifact_commit":
+                    self._apply_agent_artifact_commit_tx(tx)
+                elif tx.get("type") == "agent_session_close":
+                    self._apply_agent_session_close_tx(tx)
+                elif tx.get("type") == "agent_session_settle":
+                    self._apply_agent_session_settle_tx(tx)
                 elif tx.get("type") == "agent_challenge":
                     self._apply_agent_challenge_tx(tx)
                 elif tx.get("type") == "agent_challenge_resolve":
@@ -4309,17 +5455,27 @@ class PublicPaymentChain:
                     self._apply_zk_register_circuit_tx(tx, block.index)
 
             # Treasury accumulation from block reward
-            reward_txs = [t for t in block.transactions if t.get("type") == "payment" and t.get("sender") == SYSTEM_SENDER]
+            reward_txs = list(system_payments)
             if reward_txs and block.index > 0 and self.treasury_fee_pct > 0:
-                miner_amt = float(reward_txs[0].get("amount", 0.0))
+                reward_tx = reward_txs[-1]
+                miner_amt = float(reward_tx.get("amount", 0.0))
                 if miner_amt > 0:
                     # miner_reward = total * (1 - fee_pct), so total = miner_reward / (1 - fee_pct)
                     total_reward = miner_amt / (1.0 - self.treasury_fee_pct)
                     treasury_cut = round(total_reward * self.treasury_fee_pct, 8)
                     self.treasury_balance = round(self.treasury_balance + treasury_cut, 8)
+            if block.index > 0:
+                total_minted_supply += float(self.mining_reward)
+                if reward_txs:
+                    total_minted_supply += max(
+                        0.0,
+                        sum(float(tx.get("amount", 0.0)) for tx in reward_txs)
+                        - float(reward_txs[-1].get("amount", 0.0)),
+                    )
 
             # Reputation for mining
-            miner = reward_txs[0].get("recipient", "") if reward_txs else ""
+            reward_tx = reward_txs[-1] if reward_txs else {}
+            miner = reward_tx.get("recipient", "") if reward_txs else ""
             if not miner and block.meta.get("validator"):
                 miner = block.meta["validator"]
             if miner and block.index > 0:
@@ -4330,7 +5486,7 @@ class PublicPaymentChain:
                 r["last_active"] = max(r.get("last_active", 0.0), block.timestamp)
                 if reward_txs:
                     r["total_nova_earned"] = round(
-                        r.get("total_nova_earned", 0.0) + float(reward_txs[0].get("amount", 0.0)), 8
+                        r.get("total_nova_earned", 0.0) + float(reward_tx.get("amount", 0.0)), 8
                     )
                 if r.get("validator_since") is None and miner in self.validators:
                     r["validator_since"] = block.timestamp
@@ -4346,6 +5502,8 @@ class PublicPaymentChain:
         self.validators = set(active_validators)
         self.evm_next_nonce_index = dict(evm_next)
         self.pending_spend_index = {}
+        self._public_tx_count_total = int(total_tx_count)
+        self._total_minted_supply = round(float(total_minted_supply), 8)
 
         for tx in self.pending_transactions:
             if tx.get("type") == "price_update":
@@ -4503,6 +5661,26 @@ class PublicPaymentChain:
             self._apply_agent_activity_log_tx(tx)
         elif tx_type == "agent_activity_log_batch":
             self._apply_agent_activity_log_batch_tx(tx)
+        elif tx_type == "agent_intent_post":
+            if not self._validate_agent_intent_post_tx(tx):
+                raise ValueError("Invalid agent intent post transaction.")
+            self._apply_agent_intent_post_tx(tx)
+        elif tx_type == "agent_session_open":
+            if not self._validate_agent_session_open_tx(tx):
+                raise ValueError("Invalid agent session open transaction.")
+            self._apply_agent_session_open_tx(tx)
+        elif tx_type == "agent_artifact_commit":
+            if not self._validate_agent_artifact_commit_tx(tx):
+                raise ValueError("Invalid agent artifact commit transaction.")
+            self._apply_agent_artifact_commit_tx(tx)
+        elif tx_type == "agent_session_close":
+            if not self._validate_agent_session_close_tx(tx):
+                raise ValueError("Invalid agent session close transaction.")
+            self._apply_agent_session_close_tx(tx)
+        elif tx_type == "agent_session_settle":
+            if not self._validate_agent_session_settle_tx(tx):
+                raise ValueError("Invalid agent session settle transaction.")
+            self._apply_agent_session_settle_tx(tx)
         elif tx_type == "agent_challenge":
             if not self._validate_agent_challenge_tx(tx):
                 raise ValueError("Invalid agent challenge transaction.")
@@ -4688,7 +5866,7 @@ class PublicPaymentChain:
             "id": sha256_hex(canonical_json(reward_payload)),
         }
 
-        block_index = len(self.chain)
+        block_index = self.height
         finalized_height = max(0, block_index - self.finality_confirmations)
         checkpoint_height = self._checkpoint_height_at(block_index)
         transactions = list(ordered_pending) + [reward_tx]
@@ -4716,28 +5894,54 @@ class PublicPaymentChain:
         else:
             block.hash = block.compute_hash()
         self.chain.append(block)
+        self._chain_full_height = block.index + 1
+        self._public_tx_count_total = int(getattr(self, "_public_tx_count_total", 0)) + len(transactions)
+        self._total_minted_supply = round(
+            float(getattr(self, "_total_minted_supply", 0.0))
+            + float(self.mining_reward)
+            + sum(
+                float(tx.get("amount", 0.0))
+                for tx in ordered_pending
+                if tx.get("type") == "payment" and tx.get("sender") == SYSTEM_SENDER
+            ),
+            8,
+        )
+        self.balance_index.setdefault(miner_address, 0.0)
+        for tx in ordered_pending:
+            tx_type = tx.get("type")
+            if tx_type in {"payment", "evm_payment"}:
+                self._apply_payment_tx(tx, self.balance_index)
+            elif tx_type in {"ai_provider_stake", "ai_provider_slash"}:
+                self._apply_ai_provider_tx(
+                    tx,
+                    self.balance_index,
+                    self.provider_stakes,
+                    slash_events=self.provider_slash_events,
+                )
+            elif tx_type == "validator_update":
+                self._apply_public_governance_tx(tx, self.validators)
+        self._apply_payment_tx(reward_tx, self.balance_index)
         self.pending_transactions = []
-        self._rebuild_runtime_indexes()  # includes _sweep_expired_challenges()
-        # Reputation for mining (also applied in _rebuild_runtime_indexes on reload)
         if miner_address:
             self._add_reputation(miner_address, 1.0, f"block_mined_{block.index}", block.timestamp)
             self._ensure_reputation(miner_address)
             r = self.reputation_index[miner_address]
             r["blocks_mined"] = r.get("blocks_mined", 0) + 1
-            r["last_active"] = block.timestamp
-            # Track NOVA earned from this block's reward tx
-            reward_txs = [t for t in block.transactions
-                          if t.get("type") == "payment" and t.get("sender") == SYSTEM_SENDER]
-            if reward_txs:
-                r["total_nova_earned"] = round(
-                    r.get("total_nova_earned", 0.0) + float(reward_txs[0].get("amount", 0.0)), 8
-                )
+            r["last_active"] = max(r.get("last_active", 0.0), block.timestamp)
+            r["total_nova_earned"] = round(
+                r.get("total_nova_earned", 0.0) + float(reward_tx.get("amount", 0.0)),
+                8,
+            )
             if r.get("validator_since") is None and miner_address in self.validators:
                 r["validator_since"] = block.timestamp
             if r["blocks_mined"] == 1:
                 self._award_badge(miner_address, "first_block", "First Block", block.timestamp)
             if r["blocks_mined"] == 100:
                 self._award_badge(miner_address, "century_miner", "Century Miner", block.timestamp)
+        self._reindex_pending_runtime_state()
+        self._check_agent_param_proposals(self.height)
+        self._sweep_expired_challenges()
+        self._check_missed_blocks(block)
         self._append_mempool_wal({"op": "clear", "block_index": block.index, "at": time.time()})
         self._touch_and_save(force=True)
         return block
@@ -4746,6 +5950,18 @@ class PublicPaymentChain:
     def height(self) -> int:
         """Full chain height including pruned blocks."""
         return getattr(self, "_chain_full_height", len(self.chain))
+
+    def blocks_mined_total(self) -> int:
+        return max(0, self.height - 1)
+
+    def total_confirmed_public_transactions(self) -> int:
+        return int(getattr(self, "_public_tx_count_total", self._estimated_public_tx_count_from_retained_chain()))
+
+    def total_minted_supply(self) -> float:
+        return round(
+            float(getattr(self, "_total_minted_supply", self._estimated_total_minted_supply_from_retained_state())),
+            8,
+        )
 
     def get_balance(self, address: str) -> float:
         normalized = self._normalize_address(address)
@@ -4771,10 +5987,25 @@ class PublicPaymentChain:
         _saved_model_registry = dict(self.model_registry)
         _saved_pipeline_registry = dict(self.pipeline_registry)
         _saved_balance_index = dict(self.balance_index)
+        _saved_latest_prices = dict(self.latest_prices)
+        _saved_validators = set(self.validators)
+        _saved_provider_stakes = dict(self.provider_stakes)
+        _saved_provider_slash_events = list(self.provider_slash_events)
+        _saved_evm_next_nonce_index = dict(self.evm_next_nonce_index)
+        _saved_pending_spend_index = dict(self.pending_spend_index)
         _saved_zk_circuit_registry = dict(self.zk_circuit_registry)
         _saved_zk_proof_log = list(self.zk_proof_log)
+        _saved_zk_proof_hashes = set(getattr(self, "zk_proof_hashes", set()))
         _saved_activity_log_index = dict(self.activity_log_index)
         _saved_challenge_index = dict(self.challenge_index)
+        _saved_collab_index = dict(self.collab_index)
+        _saved_intent_index = dict(self.intent_index)
+        _saved_artifact_index = dict(self.artifact_index)
+        _saved_agent_param_proposals = dict(self.agent_param_proposals)
+        _saved_agent_trust_params = dict(self.agent_trust_params)
+        _saved_agent_trust_params_history = list(self.agent_trust_params_history)
+        _saved_public_tx_count_total = int(getattr(self, "_public_tx_count_total", 0))
+        _saved_total_minted_supply = float(getattr(self, "_total_minted_supply", 0.0))
 
         def _restore_state() -> None:
             self.identity_registry = _saved_identity_registry
@@ -4790,10 +6021,25 @@ class PublicPaymentChain:
             self.model_registry = _saved_model_registry
             self.pipeline_registry = _saved_pipeline_registry
             self.balance_index = _saved_balance_index
+            self.latest_prices = _saved_latest_prices
+            self.validators = _saved_validators
+            self.provider_stakes = _saved_provider_stakes
+            self.provider_slash_events = _saved_provider_slash_events
+            self.evm_next_nonce_index = _saved_evm_next_nonce_index
+            self.pending_spend_index = _saved_pending_spend_index
             self.zk_circuit_registry = _saved_zk_circuit_registry
             self.zk_proof_log = _saved_zk_proof_log
+            self.zk_proof_hashes = _saved_zk_proof_hashes
             self.activity_log_index = _saved_activity_log_index
             self.challenge_index = _saved_challenge_index
+            self.collab_index = _saved_collab_index
+            self.intent_index = _saved_intent_index
+            self.artifact_index = _saved_artifact_index
+            self.agent_param_proposals = _saved_agent_param_proposals
+            self.agent_trust_params = _saved_agent_trust_params
+            self.agent_trust_params_history = _saved_agent_trust_params_history
+            self._public_tx_count_total = _saved_public_tx_count_total
+            self._total_minted_supply = _saved_total_minted_supply
 
         balances: Dict[str, float] = {}
         provider_stakes: Dict[str, float] = {}
@@ -4816,6 +6062,12 @@ class PublicPaymentChain:
         self.pipeline_registry = {}
         self.zk_circuit_registry = {}
         self.zk_proof_log = []
+        self.zk_proof_hashes: set = set()  # permanent replay-prevention set
+        self.activity_log_index = {}
+        self.challenge_index = {}
+        self.collab_index = {}
+        self.intent_index = {}
+        self.artifact_index = {}
         # Point balance_index at the local balances dict so all _validate_*_tx
         # calls (which use self.get_balance()) see the correctly-rebuilt balances.
         self.balance_index = balances
@@ -4948,6 +6200,26 @@ class PublicPaymentChain:
                     if not self._validate_agent_attest_tx(tx):
                         _restore_state(); return False
                     self._apply_agent_tx(tx)
+                elif tx_type == "agent_intent_post":
+                    if not self._validate_agent_intent_post_tx(tx):
+                        _restore_state(); return False
+                    self._apply_agent_intent_post_tx(tx)
+                elif tx_type == "agent_session_open":
+                    if not self._validate_agent_session_open_tx(tx):
+                        _restore_state(); return False
+                    self._apply_agent_session_open_tx(tx)
+                elif tx_type == "agent_artifact_commit":
+                    if not self._validate_agent_artifact_commit_tx(tx):
+                        _restore_state(); return False
+                    self._apply_agent_artifact_commit_tx(tx)
+                elif tx_type == "agent_session_close":
+                    if not self._validate_agent_session_close_tx(tx):
+                        _restore_state(); return False
+                    self._apply_agent_session_close_tx(tx)
+                elif tx_type == "agent_session_settle":
+                    if not self._validate_agent_session_settle_tx(tx):
+                        _restore_state(); return False
+                    self._apply_agent_session_settle_tx(tx)
                 elif tx_type == "agent_challenge":
                     if not self._validate_agent_challenge_tx(tx):
                         _restore_state(); return False
@@ -5119,6 +6391,7 @@ class PublicPaymentChain:
         self.provider_stakes = {k: v for k, v in provider_stakes.items() if v > 0}
         self.provider_slash_events = slash_events[-200:]
 
+        _restore_state()
         return True
 
     def export_state(self) -> Dict[str, Any]:
@@ -5158,15 +6431,20 @@ class PublicPaymentChain:
             "pipeline_registry": self.pipeline_registry,
             "zk_circuit_registry": self.zk_circuit_registry,
             "zk_proof_log": self.zk_proof_log[-200:],
+            "agent_register_history": self.agent_register_history,
             "activity_log_index": self.activity_log_index,
             "challenge_index": self.challenge_index,
             "collab_index": self.collab_index,
+            "intent_index": self.intent_index,
+            "artifact_index": self.artifact_index,
             "agent_param_proposals": self.agent_param_proposals,
             "agent_trust_params": self.agent_trust_params,
             "agent_trust_params_history": self.agent_trust_params_history,
             "balance_index": self.balance_index,
             "chain": [b.to_dict() for b in self.chain[-500:]],
-            "chain_full_height": len(self.chain),
+            "chain_full_height": self.height,
+            "public_tx_count_total": self.total_confirmed_public_transactions(),
+            "total_minted_supply": self.total_minted_supply(),
             "pending_transactions": list(self.pending_transactions),
         }
 
@@ -5212,6 +6490,7 @@ class PublicPaymentChain:
             self.validators = set(data.get("validators", []))
             self.initial_validators = set(data.get("initial_validators", list(self.validators)))
             self.chain = incoming_chain
+            self._chain_full_height = int(data.get("chain_full_height", len(incoming_chain)))
             self.pending_transactions = list(data.get("pending_transactions", []))
             self.provider_stakes = dict(data.get("provider_stakes", {}))
             self.provider_slash_events = list(data.get("provider_slash_events", []))
@@ -5229,9 +6508,19 @@ class PublicPaymentChain:
             self.pipeline_registry = dict(data.get("pipeline_registry", {}))
             self.zk_circuit_registry = dict(data.get("zk_circuit_registry", {}))
             self.zk_proof_log = list(data.get("zk_proof_log", []))
+            # Rebuild replay-prevention set from persisted proof log
+            self.zk_proof_hashes = {
+                e["proof_hash"] for e in self.zk_proof_log if "proof_hash" in e
+            }
             self.state_version = incoming_version
             if not self.is_valid():
                 raise ValueError("Incoming public chain invalid.")
+            # is_valid() replays the stored chain window and recomputes balance_index
+            # from only those blocks. Restore the authoritative balance_index from
+            # the snapshot so accumulated history beyond the window is preserved.
+            persisted_balance = data.get("balance_index", {})
+            if persisted_balance:
+                self.balance_index = {str(k): float(v) for k, v in persisted_balance.items()}
         except Exception as exc:  # pylint: disable=broad-except
             self._load_from_state(old_state)
             raise ValueError(str(exc)) from exc
@@ -5297,9 +6586,16 @@ class PublicPaymentChain:
         self.pipeline_registry = dict(data.get("pipeline_registry", {}))
         self.zk_circuit_registry = dict(data.get("zk_circuit_registry", {}))
         self.zk_proof_log = list(data.get("zk_proof_log", []))
+        # Rebuild replay-prevention set from persisted proof log
+        self.zk_proof_hashes = {
+            e["proof_hash"] for e in self.zk_proof_log if "proof_hash" in e
+        }
+        self.agent_register_history = list(data.get("agent_register_history", []))
         self.activity_log_index = dict(data.get("activity_log_index", {}))
         self.challenge_index = dict(data.get("challenge_index", {}))
         self.collab_index = dict(data.get("collab_index", {}))
+        self.intent_index = dict(data.get("intent_index", {}))
+        self.artifact_index = dict(data.get("artifact_index", {}))
         self.agent_param_proposals = dict(data.get("agent_param_proposals", {}))
         if "agent_trust_params" in data:
             self.agent_trust_params.update(data["agent_trust_params"])
@@ -5316,6 +6612,17 @@ class PublicPaymentChain:
         else:
             # Fallback: rebuild from chain (first boot or migration)
             self._rebuild_runtime_indexes()
+        persisted_public_tx_count = data.get("public_tx_count_total")
+        if persisted_public_tx_count is not None:
+            self._public_tx_count_total = int(persisted_public_tx_count)
+        else:
+            self._public_tx_count_total = self._estimated_public_tx_count_from_retained_chain()
+        persisted_total_minted_supply = data.get("total_minted_supply")
+        if persisted_total_minted_supply is not None:
+            self._total_minted_supply = round(float(persisted_total_minted_supply), 8)
+        else:
+            self._total_minted_supply = self._estimated_total_minted_supply_from_retained_state()
+        self._reindex_pending_runtime_state()
         if self.state_version == 0:
             self.state_version = len(self.chain) + len(self.pending_transactions)
 

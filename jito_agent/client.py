@@ -2,6 +2,8 @@
 import json
 import urllib.request
 import urllib.error
+import urllib.parse
+from collections import defaultdict
 from typing import Dict, Any, Optional, List
 
 from .crypto import (
@@ -17,7 +19,13 @@ from .crypto import (
     make_agent_challenge_tx,
     make_agent_param_propose_tx,
     make_agent_param_endorse_tx,
+    make_agent_intent_post_tx,
+    make_agent_session_open_tx,
+    make_agent_artifact_commit_tx,
+    make_agent_session_close_tx,
+    make_agent_session_settle_tx,
 )
+from .discovery import CapabilityProfile, DiscoveryQuery
 
 
 class NovaClient:
@@ -25,7 +33,7 @@ class NovaClient:
         self.node_url = node_url.rstrip("/")
         self.auth_token = auth_token
 
-    _UA = "jito-agent/0.5.0 (Nova Network; +https://explorer.flowpe.io)"
+    _UA = "nova-agent/0.5.0 (Nova Network; +https://explorer.flowpe.io)"
 
     def _get(self, path: str) -> Dict:
         url = f"{self.node_url}{path}"
@@ -91,9 +99,16 @@ class NovaClient:
 
     # ── Agents ────────────────────────────────────────────────────────────
     def register_agent(self, wallet: Dict, agent_id: str, name: str,
-                        capabilities: List[str] = None, version_hash: str = "") -> Dict:
+                        capabilities: List[str] = None,
+                        task_types: List[str] = None,
+                        refusals: List[str] = None,
+                        system_prompt_hash: str = "",
+                        version_hash: str = "") -> Dict:
         tx = make_agent_register_tx(wallet, agent_id=agent_id, name=name,
                                      capabilities=capabilities or [],
+                                     task_types=task_types or [],
+                                     refusals=refusals or [],
+                                     system_prompt_hash=system_prompt_hash,
                                      version_hash=version_hash)
         return self._submit_tx(tx)
 
@@ -138,9 +153,170 @@ class NovaClient:
                                      stake_locked=stake_locked, reason=reason)
         return self._submit_tx(tx)
 
+    def post_intent(
+        self,
+        wallet: Dict,
+        agent_id: str,
+        intent: str,
+        role: str = "",
+        capability_tags: Optional[List[str]] = None,
+        desired_collaborators: Optional[List[str]] = None,
+        constraints_hash: str = "",
+        reward: float = 0.0,
+        expires_at: float = 0.0,
+        note: str = "",
+    ) -> Dict:
+        tx = make_agent_intent_post_tx(
+            wallet,
+            agent_id=agent_id,
+            intent=intent,
+            role=role,
+            capability_tags=capability_tags or [],
+            desired_collaborators=desired_collaborators or [],
+            constraints_hash=constraints_hash,
+            reward=reward,
+            expires_at=expires_at,
+            note=note,
+        )
+        result = self._submit_tx(tx)
+        if isinstance(result, dict):
+            return {**result, "intent_id": tx["intent_id"], "tx": tx}
+        return result
+
+    def open_session(
+        self,
+        wallet: Dict,
+        *,
+        session_id: str = "",
+        intent_id: str = "",
+        objective: str = "",
+        participants: Optional[List[str]] = None,
+        note: str = "",
+    ) -> Dict:
+        tx = make_agent_session_open_tx(
+            wallet,
+            session_id=session_id,
+            intent_id=intent_id,
+            objective=objective,
+            participants=participants or [],
+            note=note,
+        )
+        result = self._submit_tx(tx)
+        if isinstance(result, dict):
+            return {**result, "session_id": tx["session_id"], "tx": tx}
+        return result
+
+    def commit_artifact(
+        self,
+        wallet: Dict,
+        session_id: str,
+        artifact_type: str,
+        *,
+        output_hash: str = "",
+        evidence_hash: str = "",
+        evidence_url: str = "",
+        label: str = "",
+        note: str = "",
+    ) -> Dict:
+        tx = make_agent_artifact_commit_tx(
+            wallet,
+            session_id=session_id,
+            artifact_type=artifact_type,
+            output_hash=output_hash,
+            evidence_hash=evidence_hash,
+            evidence_url=evidence_url,
+            label=label,
+            note=note,
+        )
+        result = self._submit_tx(tx)
+        if isinstance(result, dict):
+            return {**result, "artifact_id": tx["artifact_id"], "tx": tx}
+        return result
+
+    def close_session(
+        self,
+        wallet: Dict,
+        session_id: str,
+        *,
+        outcome: str = "success",
+        summary_hash: str = "",
+        note: str = "",
+    ) -> Dict:
+        tx = make_agent_session_close_tx(
+            wallet,
+            session_id=session_id,
+            outcome=outcome,
+            summary_hash=summary_hash,
+            note=note,
+        )
+        result = self._submit_tx(tx)
+        if isinstance(result, dict):
+            return {**result, "session_id": tx["session_id"], "tx": tx}
+        return result
+
+    def settle_session(
+        self,
+        wallet: Dict,
+        session_id: str,
+        *,
+        payouts: Optional[Dict[str, float]] = None,
+        contribution_weights: Optional[Dict[str, float]] = None,
+        verdict: str = "success",
+        note: str = "",
+    ) -> Dict:
+        tx = make_agent_session_settle_tx(
+            wallet,
+            session_id=session_id,
+            payouts=payouts or {},
+            contribution_weights=contribution_weights or {},
+            verdict=verdict,
+            note=note,
+        )
+        result = self._submit_tx(tx)
+        if isinstance(result, dict):
+            return {**result, "session_id": tx["session_id"], "tx": tx}
+        return result
+
     def passport(self, address: str) -> Dict:
         """Fetch the portable trust passport for an agent address."""
         return self._get(f"/public/agent/passport?address={address}")
+
+    def intents(
+        self,
+        *,
+        creator: str = "",
+        status: str = "",
+        capability: str = "",
+        limit: int = 20,
+    ) -> List[Dict]:
+        params = [f"limit={min(limit, 100)}"]
+        if creator:
+            params.append(f"creator={urllib.parse.quote(creator)}")
+        if status:
+            params.append(f"status={urllib.parse.quote(status)}")
+        if capability:
+            params.append(f"capability={urllib.parse.quote(capability)}")
+        return self._get(f"/public/agent/intents?{'&'.join(params)}").get("intents", [])
+
+    def sessions(
+        self,
+        *,
+        participant: str = "",
+        status: str = "",
+        intent_id: str = "",
+        limit: int = 20,
+    ) -> List[Dict]:
+        params = [f"limit={min(limit, 100)}"]
+        if participant:
+            params.append(f"participant={urllib.parse.quote(participant)}")
+        if status:
+            params.append(f"status={urllib.parse.quote(status)}")
+        if intent_id:
+            params.append(f"intent_id={urllib.parse.quote(intent_id)}")
+        return self._get(f"/public/agent/sessions?{'&'.join(params)}").get("sessions", [])
+
+    def session(self, session_id: str) -> Dict:
+        return self._get(f"/public/agent/session?session_id={urllib.parse.quote(session_id)}")
 
     def rules(self) -> Dict:
         """Fetch live chain-state trust rules and full parameter change history."""
@@ -201,6 +377,146 @@ class NovaClient:
         if exclude:
             params.append(f"exclude={','.join(exclude)}")
         return self._get(f"/public/agent/discover?{'&'.join(params)}").get("agents", [])
+
+    def capability_profile(self, address: str, log_limit: int = 200) -> CapabilityProfile:
+        """Fetch an evidence-backed capability profile, with SDK-side fallback for older nodes."""
+        try:
+            data = self._get(f"/public/agent/capability_profile?address={urllib.parse.quote(address)}")
+            return CapabilityProfile(data)
+        except RuntimeError:
+            pass
+
+        passport = self._get(f"/public/agent/passport?address={address}&verbose=true")
+        logs = passport.get("logs_detail")
+        if not isinstance(logs, list):
+            logs = self.agent_logs(address=address, limit=log_limit)
+
+        def _empty_stats() -> Dict[str, Any]:
+            return {
+                "total_logs": 0,
+                "evidenced_logs": 0,
+                "attested_logs": 0,
+                "successes": 0,
+                "last_active": 0.0,
+            }
+
+        by_action_type: Dict[str, Dict[str, Any]] = defaultdict(_empty_stats)
+        by_tag: Dict[str, Dict[str, Any]] = defaultdict(_empty_stats)
+
+        for log in logs:
+            evidenced = bool(log.get("evidence_hash") or log.get("evidence_url"))
+            attested = any(
+                str(att.get("sentiment", "")).lower() == "positive"
+                for att in log.get("attestations", [])
+            )
+            success = bool(log.get("success", True))
+            timestamp = float(log.get("timestamp", 0.0))
+
+            action_type = str(log.get("action_type", "")).strip().lower()
+            if action_type:
+                stats = by_action_type[action_type]
+                stats["total_logs"] += 1
+                stats["evidenced_logs"] += int(evidenced)
+                stats["attested_logs"] += int(attested)
+                stats["successes"] += int(success)
+                stats["last_active"] = max(stats["last_active"], timestamp)
+
+            for raw_tag in log.get("tags", []):
+                tag = str(raw_tag).strip().lower()
+                if not tag:
+                    continue
+                stats = by_tag[tag]
+                stats["total_logs"] += 1
+                stats["evidenced_logs"] += int(evidenced)
+                stats["attested_logs"] += int(attested)
+                stats["successes"] += int(success)
+                stats["last_active"] = max(stats["last_active"], timestamp)
+
+        def _finalize(stats_by_key: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+            finalized: Dict[str, Dict[str, Any]] = {}
+            for key, stats in stats_by_key.items():
+                total = stats["total_logs"]
+                evidenced_logs = stats["evidenced_logs"]
+                finalized[key] = {
+                    "total_logs": total,
+                    "evidenced_logs": evidenced_logs,
+                    "attested_logs": stats["attested_logs"],
+                    "success_rate": round(stats["successes"] / total, 4) if total else 0.0,
+                    "evidence_rate": round(evidenced_logs / total, 4) if total else 0.0,
+                    "last_active": stats["last_active"],
+                }
+            return finalized
+
+        collab_partners = set()
+        for session in passport.get("collab_sessions_detail", []):
+            for agent in session.get("agents", []):
+                if agent and agent != address:
+                    collab_partners.add(agent)
+
+        return CapabilityProfile({
+            "address": address,
+            "by_action_type": _finalize(by_action_type),
+            "by_tag": _finalize(by_tag),
+            "collab_partners": sorted(collab_partners),
+        })
+
+    def discover_rich(self, query: DiscoveryQuery) -> List[Dict]:
+        """
+        Rich evidence-based discovery. Uses node-side filtering when supported,
+        with SDK-side fallback for older nodes.
+        """
+        params = urllib.parse.urlencode(query.to_params())
+        try:
+            response = self._get(f"/public/agent/discover?{params}")
+            results: List[Dict] = []
+            for candidate in response.get("agents", []):
+                row = dict(candidate)
+                profile = row.get("capability_profile")
+                if isinstance(profile, dict):
+                    row["capability_profile"] = CapabilityProfile(profile)
+                results.append(row)
+            return results
+        except RuntimeError:
+            pass
+
+        candidates = self.discover(
+            tags=query._tags or None,
+            min_score=query._min_score,
+            min_tier=query._min_tier,
+            platform=query._platform,
+            limit=100,
+            exclude=query._exclude or None,
+        )
+        results: List[Dict] = []
+        for candidate in candidates:
+            address = candidate.get("address", "")
+            if not address:
+                continue
+            profile = self.capability_profile(address)
+
+            if query._capability:
+                action_stats = profile.by_action_type.get(query._capability)
+                tag_stats = profile.by_tag.get(query._capability)
+                stats = action_stats or tag_stats
+                if stats is None:
+                    continue
+                if stats.total_logs < query._min_log_count:
+                    continue
+                if stats.evidenced_logs < query._min_evidence_count:
+                    continue
+
+            if query._has_collaborated and not profile.collab_partners:
+                continue
+            if query._collaborated_with and query._collaborated_with not in profile.collab_partners:
+                continue
+
+            results.append({
+                **candidate,
+                "capability_profile": profile,
+            })
+            if len(results) >= query._limit:
+                break
+        return results
 
     def passport_by_agent_id(self, agent_id: str, verbose: bool = False) -> Dict:
         """Fetch trust passport by agent_id string (resolves to owner wallet)."""

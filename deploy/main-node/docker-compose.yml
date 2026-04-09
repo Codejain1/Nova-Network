@@ -1,0 +1,86 @@
+services:
+  node:
+    build: ../..
+    container_name: nova-main-node
+    restart: unless-stopped
+    environment:
+      NODE_HOST: 0.0.0.0
+      NODE_PORT: 8000
+      DATA_DIR: /data
+      PUBLIC_CONSENSUS: ${PUBLIC_CONSENSUS:-poa}
+      PUBLIC_DIFFICULTY: ${PUBLIC_DIFFICULTY:-3}
+      PUBLIC_REWARD: ${PUBLIC_REWARD:-25}
+      PUBLIC_VALIDATORS: ${PUBLIC_VALIDATORS:-}
+      PUBLIC_VALIDATOR_ROTATION: ${PUBLIC_VALIDATOR_ROTATION:-true}
+      CHAIN_NAME: ${CHAIN_NAME:-Nova Network}
+      TOKEN_NAME: ${TOKEN_NAME:-Nova}
+      TOKEN_SYMBOL: ${TOKEN_SYMBOL:-NOVA}
+      TOKEN_DECIMALS: ${TOKEN_DECIMALS:-18}
+      CHAIN_ID: ${CHAIN_ID:-149}
+      CHAIN_LOGO_URL: ${CHAIN_LOGO_URL:-}
+      TOKEN_LOGO_URL: ${TOKEN_LOGO_URL:-}
+      # Main node does NOT mine — validators handle all block production
+      AUTO_MINE: "false"
+      # Mempool
+      PUBLIC_MEMPOOL_TTL: ${PUBLIC_MEMPOOL_TTL:-900}
+      PUBLIC_MEMPOOL_MAX_SIZE: ${PUBLIC_MEMPOOL_MAX_SIZE:-5000}
+      # Faucet (disabled by default, enable in .env)
+      PUBLIC_FAUCET_ENABLED: ${PUBLIC_FAUCET_ENABLED:-false}
+      PUBLIC_FAUCET_AMOUNT: ${PUBLIC_FAUCET_AMOUNT:-0}
+      PUBLIC_FAUCET_COOLDOWN: ${PUBLIC_FAUCET_COOLDOWN:-3600}
+      PUBLIC_FAUCET_DAILY_CAP: ${PUBLIC_FAUCET_DAILY_CAP:-0}
+      # Peer sync — main node accepts incoming validators, no outbound PEERS needed
+      PEERS: ${PEERS:-}
+      PEER_SYNC_ENABLED: "true"
+      PEER_SYNC_INTERVAL: ${PEER_SYNC_INTERVAL:-6}
+      PEER_LAG_RESYNC_THRESHOLD: ${PEER_LAG_RESYNC_THRESHOLD:-3}
+      # Security
+      MAINNET_HARDENING: "true"
+      STRICT_PUBLIC_SIGNATURES: "true"
+      REQUIRE_HSM_SIGNERS: "false"
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-300}
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_REQUIRED: ${JWT_REQUIRED:-false}
+      PEER_TOKEN: ${PEER_TOKEN:-}
+    volumes:
+      - nova_main_data:/data
+    ports:
+      - "0.0.0.0:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    mem_limit: 3g
+    mem_reservation: 1g
+
+  gateway:
+    build: ../..
+    container_name: nova-evm-gateway
+    restart: unless-stopped
+    depends_on:
+      node:
+        condition: service_healthy
+    entrypoint: ["./docker/gateway_entrypoint.sh"]
+    environment:
+      RPC_NODE_URL: http://node:8000
+      RPC_HOST: 0.0.0.0
+      RPC_PORT: 8545
+      CHAIN_ID: ${CHAIN_ID:-149}
+      RPC_AUTH_TOKEN: ${RPC_AUTH_TOKEN:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    ports:
+      - "0.0.0.0:8545:8545"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8545', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    mem_limit: 512m
+    mem_reservation: 128m
+
+volumes:
+  nova_main_data:
+    driver: local

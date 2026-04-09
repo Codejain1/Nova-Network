@@ -122,6 +122,27 @@ _SIGNABLE_KEYS: Dict[str, List[str]] = {
     "agent_param_endorse": [
         "type", "schema_version", "endorser", "proposal_id", "approve", "timestamp", "nonce",
     ],
+    "agent_intent_post": [
+        "type", "schema_version", "intent_id", "creator", "agent_id", "intent", "role",
+        "capability_tags", "desired_collaborators", "constraints_hash", "reward",
+        "expires_at", "note", "timestamp", "nonce",
+    ],
+    "agent_session_open": [
+        "type", "schema_version", "session_id", "intent_id", "opener", "objective",
+        "participants", "note", "timestamp", "nonce",
+    ],
+    "agent_artifact_commit": [
+        "type", "schema_version", "artifact_id", "session_id", "agent", "artifact_type",
+        "output_hash", "evidence_hash", "evidence_url", "label", "note", "timestamp", "nonce",
+    ],
+    "agent_session_close": [
+        "type", "schema_version", "session_id", "closer", "outcome", "summary_hash",
+        "note", "timestamp", "nonce",
+    ],
+    "agent_session_settle": [
+        "type", "schema_version", "session_id", "settler", "payouts", "contribution_weights",
+        "verdict", "note", "timestamp", "nonce",
+    ],
 }
 
 
@@ -154,6 +175,9 @@ def make_identity_claim_tx(wallet: Dict, handle: str, bio: str = "",
 
 def make_agent_register_tx(owner_wallet: Dict, agent_id: str, name: str,
                             capabilities: Optional[List[str]] = None,
+                            task_types: Optional[List[str]] = None,
+                            refusals: Optional[List[str]] = None,
+                            system_prompt_hash: str = "",
                             version_hash: str = "") -> Dict:
     payload = {
         "type": "agent_register",
@@ -161,6 +185,9 @@ def make_agent_register_tx(owner_wallet: Dict, agent_id: str, name: str,
         "agent_id": str(agent_id).strip(),
         "name": str(name).strip(),
         "capabilities": sorted({str(c).strip() for c in (capabilities or []) if str(c).strip()}),
+        "task_types": [str(t).strip() for t in (task_types or []) if str(t).strip()],
+        "refusals": [str(r).strip() for r in (refusals or []) if str(r).strip()],
+        "system_prompt_hash": str(system_prompt_hash or "").strip(),
         "version_hash": str(version_hash or "").strip(),
         "timestamp": time.time(),
     }
@@ -390,3 +417,152 @@ def make_agent_param_endorse_tx(
         "nonce": secrets.token_hex(8),
     }
     return _tx_a(payload, endorser_wallet)
+
+
+def make_agent_intent_post_tx(
+    creator_wallet: Dict,
+    agent_id: str,
+    intent: str,
+    role: str = "",
+    capability_tags: Optional[List[str]] = None,
+    desired_collaborators: Optional[List[str]] = None,
+    constraints_hash: str = "",
+    reward: float = 0.0,
+    expires_at: float = 0.0,
+    note: str = "",
+) -> Dict:
+    payload = {
+        "type": "agent_intent_post",
+        "schema_version": 1,
+        "intent_id": "ait_" + secrets.token_hex(8),
+        "creator": creator_wallet["address"],
+        "signer": creator_wallet["address"],
+        "agent_id": str(agent_id).strip(),
+        "intent": str(intent).strip()[:256],
+        "role": str(role or "").strip()[:128],
+        "capability_tags": sorted(
+            {str(tag).strip().lower() for tag in (capability_tags or []) if str(tag).strip()}
+        ),
+        "desired_collaborators": sorted(
+            {str(addr).strip() for addr in (desired_collaborators or []) if str(addr).strip()}
+        ),
+        "constraints_hash": str(constraints_hash or "").strip(),
+        "reward": max(0.0, float(reward or 0.0)),
+        "expires_at": max(0.0, float(expires_at or 0.0)),
+        "note": str(note or "").strip()[:256],
+        "timestamp": time.time(),
+        "nonce": secrets.token_hex(8),
+    }
+    return _tx_a(payload, creator_wallet)
+
+
+def make_agent_session_open_tx(
+    opener_wallet: Dict,
+    session_id: str = "",
+    intent_id: str = "",
+    objective: str = "",
+    participants: Optional[List[str]] = None,
+    note: str = "",
+) -> Dict:
+    participant_set = {opener_wallet["address"]}
+    participant_set.update(str(addr).strip() for addr in (participants or []) if str(addr).strip())
+    payload = {
+        "type": "agent_session_open",
+        "schema_version": 1,
+        "session_id": str(session_id).strip() or ("collab:" + secrets.token_hex(8)),
+        "intent_id": str(intent_id or "").strip(),
+        "opener": opener_wallet["address"],
+        "signer": opener_wallet["address"],
+        "objective": str(objective or "").strip()[:256],
+        "participants": sorted(participant_set),
+        "note": str(note or "").strip()[:256],
+        "timestamp": time.time(),
+        "nonce": secrets.token_hex(8),
+    }
+    return _tx_a(payload, opener_wallet)
+
+
+def make_agent_artifact_commit_tx(
+    agent_wallet: Dict,
+    session_id: str,
+    artifact_type: str,
+    output_hash: str = "",
+    evidence_hash: str = "",
+    evidence_url: str = "",
+    label: str = "",
+    note: str = "",
+) -> Dict:
+    payload = {
+        "type": "agent_artifact_commit",
+        "schema_version": 1,
+        "artifact_id": "aar_" + secrets.token_hex(8),
+        "session_id": str(session_id).strip(),
+        "agent": agent_wallet["address"],
+        "signer": agent_wallet["address"],
+        "artifact_type": str(artifact_type or "artifact").strip()[:64],
+        "output_hash": str(output_hash or "").strip(),
+        "evidence_hash": str(evidence_hash or "").strip(),
+        "evidence_url": str(evidence_url or "").strip()[:512],
+        "label": str(label or artifact_type or "artifact").strip()[:128],
+        "note": str(note or "").strip()[:256],
+        "timestamp": time.time(),
+        "nonce": secrets.token_hex(8),
+    }
+    return _tx_a(payload, agent_wallet)
+
+
+def make_agent_session_close_tx(
+    closer_wallet: Dict,
+    session_id: str,
+    outcome: str = "success",
+    summary_hash: str = "",
+    note: str = "",
+) -> Dict:
+    normalized = str(outcome or "success").strip().lower()
+    if normalized not in {"success", "partial", "failure", "cancelled"}:
+        raise ValueError("outcome must be one of success, partial, failure, cancelled")
+    payload = {
+        "type": "agent_session_close",
+        "schema_version": 1,
+        "session_id": str(session_id).strip(),
+        "closer": closer_wallet["address"],
+        "signer": closer_wallet["address"],
+        "outcome": normalized,
+        "summary_hash": str(summary_hash or "").strip(),
+        "note": str(note or "").strip()[:256],
+        "timestamp": time.time(),
+        "nonce": secrets.token_hex(8),
+    }
+    return _tx_a(payload, closer_wallet)
+
+
+def make_agent_session_settle_tx(
+    settler_wallet: Dict,
+    session_id: str,
+    payouts: Optional[Dict[str, float]] = None,
+    contribution_weights: Optional[Dict[str, float]] = None,
+    verdict: str = "success",
+    note: str = "",
+) -> Dict:
+    payload = {
+        "type": "agent_session_settle",
+        "schema_version": 1,
+        "session_id": str(session_id).strip(),
+        "settler": settler_wallet["address"],
+        "signer": settler_wallet["address"],
+        "payouts": {
+            str(addr).strip(): max(0.0, float(amount or 0.0))
+            for addr, amount in dict(payouts or {}).items()
+            if str(addr).strip()
+        },
+        "contribution_weights": {
+            str(addr).strip(): max(0.0, float(weight or 0.0))
+            for addr, weight in dict(contribution_weights or {}).items()
+            if str(addr).strip()
+        },
+        "verdict": str(verdict or "success").strip().lower()[:64],
+        "note": str(note or "").strip()[:256],
+        "timestamp": time.time(),
+        "nonce": secrets.token_hex(8),
+    }
+    return _tx_a(payload, settler_wallet)

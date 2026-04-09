@@ -2,7 +2,7 @@
 NovaTracker — Universal off-chain activity logger for AI agents.
 
 Any agent, any framework, any platform can log activity to NOVA and
-build portable, verifiable reputation — without using JITO's task marketplace.
+build portable, verifiable reputation — without using Nova's task marketplace.
 
 Quick start:
     from jito_agent import NovaTracker, load_wallet
@@ -27,10 +27,15 @@ import json
 import os
 import time
 from contextlib import contextmanager
-from typing import Any, Dict, Generator, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, List, Optional
 
 from .client import NovaClient
+from .self_description import SelfDescription, derive_self_description
+from .session import SessionContext
 from .wallet import create_wallet, save_wallet
+
+if TYPE_CHECKING:
+    from .evidence import EvidenceStore
 
 
 def _hash(obj: Any) -> str:
@@ -46,6 +51,8 @@ class _TrackContext:
         self._output: Any = None
         self._success: bool = True
         self._note: str = ""
+        self._tool_calls: int = 0
+        self._significant: bool = False
 
     def set_output(self, output: Any) -> None:
         self._output = output
@@ -61,6 +68,17 @@ class _TrackContext:
         if note:
             self._note = note[:256]
 
+    def add_tool_call(self, count: int = 1) -> None:
+        """Increment the tool-call counter for this session."""
+        self._tool_calls += count
+
+    def mark_significant(self) -> None:
+        """
+        Explicitly mark this session as worth logging, bypassing any
+        duration / tool-call thresholds set on the tracker.
+        """
+        self._significant = True
+
 
 class NovaTracker:
     """
@@ -72,7 +90,7 @@ class NovaTracker:
     """
 
     @classmethod
-    def from_env(cls) -> "NovaTracker":
+    def from_env(cls, system_prompt: str = "") -> "NovaTracker":
         """
         Zero-config setup from environment variables.
         Works for any agent on any platform — just set env vars once.
@@ -83,13 +101,18 @@ class NovaTracker:
             NOVA_NODE_URL       node URL (default: https://explorer.flowpe.io)
             NOVA_PLATFORM       optional platform tag
 
+        Optional:
+            system_prompt:  Pass the agent's system prompt and self-description
+                            (capabilities, task_types, refusals) will be derived
+                            automatically and stored on the tracker.
+
         Usage:
             export NOVA_AGENT_ID=my-agent
             export NOVA_WALLET_PATH=/secrets/wallet.json
             export NOVA_NODE_URL=https://explorer.flowpe.io
 
             from jito_agent import NovaTracker
-            tracker = NovaTracker.from_env()
+            tracker = NovaTracker.from_env(system_prompt=MY_SYSTEM_PROMPT)
             tracker.log("task_completed", success=True)
         """
         agent_id = os.environ.get("NOVA_AGENT_ID", "").strip()
@@ -98,7 +121,17 @@ class NovaTracker:
         wallet_path = os.environ.get("NOVA_WALLET_PATH", "wallet.json").strip()
         node_url = os.environ.get("NOVA_NODE_URL", "https://explorer.flowpe.io").strip()
         platform = os.environ.get("NOVA_PLATFORM", "").strip()
-        return cls.new(agent_id=agent_id, wallet_path=wallet_path, node_url=node_url, platform=platform)
+        min_duration_s = int(os.environ.get("NOVA_MIN_DURATION_S", "0"))
+        min_tool_calls = int(os.environ.get("NOVA_MIN_TOOL_CALLS", "0"))
+        return cls.new(
+            agent_id=agent_id,
+            wallet_path=wallet_path,
+            node_url=node_url,
+            platform=platform,
+            min_duration_s=min_duration_s,
+            min_tool_calls=min_tool_calls,
+            system_prompt=system_prompt,
+        )
 
     @classmethod
     def new(
@@ -107,12 +140,25 @@ class NovaTracker:
         wallet_path: str = "wallet.json",
         node_url: str = "https://explorer.flowpe.io",
         platform: str = "",
+        min_duration_s: int = 0,
+        min_tool_calls: int = 0,
+        evidence_store: Optional["EvidenceStore"] = None,
+        system_prompt: str = "",
+        llm_fn: Optional[Callable] = None,
     ) -> "NovaTracker":
         """
         One-liner setup: creates a wallet if it doesn't exist, returns a ready tracker.
 
-        tracker = NovaTracker.new("my-agent")
+        tracker = NovaTracker.new("my-agent", min_duration_s=30, min_tool_calls=3)
         tracker.log("task_done", output_hash=sha256(result))
+
+        Pass system_prompt to automatically derive the agent's self-description:
+            tracker = NovaTracker.new("my-agent", system_prompt=MY_SYSTEM_PROMPT)
+            print(tracker.self_description.capabilities)
+
+        Pass an evidence_store to automatically save and attach outputs:
+            from jito_agent import LocalEvidenceStore
+            tracker = NovaTracker.new("my-agent", evidence_store=LocalEvidenceStore())
         """
         if os.path.exists(wallet_path):
             from .wallet import load_wallet
@@ -120,7 +166,17 @@ class NovaTracker:
         else:
             wallet = create_wallet(label=agent_id)
             save_wallet(wallet, wallet_path)
-        return cls(wallet=wallet, agent_id=agent_id, node_url=node_url, platform=platform)
+        return cls(
+            wallet=wallet,
+            agent_id=agent_id,
+            node_url=node_url,
+            platform=platform,
+            min_duration_s=min_duration_s,
+            min_tool_calls=min_tool_calls,
+            evidence_store=evidence_store,
+            system_prompt=system_prompt,
+            llm_fn=llm_fn,
+        )
 
     def __init__(
         self,
@@ -130,20 +186,57 @@ class NovaTracker:
         platform: str = "",
         auth_token: str = "",
         auto_hash_io: bool = True,
+        min_duration_s: int = 0,
+        min_tool_calls: int = 0,
+        evidence_store: Optional["EvidenceStore"] = None,
+        system_prompt: str = "",
+        llm_fn: Optional[Callable] = None,
     ) -> None:
         """
-        wallet:        NOVA wallet dict (from create_wallet / load_wallet)
-        agent_id:      your agent's registered ID on NOVA
-        node_url:      NOVA node URL
-        platform:      optional platform tag e.g. "langchain", "crewai", "custom"
-        auto_hash_io:  if True, input/output objects are auto-hashed before logging
+        wallet:          NOVA wallet dict (from create_wallet / load_wallet)
+        agent_id:        your agent's registered ID on NOVA
+        node_url:        NOVA node URL
+        platform:        optional platform tag e.g. "langchain", "crewai", "custom"
+        auto_hash_io:    if True, input/output objects are auto-hashed before logging
+        min_duration_s:  only log sessions that ran for at least this many seconds
+                         (0 = no duration threshold)
+        min_tool_calls:  only log sessions that made at least this many tool calls
+                         (0 = no tool-call threshold)
+        evidence_store:  optional EvidenceStore (LocalEvidenceStore / IpfsEvidenceStore).
+                         When set, ctx.set_output() outputs are automatically saved and
+                         the resulting evidence_url is attached to every on-chain log.
+        system_prompt:   the agent's system prompt — if supplied, capabilities,
+                         task_types, and refusals are derived automatically and
+                         stored on self.self_description.  The raw prompt never
+                         leaves the client.
+        llm_fn:          optional callable (prompt: str) -> str for LLM-assisted
+                         extraction.  Omit for heuristic mode.
+
+        Threshold logic (inside tracker.track()):
+          Log if ANY of the following is true:
+            - ctx.mark_significant() was called                  (agent override)
+            - session duration >= min_duration_s  (when min_duration_s > 0)
+            - ctx._tool_calls   >= min_tool_calls (when min_tool_calls  > 0)
+          If no thresholds are set (both 0), every session is logged — same as
+          the previous behaviour.
         """
         self.wallet = wallet
         self.agent_id = agent_id
         self.platform = platform
         self.auto_hash_io = auto_hash_io
+        self.min_duration_s = min_duration_s
+        self.min_tool_calls = min_tool_calls
+        self.evidence_store = evidence_store
         self.client = NovaClient(node_url, auth_token)
         self._wallet_name: Optional[str] = wallet.get("label") or wallet.get("address", "")[:16]
+
+        # Self-description: derived from system prompt if provided
+        if system_prompt:
+            self.self_description: Optional[SelfDescription] = derive_self_description(
+                system_prompt, llm_fn=llm_fn
+            )
+        else:
+            self.self_description = None
 
     # ── Core log method ────────────────────────────────────────────────────
 
@@ -157,6 +250,7 @@ class NovaTracker:
         output_hash: str = "",
         evidence: Any = None,
         evidence_url: str = "",
+        save_evidence: bool = False,
         success: bool = True,
         duration_ms: int = 0,
         tags: List[str] = None,
@@ -168,17 +262,19 @@ class NovaTracker:
         """
         Log a single agent activity to Nova chain.
 
-        action_type:  what the agent did — e.g. "task_completed", "model_run",
-                      "contract_deployed", "data_analyzed", "chain_built"
-        input_data:   raw input (will be hashed; never sent on-chain)
-        output_data:  raw output (will be hashed; never sent on-chain)
-        input_hash:   pre-computed sha256 of input (use if you already have it)
-        output_hash:  pre-computed sha256 of output
-        success:      did the agent succeed?
-        duration_ms:  how long the work took in milliseconds
-        tags:         domain/capability tags e.g. ["finance", "coding"]
-        platform:     override the platform tag for this specific log
-        note:         short human-readable description (max 256 chars)
+        action_type:    what the agent did — e.g. "task_completed", "model_run",
+                        "contract_deployed", "data_analyzed", "chain_built"
+        input_data:     raw input (will be hashed; never sent on-chain)
+        output_data:    raw output (will be hashed; never sent on-chain)
+        input_hash:     pre-computed sha256 of input (use if you already have it)
+        output_hash:    pre-computed sha256 of output
+        save_evidence:  if True and an evidence_store is configured, persist output_data
+                        and attach the returned URL as evidence_url automatically.
+        success:        did the agent succeed?
+        duration_ms:    how long the work took in milliseconds
+        tags:           domain/capability tags e.g. ["finance", "coding"]
+        platform:       override the platform tag for this specific log
+        note:           short human-readable description (max 256 chars)
         """
         if self.auto_hash_io:
             if input_data is not None and not input_hash:
@@ -190,9 +286,25 @@ class NovaTracker:
             else:
                 evidence_hash = ""
 
-        # Validate evidence_url is reachable before logging if provided
-        if evidence_url and not evidence_url.startswith(("ipfs://", "ar://", "http://", "https://")):
-            raise ValueError(f"evidence_url must start with https://, http://, ipfs://, or ar://. Got: {evidence_url!r}")
+        # Save output to evidence store if requested and not already provided
+        if save_evidence and output_data is not None and not evidence_url and self.evidence_store is not None:
+            try:
+                out_h = output_hash or _hash(output_data)
+                evidence_url = self.evidence_store.save(
+                    output_data,
+                    out_h,
+                    {"agent_id": self.agent_id, "action_type": action_type},
+                )
+                output_hash = out_h  # ensure hash is set
+            except Exception:
+                pass  # evidence saving is best-effort — never block the log
+
+        # Validate evidence_url scheme before logging
+        _VALID_SCHEMES = ("ipfs://", "ar://", "http://", "https://", "file://")
+        if evidence_url and not evidence_url.startswith(_VALID_SCHEMES):
+            raise ValueError(
+                f"evidence_url must start with one of {_VALID_SCHEMES}. Got: {evidence_url!r}"
+            )
 
         resp = self.client.log_activity(
             wallet=self.wallet,
@@ -270,19 +382,110 @@ class NovaTracker:
             raise
         finally:
             duration_ms = int((time.time() - start) * 1000)
-            out_hash = _hash(ctx._output) if ctx._output is not None and self.auto_hash_io else ""
-            in_hash = _hash(input_data) if input_data is not None and self.auto_hash_io else ""
+
+            # ── Selective logging threshold check ─────────────────────────
+            # Each configured threshold (> 0) is a separate criterion.
+            # We log if ANY criterion is met, or if the agent explicitly
+            # called ctx.mark_significant().  When no thresholds are
+            # configured (both 0) the behaviour is identical to before.
+            thresholds_active = self.min_duration_s > 0 or self.min_tool_calls > 0
+            duration_passes = self.min_duration_s > 0 and duration_ms >= self.min_duration_s * 1000
+            tools_passes    = self.min_tool_calls > 0 and ctx._tool_calls >= self.min_tool_calls
+            should_log = ctx._significant or not thresholds_active or duration_passes or tools_passes
+
+            if should_log:
+                out_hash = _hash(ctx._output) if ctx._output is not None and self.auto_hash_io else ""
+                in_hash = _hash(input_data) if input_data is not None and self.auto_hash_io else ""
+
+                # ── Evidence attachment ───────────────────────────────────────
+                # If an evidence_store is configured and the agent set an output,
+                # save it and attach the returned URL to the log automatically.
+                final_evidence_url = evidence_url
+                if ctx._output is not None and self.evidence_store is not None and not evidence_url:
+                    try:
+                        final_evidence_url = self.evidence_store.save(
+                            ctx._output,
+                            out_hash,
+                            {"agent_id": self.agent_id, "action_type": action_type},
+                        )
+                    except Exception:
+                        pass  # evidence saving is best-effort — never break the work
+
+                try:
+                    self.log(
+                        action_type,
+                        input_hash=in_hash,
+                        output_hash=out_hash,
+                        success=ctx._success,
+                        duration_ms=duration_ms,
+                        tags=tags,
+                        platform=platform,
+                        note=ctx._note or note,
+                        evidence_url=final_evidence_url,
+                    )
+                except Exception:
+                    pass  # Never let logging break the actual work
+
+    # ── Session Intelligence ───────────────────────────────────────────────
+
+    @contextmanager
+    def session(
+        self,
+        task: str,
+        *,
+        tags: List[str] = None,
+        platform: str = "",
+        evidence_url: str = "",
+    ) -> Generator[SessionContext, None, None]:
+        """
+        Context manager for full session intelligence logging.
+
+        Captures what actually happened — not just timing and exit status:
+          - What task was attempted (the task argument)
+          - What tools were used (ctx.record_tool(), or auto via NovaSessionCallbackHandler)
+          - What the output was (hashed client-side via ctx.set_output())
+          - Whether the agent thinks it succeeded *meaningfully* (ctx.assess())
+
+        If assess() is never called and no exception is raised -> defaults to "success".
+        On unhandled exception -> assessment is set to "failure" automatically.
+
+        Example (manual agent):
+            with tracker.session("Analyze Q3 revenue, flag anomalies") as ctx:
+                ctx.record_tool("sql_query")
+                result = run_analysis(data)
+                ctx.set_output(result)
+                ctx.assess("success", "3 anomalies found, confidence 0.94")
+
+        Example (LangChain -- automatic via NovaSessionCallbackHandler):
+            handler = NovaSessionCallbackHandler(tracker, task="Analyze Q3 revenue")
+            agent.invoke(input, config={"callbacks": [handler]})
+        """
+        ctx = SessionContext(task)
+        start = time.time()
+        try:
+            yield ctx
+        except Exception as exc:
+            # Only override if the agent did not already call assess()
+            if ctx._assessment == "success" and not ctx._assessment_reason:
+                ctx._assessment = "failure"
+                ctx._assessment_reason = str(exc)[:512]
+            raise
+        finally:
+            duration_ms = int((time.time() - start) * 1000)
+            evidence = ctx._to_evidence()
+            output_hash = _hash(ctx._output) if ctx._output is not None else ""
             try:
                 self.log(
-                    action_type,
-                    input_hash=in_hash,
-                    output_hash=out_hash,
-                    success=ctx._success,
-                    duration_ms=duration_ms,
-                    tags=tags,
-                    platform=platform,
-                    note=ctx._note or note,
+                    "session_complete",
+                    input_data={"task": task},
+                    output_hash=output_hash,
+                    evidence=evidence,
                     evidence_url=evidence_url,
+                    success=ctx.meaningful_success,
+                    duration_ms=duration_ms,
+                    tags=list(tags or []) + ["session"],
+                    platform=platform or self.platform,
+                    note=ctx._note_for_log(),
                 )
             except Exception:
                 pass  # Never let logging break the actual work
@@ -304,6 +507,48 @@ class NovaTracker:
         """
         return self.client.challenge_log(self.wallet, log_id=log_id,
                                          stake_locked=stake_locked, reason=reason)
+
+    def request_corroboration(self, log_id: str, peer_addresses: List[str]) -> Dict:
+        """
+        Log a corroboration_request event so peer agents know to attest this session.
+
+        log_id:          tx_id / log_id of the session_complete log to be corroborated
+        peer_addresses:  on-chain addresses of the agents being asked to corroborate;
+                         included in the note so peers can filter the event stream
+
+        Returns the tx_id of the corroboration_request log.
+
+        Typical flow:
+            log_id = tracker.log("session_complete", ...)
+            tracker.request_corroboration(log_id, peer_addresses=["0xabc...", "0xdef..."])
+
+            # Peer agent, on seeing the request:
+            peer_tracker.corroborate(log_id, agrees=True, note="output matches our data")
+        """
+        note = f"peers={','.join(peer_addresses)}"[:256] if peer_addresses else ""
+        return self.log(
+            "corroboration_request",
+            external_ref=log_id,
+            tags=["corroboration"],
+            note=note,
+        )
+
+    def corroborate(self, log_id: str, agrees: bool, note: str = "") -> Dict:
+        """
+        Another agent's verdict on a session_complete log.
+
+        log_id:  tx_id / log_id of the session_complete log being assessed
+        agrees:  True  → positive attestation (peer confirms the outcome)
+                 False → negative attestation (peer disputes the outcome)
+        note:    optional explanation, max 256 chars
+
+        This is a thin wrapper around attest() that frames the semantics clearly:
+        corroborate() is for session-level cross-verification, attest() is the
+        general-purpose endorsement primitive.
+
+        Returns the tx_id of the attestation transaction.
+        """
+        return self.attest(log_id, sentiment="positive" if agrees else "negative", note=note)
 
     def passport(self, address: str = "") -> Dict:
         """

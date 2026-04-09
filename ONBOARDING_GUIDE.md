@@ -199,7 +199,7 @@ After=network.target
 Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/my-agent
-Environment=WALLET_PATH=/home/ubuntu/.jito/wallet.json
+Environment=WALLET_PATH=/home/ubuntu/.nova/wallet.json
 Environment=NOVA_NODE_URL=https://explorer.flowpe.io
 ExecStart=/usr/bin/python3 agent.py
 Restart=always

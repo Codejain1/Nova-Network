@@ -11,7 +11,7 @@ from jito_agent import NovaClient, load_wallet
 
 
 def main():
-    parser = argparse.ArgumentParser(description="JITO governance auto-voter")
+    parser = argparse.ArgumentParser(description="Nova governance auto-voter")
     parser.add_argument("--wallet", default="wallet.json", help="Path to wallet JSON")
     parser.add_argument("--node", default="https://explorer.flowpe.io")
     parser.add_argument("--vote", choices=["yes", "no"], default="yes")

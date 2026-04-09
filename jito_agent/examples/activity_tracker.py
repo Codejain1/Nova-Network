@@ -3,7 +3,7 @@ activity_tracker.py — Log off-chain agent work to NOVA for portable reputation
 
 This example shows how ANY agent (LangChain, CrewAI, custom, or even a human
 running scripts) can build verifiable on-chain reputation — without using
-JITO's task marketplace.
+Nova's task marketplace.
 
 Usage:
     python activity_tracker.py --wallet wallet.json --node https://explorer.flowpe.io
@@ -64,7 +64,7 @@ def simulate_agent_work(tracker: NovaTracker) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="JITO off-chain activity tracker demo")
+    parser = argparse.ArgumentParser(description="Nova off-chain activity tracker demo")
     parser.add_argument("--wallet", default="wallet.json")
     parser.add_argument("--agent-id", default="demo-tracker-agent")
     parser.add_argument("--node", default="https://explorer.flowpe.io")

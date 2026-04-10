@@ -21,3 +21,8 @@ scan-smoke*/
 .env
 .env.*
 .DS_Store
+
+# Deploy secrets — never commit .env files with JWT/peer tokens
+deploy/**/*.env
+deploy/**/.env
+!deploy/**/*.env.example

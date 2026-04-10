@@ -217,9 +217,10 @@ class JsonRpcGatewayHandler(BaseHTTPRequestHandler):
     def _set_json_headers(self, status: HTTPStatus = HTTPStatus.OK) -> None:
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", self.cors_origin)
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        if self.cors_origin:
+            self.send_header("Access-Control-Allow-Origin", self.cors_origin)
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
         self.end_headers()
 
     def _write_json(self, payload: Any, status: HTTPStatus = HTTPStatus.OK) -> None:
@@ -227,9 +228,10 @@ class JsonRpcGatewayHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", self.cors_origin)
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        if self.cors_origin:
+            self.send_header("Access-Control-Allow-Origin", self.cors_origin)
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
         self.end_headers()
         self.wfile.write(body)
 
@@ -845,7 +847,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--chain-id", type=int, default=149)
     parser.add_argument("--auth-token", default="")
     parser.add_argument("--peer-ca", default="", help="CA file for HTTPS node verification")
-    parser.add_argument("--cors-origin", default="*")
+    parser.add_argument("--cors-origin", default="")
     return parser.parse_args()
 
 

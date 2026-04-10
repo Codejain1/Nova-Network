@@ -2,6 +2,7 @@ import argparse
 import hashlib
 import hmac
 import json
+import math
 import os
 import re
 import secrets
@@ -68,6 +69,14 @@ from dual_chain import (
 
 
 _PEER_UA = "NovaNode/1.0 (peer-sync)"
+
+
+def _safe_amount(val: Any, field: str = "amount") -> float:
+    """Parse a numeric value, rejecting NaN, Inf, and negatives."""
+    v = float(val)
+    if math.isnan(v) or math.isinf(v) or v < 0:
+        raise ValueError(f"{field} must be a finite non-negative number")
+    return v
 
 
 def http_post_json(
@@ -1494,25 +1503,31 @@ class DualChainNode:
             raise ValueError("Public faucet is disabled.")
 
         requested = float(amount) if amount and float(amount) > 0 else self.faucet_default_amount
-        if requested <= 0:
-            raise ValueError("Faucet amount must be positive.")
+        if requested <= 0 or math.isnan(requested) or math.isinf(requested):
+            raise ValueError("Faucet amount must be a positive finite number.")
 
         recipient = self.resolve_address_alias(str(to_address).strip())
         recipient = self.public_chain._normalize_address(recipient)  # pylint: disable=protected-access
         if not recipient:
             raise ValueError("Recipient address is required.")
 
-        now = time.time()
-        last = float(self.faucet_last_claim_at.get(recipient, 0.0))
-        if self.faucet_cooldown_seconds > 0 and last > 0:
-            elapsed = now - last
-            if elapsed < self.faucet_cooldown_seconds:
-                remaining = int(self.faucet_cooldown_seconds - elapsed + 0.999)
-                raise ValueError(f"Faucet cooldown active. Try again in {remaining} seconds.")
+        with self.lock:
+            now = time.time()
+            last = float(self.faucet_last_claim_at.get(recipient, 0.0))
+            if self.faucet_cooldown_seconds > 0 and last > 0:
+                elapsed = now - last
+                if elapsed < self.faucet_cooldown_seconds:
+                    remaining = int(self.faucet_cooldown_seconds - elapsed + 0.999)
+                    raise ValueError(f"Faucet cooldown active. Try again in {remaining} seconds.")
 
-        claimed_24h = self._faucet_window_total(now)
-        if self.faucet_daily_cap > 0 and (claimed_24h + requested) > (self.faucet_daily_cap + 1e-12):
-            raise ValueError("Faucet daily cap reached. Try again later.")
+            claimed_24h = self._faucet_window_total(now)
+            if self.faucet_daily_cap > 0 and (claimed_24h + requested) > (self.faucet_daily_cap + 1e-12):
+                raise ValueError("Faucet daily cap reached. Try again later.")
+
+            self.faucet_last_claim_at[recipient] = now
+            self.faucet_events.append({"address": recipient, "amount": requested, "timestamp": now})
+            self._prune_faucet_events(now)
+            self._save_faucet_state()
 
         tx_payload = {
             "type": "payment",
@@ -1527,11 +1542,6 @@ class DualChainNode:
         ).hexdigest()
         tx = {**tx_payload, "id": tx_id}
         self.public_chain.add_transaction(tx)
-
-        self.faucet_last_claim_at[recipient] = now
-        self.faucet_events.append({"address": recipient, "amount": requested, "timestamp": now})
-        self._prune_faucet_events(now)
-        self._save_faucet_state()
 
         return {
             "ok": True,
@@ -1939,6 +1949,9 @@ class NodeHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
         self.end_headers()
         self.wfile.write(body)
 
@@ -2468,8 +2481,8 @@ class NodeHandler(BaseHTTPRequestHandler):
         try:
             verify_hs256_jwt(token, self.jwt_secret)
             return True
-        except Exception as exc:  # pylint: disable=broad-except
-            self._send_json({"ok": False, "error": f"Invalid JWT: {exc}"}, HTTPStatus.UNAUTHORIZED)
+        except Exception:  # pylint: disable=broad-except
+            self._send_json({"ok": False, "error": "Authentication failed."}, HTTPStatus.UNAUTHORIZED)
             return False
 
     def log_message(self, format_string: str, *args: Any) -> None:
@@ -2483,6 +2496,9 @@ class NodeHandler(BaseHTTPRequestHandler):
 
         if path.startswith("/assets/"):
             rel = path[len("/assets/") :].strip("/")
+            if ".." in rel or rel.startswith("/") or "\\" in rel:
+                self._send_json({"error": "Asset not found."}, HTTPStatus.NOT_FOUND)
+                return
             asset_root = os.path.join(os.path.dirname(__file__), "assets")
             local_path = os.path.normpath(os.path.join(asset_root, rel))
             if not local_path.startswith(asset_root) or not os.path.exists(local_path) or not os.path.isfile(local_path):
@@ -4374,6 +4390,11 @@ class NodeHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/snapshot":
+            if self.node.peer_token:
+                auth = self.headers.get("Authorization", "")
+                if not auth or not hmac.compare_digest(auth, f"Bearer {self.node.peer_token}"):
+                    self._send_json({"ok": False, "error": "Unauthorized peer."}, HTTPStatus.FORBIDDEN)
+                    return
             self._send_json(self.node.snapshot())
             return
 
@@ -4507,6 +4528,11 @@ class NodeHandler(BaseHTTPRequestHandler):
                 return
 
             if path == "/snapshot/push":
+                if self.node.peer_token:
+                    auth = self.headers.get("Authorization", "")
+                    if not auth or not hmac.compare_digest(auth, f"Bearer {self.node.peer_token}"):
+                        self._send_json({"ok": False, "error": "Unauthorized peer."}, HTTPStatus.FORBIDDEN)
+                        return
                 changed = self.node.adopt_snapshot_if_better(payload)
                 self._send_json({"ok": True, "changed": changed})
                 if not propagated:
@@ -4539,7 +4565,7 @@ class NodeHandler(BaseHTTPRequestHandler):
             if path == "/ui/public/tx":
                 wallet_name = str(payload.get("wallet_name", "")).strip()
                 to = self.node.resolve_address_alias(str(payload.get("to", "")))
-                amount = float(payload.get("amount", 0))
+                amount = _safe_amount(payload.get("amount", 0))
                 wallet = self._load_signing_wallet(wallet_name)
                 tx = make_payment_tx(wallet, to, amount)
                 with self.node.lock:

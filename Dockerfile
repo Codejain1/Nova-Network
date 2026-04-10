@@ -14,6 +14,11 @@ COPY docker ./docker
 
 RUN chmod +x ./docker/node_entrypoint.sh ./docker/gateway_entrypoint.sh ./run_tests.sh
 
+# Run as non-root for security
+RUN groupadd -r nova && useradd -r -g nova -d /app -s /sbin/nologin nova \
+    && mkdir -p /data && chown nova:nova /data /app
+USER nova:nova
+
 EXPOSE 8000
 
 ENTRYPOINT ["./docker/node_entrypoint.sh"]

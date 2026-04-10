@@ -1901,7 +1901,7 @@ class PublicPaymentChain:
         block_time_target_seconds: float = 5.0,
         persist_batch_seconds: float = 0.5,
         max_dirty_ops_before_flush: int = 32,
-        strict_signature_validation: bool = False,
+        strict_signature_validation: bool = True,
         mempool_tx_ttl_seconds: float = 900.0,
         mempool_max_transactions: int = 5000,
         pow_parallel_workers: int = 1,
@@ -4738,8 +4738,11 @@ class PublicPaymentChain:
               or _ZK_BUILTIN_CIRCUITS.get(circuit_id, {}).get("vk"))
         if vk is None:
             raise ValueError(f"zk_proof: unknown circuit_id {circuit_id!r}")
-        # Dev VKs skip actual pairing check (for testing only)
+        # Dev VKs skip actual pairing check — only allowed when strict
+        # signature validation is OFF (i.e. non-production mode).
         if vk.get("_dev"):
+            if self.strict_signature_validation:
+                raise ValueError("zk_proof: dev VKs are not allowed in production (strict mode)")
             return
         if not HAS_ZK:
             raise ValueError("zk_proof: ZK verification not available (install py_ecc)")
@@ -4760,7 +4763,9 @@ class PublicPaymentChain:
         # the underlying computation occurred.
         max_age = int(self.agent_trust_params.get("zk_proof_max_age_seconds", 3600))
         if max_age > 0:
-            proof_age = abs(time.time() - float(payload.get("ts", 0)))
+            proof_age = time.time() - float(payload.get("ts", 0))
+            if proof_age < 0:
+                raise ValueError("zk_proof: proof timestamp is in the future")
             if proof_age > max_age:
                 raise ValueError(
                     f"zk_proof: proof timestamp too old "
@@ -4772,8 +4777,6 @@ class PublicPaymentChain:
         _proof_content = _json.dumps(payload["proof"], sort_keys=True)
         _proof_hash = _hashlib.sha256(_proof_content.encode()).hexdigest()
         # Register in the permanent replay-prevention set
-        if not hasattr(self, "zk_proof_hashes"):
-            self.zk_proof_hashes: set = set()
         self.zk_proof_hashes.add(_proof_hash)
         entry = {
             "circuit_id": payload["circuit_id"],

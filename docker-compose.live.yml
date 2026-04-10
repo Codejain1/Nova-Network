@@ -46,6 +46,10 @@ services:
       - ${WEBHOOK_WALLET_PATH:-/dev/null}:/app/webhook_wallet.json:ro
     ports:
       - "${NODE_BIND_ADDR:-0.0.0.0}:8000:8000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
 
   gateway:
     build: .
@@ -61,9 +65,13 @@ services:
       CHAIN_ID: ${CHAIN_ID:-77001}
       RPC_AUTH_TOKEN: ${RPC_AUTH_TOKEN:-}
       PEER_CA: ${PEER_CA:-}
-      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
     ports:
       - "${RPC_BIND_ADDR:-0.0.0.0}:8545:8545"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
 
 volumes:
   nova_node_data:

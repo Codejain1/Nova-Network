@@ -491,9 +491,22 @@ class DualChainNode:
             json.dump({"passes": self.rwa_access_passes}, f, indent=2)
 
     def _hash_access_code(self, code: str, salt_hex: str) -> str:
+        """Hash access code with PBKDF2. Prefix with 'pbkdf2:' to distinguish from legacy SHA256."""
         salt = bytes.fromhex(salt_hex)
-        digest = hashlib.sha256(salt + code.encode("utf-8")).hexdigest()
-        return digest
+        digest = hashlib.pbkdf2_hmac("sha256", code.encode("utf-8"), salt, 200_000)
+        return f"pbkdf2:{digest.hex()}"
+
+    def _verify_access_code(self, code: str, salt_hex: str, expected_hash: str) -> bool:
+        """Verify access code against stored hash. Supports both PBKDF2 and legacy SHA256."""
+        probe = self._hash_access_code(code, salt_hex)
+        if hmac.compare_digest(probe, expected_hash):
+            return True
+        # Legacy fallback: old SHA256 hashes don't have the 'pbkdf2:' prefix
+        if not expected_hash.startswith("pbkdf2:"):
+            salt = bytes.fromhex(salt_hex)
+            legacy = hashlib.sha256(salt + code.encode("utf-8")).hexdigest()
+            return hmac.compare_digest(legacy, expected_hash)
+        return False
 
     def _public_access_pass(self, row: Dict[str, Any]) -> Dict[str, Any]:
         return {
@@ -584,8 +597,7 @@ class DualChainNode:
             expected = str(row.get("code_hash", "")).strip()
             if not salt or not expected:
                 continue
-            probe = self._hash_access_code(token, salt)
-            if hmac.compare_digest(probe, expected):
+            if self._verify_access_code(token, salt, expected):
                 return row
         return None
 
@@ -1725,6 +1737,17 @@ class NodeHandler(BaseHTTPRequestHandler):
     api_key_tier_map: Dict[str, str] = {}
     rate_limit_lock = threading.Lock()
     rate_limit_state: Dict[str, Dict[str, float]] = {}
+    login_attempts: Dict[str, Dict[str, Any]] = {}
+    login_attempts_lock = threading.Lock()
+    # Stricter per-path rate limits (requests/minute per IP)
+    _PATH_RATE_LIMITS: Dict[str, int] = {
+        "/public/tx": 30,
+        "/ui/public/tx": 30,
+        "/snapshot/push": 20,
+        "/public/faucet/claim": 5,
+        "/ui/private/auth/login": 10,
+        "/ui/private/auth/register": 10,
+    }
 
     def _rwa_settlement_asset_id(self) -> str:
         public = self.chain_info.get("public_chain", {}) if isinstance(self.chain_info, dict) else {}
@@ -2042,6 +2065,10 @@ class NodeHandler(BaseHTTPRequestHandler):
             if mapped:
                 tier = mapped
         tier_limit = self.rate_limit_tiers.get(tier, self.rate_limit_per_minute)
+        # Apply stricter per-path limit if configured
+        path_limit = self._PATH_RATE_LIMITS.get(path, 0)
+        if path_limit > 0:
+            tier_limit = min(int(tier_limit), path_limit)
         limit = int(tier_limit)
         if limit <= 0 or self._rate_limit_exempt(path):
             return True
@@ -4718,9 +4745,33 @@ class NodeHandler(BaseHTTPRequestHandler):
             if path == "/ui/private/auth/login":
                 username = str(payload.get("username", "")).strip()
                 password = str(payload.get("password", ""))
-                with self.node.lock:
-                    out = self.node.portal_login(username=username, password=password)
-                self._send_json({"ok": True, **out})
+                # Login lockout: 5 failed attempts = 15 min cooldown
+                lockout_key = f"{self._client_ip()}:{username}"
+                with self.login_attempts_lock:
+                    info = self.login_attempts.get(lockout_key, {})
+                    fails = int(info.get("fails", 0))
+                    locked_until = float(info.get("locked_until", 0))
+                    if fails >= 5 and time.time() < locked_until:
+                        remaining = int(locked_until - time.time()) + 1
+                        self._send_json(
+                            {"ok": False, "error": f"Too many failed attempts. Try again in {remaining}s."},
+                            HTTPStatus.TOO_MANY_REQUESTS,
+                        )
+                        return
+                try:
+                    with self.node.lock:
+                        out = self.node.portal_login(username=username, password=password)
+                    with self.login_attempts_lock:
+                        self.login_attempts.pop(lockout_key, None)
+                    self._send_json({"ok": True, **out})
+                except Exception as login_err:
+                    with self.login_attempts_lock:
+                        info = self.login_attempts.get(lockout_key, {"fails": 0})
+                        info["fails"] = int(info.get("fails", 0)) + 1
+                        if info["fails"] >= 5:
+                            info["locked_until"] = time.time() + 900
+                        self.login_attempts[lockout_key] = info
+                    raise login_err
                 return
 
             if path == "/ui/private/auth/logout":

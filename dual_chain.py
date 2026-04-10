@@ -2034,9 +2034,10 @@ class PublicPaymentChain:
         raw = str(address or "").strip()
         if raw.startswith("EVM:"):
             suffix = raw[4:].strip()
-            if suffix.startswith("0x"):
-                return f"EVM:{suffix.lower()}"
             return f"EVM:{suffix.lower()}"
+        # W-prefix addresses: keep W uppercase, hex lowercase
+        if raw.startswith("W") and len(raw) == 41:
+            return "W" + raw[1:].lower()
         return raw
 
     def _normalize_hex(self, value: str) -> str:
@@ -2681,9 +2682,9 @@ class PublicPaymentChain:
         price = float(tx.get("price", 0))
         if not oracle or not symbol or price <= 0:
             return False
-        if oracle not in self.price_oracles:
-            return False
         if address_from_public_key(tx["pubkey"]) != oracle:
+            return False
+        if oracle not in self.price_oracles:
             return False
         return verify_signature(self._signable_price_update(tx), tx["signature"], tx["pubkey"])
 
@@ -2751,15 +2752,15 @@ class PublicPaymentChain:
         signer = self._normalize_address(str(tx.get("signer", "")))
         provider = self._normalize_address(str(tx.get("provider", "")))
         amount = float(tx.get("amount", 0.0))
-        if signer not in validator_set:
-            return False
         if not provider or amount <= 0:
             return False
         if address_from_public_key(tx["pubkey"]) != signer:
             return False
+        if signer not in validator_set:
+            return False
         if not verify_signature(self._signable_ai_provider_slash(tx), tx["signature"], tx["pubkey"]):
             return False
-        if provider_stakes.get(provider, 0.0) + 1e-12 < amount:
+        if provider_stakes.get(provider, 0.0) < amount:
             return False
         return True
 
@@ -3270,7 +3271,7 @@ class PublicPaymentChain:
                 current_balance = self.balance_index.get(expected, 0.0)
                 slash_amount = round(current_balance * slash_pct, 8)
                 if slash_amount > 0:
-                    self.balance_index[expected] = round(current_balance - slash_amount, 8)
+                    self.balance_index[expected] = max(0.0, round(current_balance - slash_amount, 8))
                     self.treasury_balance = round(self.treasury_balance + slash_amount, 8)
                 self.validators.discard(expected)
                 r["consecutive_missed_blocks"] = 0
@@ -3587,9 +3588,9 @@ class PublicPaymentChain:
 
         # Lock stake from balance
         if stake > 0:
-            self.balance_index[agent_addr] = round(
+            self.balance_index[agent_addr] = max(0.0, round(
                 self.balance_index.get(agent_addr, 0.0) - stake, 8
-            )
+            ))
 
         # Store in activity_log_index for attestation/challenge lookup
         self.activity_log_index[log_id] = {
@@ -3800,7 +3801,7 @@ class PublicPaymentChain:
         }
         total_payout = round(sum(payouts.values()), 8)
         if total_payout > 0:
-            self.balance_index[settler] = round(self.balance_index.get(settler, 0.0) - total_payout, 8)
+            self.balance_index[settler] = max(0.0, round(self.balance_index.get(settler, 0.0) - total_payout, 8))
             for participant, amount in payouts.items():
                 self.balance_index[participant] = round(self.balance_index.get(participant, 0.0) + amount, 8)
         rec["settlement"] = {
@@ -3836,9 +3837,9 @@ class PublicPaymentChain:
 
         # Lock challenger stake
         if stake > 0:
-            self.balance_index[challenger] = round(
+            self.balance_index[challenger] = max(0.0, round(
                 self.balance_index.get(challenger, 0.0) - stake, 8
-            )
+            ))
 
         challenge_id = str(tx.get("id", ""))
         challenge_rec = {
@@ -3918,7 +3919,7 @@ class PublicPaymentChain:
         if payment_fee < 0:
             payment_fee = 0.0
         if sender != SYSTEM_SENDER:
-            balances[sender] = balances.get(sender, 0.0) - amount - gas_fee_native - payment_fee
+            balances[sender] = max(0.0, balances.get(sender, 0.0) - amount - gas_fee_native - payment_fee)
         balances[recipient] = balances.get(recipient, 0.0) + amount
 
     def _apply_public_governance_tx(self, tx: Dict[str, Any], validator_set: Set[str]) -> None:
@@ -3947,7 +3948,7 @@ class PublicPaymentChain:
             provider = self._normalize_address(str(tx.get("provider", "")))
             amount = float(tx.get("amount", 0.0))
             if provider and amount > 0:
-                balances[provider] = balances.get(provider, 0.0) - amount
+                balances[provider] = max(0.0, balances.get(provider, 0.0) - amount)
                 provider_stakes[provider] = provider_stakes.get(provider, 0.0) + amount
             return
         if tx_type != "ai_provider_slash":
@@ -4181,7 +4182,7 @@ class PublicPaymentChain:
         else:
             decay_multiplier = 1.0
 
-        score = round(raw_score * decay_multiplier, 2)
+        score = max(0.0, round(raw_score * decay_multiplier, 2))
 
         # Trust tier — now requires evidence coverage thresholds
         if slashed > 0:
@@ -4664,7 +4665,7 @@ class PublicPaymentChain:
         model = self.model_registry[payload["model_id"]]
         fee = model.get("inference_fee", 0.0)
         if fee > 0:
-            self.balances[payload["caller"]] = self.get_balance(payload["caller"]) - fee
+            self.balances[payload["caller"]] = max(0.0, self.get_balance(payload["caller"]) - fee)
             shared = 0.0
             for addr, pct in model.get("revenue_shares", {}).items():
                 amt = round(fee * pct, 8)
@@ -4800,6 +4801,9 @@ class PublicPaymentChain:
         for f in ("type", "circuit_id", "vk", "registrar", "ts", "nonce"):
             if f not in payload:
                 raise ValueError(f"zk_register_circuit missing field: {f}")
+        registrar = payload["registrar"]
+        if self.strict_signature_validation and registrar not in self.validators:
+            raise ValueError("zk_register_circuit: only validators can register circuits in strict mode")
         if not verify_signature(self._signable_zk_register_circuit(payload), signature, public_key):
             raise ValueError("zk_register_circuit: invalid signature")
         vk = payload["vk"]
@@ -4825,6 +4829,9 @@ class PublicPaymentChain:
         for f in ["type", "notary", "target", "level", "ts", "nonce"]:
             if f not in payload:
                 raise ValueError(f"identity_verify missing field: {f}")
+        notary = payload["notary"]
+        if self.strict_signature_validation and notary not in self.validators:
+            raise ValueError("identity_verify: only validators can verify identities in strict mode")
         if payload["level"] not in ("basic", "kyc", "accredited"):
             raise ValueError("identity_verify: invalid level")
         if payload["target"] not in self.identity_registry:
@@ -4998,9 +5005,9 @@ class PublicPaymentChain:
         owner = payload["owner"]
         reward = payload["reward"]
         if _balances is not None:
-            _balances[owner] = _balances.get(owner, 0.0) - reward
+            _balances[owner] = max(0.0, _balances.get(owner, 0.0) - reward)
         else:
-            self.balance_index[owner] = self.get_balance(owner) - reward
+            self.balance_index[owner] = max(0.0, self.get_balance(owner) - reward)
         self._add_reputation(owner, 2.0, "task_created", payload["ts"])
         self._add_activity(f"📋 New task: {payload['title']} (reward: {reward} NOVA)", payload["ts"])
 
@@ -5215,8 +5222,12 @@ class PublicPaymentChain:
                     nonce = -1
                 if nonce >= 0:
                     current = int(self.evm_next_nonce_index.get(sender_evm, 0))
-                    if nonce + 1 > current:
+                    if nonce == current:
                         self.evm_next_nonce_index[sender_evm] = nonce + 1
+                    elif nonce > current:
+                        # Reject nonce gaps in strict mode; allow in legacy mode
+                        if not self.strict_signature_validation:
+                            self.evm_next_nonce_index[sender_evm] = nonce + 1
             return
         if tx_type == "ai_provider_stake":
             provider = self._normalize_address(str(tx.get("provider", "")))
@@ -5840,6 +5851,10 @@ class PublicPaymentChain:
                 raise ValueError(f"Miner must match proposer rotation. Expected {expected}.")
 
         ordered_pending = self._sorted_pending_transactions()
+        # Cap block size to prevent DoS via oversized blocks
+        MAX_BLOCK_TRANSACTIONS = 1000
+        if len(ordered_pending) > MAX_BLOCK_TRANSACTIONS:
+            ordered_pending = ordered_pending[:MAX_BLOCK_TRANSACTIONS]
 
         total_fees = 0.0
         for tx in ordered_pending:

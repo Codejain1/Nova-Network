@@ -16,6 +16,7 @@
       --card: #ffffff;
       --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
       --sans: 'Sora', ui-sans-serif, system-ui, sans-serif;
+      --row-alt: #f7faff;
     }
     * { box-sizing: border-box; }
     body {
@@ -124,6 +125,8 @@
     th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid #ecf2fb; vertical-align: top; }
     th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
     tr:last-child td { border-bottom: 0; }
+    tbody tr:nth-child(even) { background: var(--row-alt); }
+    tbody tr:hover { background: #edf3ff; }
     .mono { font-family: var(--mono); }
     .pill {
       display: inline-block;
@@ -147,6 +150,7 @@
     .metric .k { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
     .metric .v { font-size: 24px; font-weight: 800; color: #0d3e72; margin-top: 4px; }
     .link { color: #0f66c7; cursor: pointer; text-decoration: none; }
+    .link:hover { text-decoration: underline; }
     .pager { display: flex; gap: 8px; align-items: center; }
     .pager button { width: auto; padding: 8px 10px; }
     .small { font-size: 11px; color: var(--muted); }
@@ -171,13 +175,203 @@
       min-height: 120px;
     }
     .bar { background: linear-gradient(180deg, var(--brand), var(--brand2)); border-radius: 4px 4px 0 0; min-height: 3px; }
+
+    /* Chain stats bar */
+    .chain-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .chain-stat {
+      background: linear-gradient(135deg, #0f79ff 0%, #2b8fff 100%);
+      color: #fff;
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 4px 16px rgba(15, 121, 255, 0.2);
+    }
+    .chain-stat .cs-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 700;
+      opacity: .85;
+    }
+    .chain-stat .cs-value {
+      font-size: 22px;
+      font-weight: 800;
+      margin-top: 4px;
+    }
+
+    /* Transaction search bar */
+    .search-bar {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+    .search-bar input {
+      font-size: 14px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 2px solid var(--line);
+      transition: border-color .2s;
+    }
+    .search-bar input:focus {
+      outline: none;
+      border-color: var(--brand);
+    }
+    .search-bar button {
+      width: auto;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 13px;
+    }
+
+    /* Balance lookup card */
+    .balance-card {
+      background: var(--card);
+      border: 1px solid #e3ebf7;
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 12px 30px rgba(17, 38, 68, 0.08);
+      margin-bottom: 12px;
+    }
+    .balance-card .balance-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .balance-card .balance-result {
+      margin-top: 12px;
+    }
+    .balance-amount {
+      font-size: 32px;
+      font-weight: 800;
+      color: #0d3e72;
+    }
+
+    /* Modal overlay */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(14, 33, 56, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .modal-overlay.open {
+      display: flex;
+    }
+    .modal {
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+      max-width: 780px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 24px;
+      position: relative;
+    }
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background: #eef3fb;
+      border: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      font-size: 18px;
+      cursor: pointer;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+    .modal-close:hover { background: #dce6f5; }
+    .modal h2 {
+      margin: 0 0 16px 0;
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .modal .block-field {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 6px 12px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+    .modal .block-field .bf-label {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      font-weight: 700;
+      padding: 4px 0;
+    }
+    .modal .block-field .bf-value {
+      font-family: var(--mono);
+      font-size: 12px;
+      word-break: break-all;
+      padding: 4px 0;
+    }
+
+    /* Search results highlight */
+    .search-result-info {
+      background: #e6f2ff;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #0e4f94;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .search-result-info button {
+      background: #0e4f94;
+      padding: 6px 12px;
+      font-size: 11px;
+      border-radius: 8px;
+      width: auto;
+    }
+
     @media (max-width: 1080px) {
       .header { grid-template-columns: 1fr; }
       .row { grid-template-columns: 1fr; }
-      .tabs { grid-template-columns: repeat(3, minmax(100px, 1fr)); }
+      .tabs { grid-template-columns: repeat(3, minmax(80px, 1fr)); }
       .main { grid-template-columns: 1fr; }
       .metrics { grid-template-columns: repeat(2, 1fr); }
       .detail { min-height: 360px; }
+      .chain-stats { grid-template-columns: repeat(2, 1fr); }
+      .search-bar { grid-template-columns: 1fr; }
+      .search-bar button { width: 100%; }
+      .modal { margin: 10px; padding: 16px; }
+      .modal .block-field { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .wrap { padding: 10px; }
+      .title { font-size: 22px; }
+      .chain-stats { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .chain-stat { padding: 10px 12px; }
+      .chain-stat .cs-value { font-size: 18px; }
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .metric .v { font-size: 18px; }
+      .tabs { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+      .tab { padding: 6px 8px; font-size: 10px; }
+      table { font-size: 11px; }
+      th, td { padding: 5px 4px; }
+      .balance-card .balance-row { grid-template-columns: 1fr; }
+      .balance-amount { font-size: 24px; }
     }
   </style>
   <link rel="stylesheet" href="/assets/ui-refresh.css" />
@@ -200,13 +394,52 @@
       </div>
     </div>
     <div class="row">
-      <input id="search" placeholder="Search tx hash, address, symbol, block number" />
       <input id="jwt" placeholder="JWT token (optional)" />
       <button id="saveJwt">Save</button>
     </div>
   </div>
 
+  <!-- Transaction Search Bar -->
+  <div class="search-bar">
+    <input id="search" placeholder="Search by tx ID, wallet address, block number, or symbol..." />
+    <button id="searchBtn">Search</button>
+    <button class="alt" id="clearSearch" style="display:none;">Clear</button>
+  </div>
+
+  <!-- Chain Stats Summary Bar -->
+  <div class="chain-stats" id="chainStats">
+    <div class="chain-stat">
+      <div class="cs-label">Total Blocks</div>
+      <div class="cs-value" id="statBlocks">--</div>
+    </div>
+    <div class="chain-stat">
+      <div class="cs-label">Total Transactions</div>
+      <div class="cs-value" id="statTxs">--</div>
+    </div>
+    <div class="chain-stat">
+      <div class="cs-label">Validators</div>
+      <div class="cs-value" id="statValidators">--</div>
+    </div>
+    <div class="chain-stat">
+      <div class="cs-label">Avg Block Time</div>
+      <div class="cs-value" id="statBlockTime">--</div>
+    </div>
+  </div>
+
+  <!-- Address Balance Lookup -->
+  <div class="balance-card" id="balanceLookup">
+    <div class="sectionTitle"><span>Address Balance Lookup</span></div>
+    <div class="balance-row">
+      <input id="balanceAddr" placeholder="Paste wallet address (W... or EVM:0x...)" />
+      <button id="balanceGo" style="width:auto;padding:10px 18px;">Lookup</button>
+    </div>
+    <div id="balanceResult" class="balance-result" style="display:none;"></div>
+  </div>
+
   <div class="tabs" id="tabs"></div>
+
+  <!-- Search Results Panel -->
+  <div id="searchResults" style="display:none;"></div>
 
   <div class="main">
     <div class="card" id="contentCard">
@@ -218,6 +451,15 @@
       <div class="sectionTitle"><span>Details</span><button class="alt" id="refresh" style="width:auto;padding:8px 10px;">Refresh</button></div>
       <pre class="detail" id="detail">Select an item or run a search.</pre>
     </div>
+  </div>
+</div>
+
+<!-- Block Detail Modal -->
+<div class="modal-overlay" id="blockModal">
+  <div class="modal">
+    <button class="modal-close" id="blockModalClose">&times;</button>
+    <h2 id="blockModalTitle">Block Details</h2>
+    <div id="blockModalContent"></div>
   </div>
 </div>
 
@@ -240,6 +482,9 @@ let state = {
   query: {},
 };
 let chainInfo = null;
+let allBlocks = [];
+let allTransactions = [];
+let searchActive = false;
 
 function short(v, n = 16) {
   if (!v) return '-';
@@ -291,6 +536,263 @@ async function loadChainInfo() {
   } catch {
     chainInfo = null;
   }
+}
+
+/* --- Chain Stats Bar --- */
+async function loadChainStats() {
+  try {
+    const [summary, validators] = await Promise.all([
+      api('/scan/summary'),
+      api('/public/validator/stats').catch(() => ({ validators: [] })),
+    ]);
+    const totalBlocks = (summary.public_height || 0) + (summary.private_height || 0);
+    const totalTx = (summary.public_tx_count || 0) + (summary.private_tx_count || 0);
+    const validatorCount = (validators.validators || []).length;
+
+    $('statBlocks').textContent = totalBlocks.toLocaleString();
+    $('statTxs').textContent = totalTx.toLocaleString();
+    $('statValidators').textContent = validatorCount.toLocaleString();
+
+    // Estimate block time from recent blocks
+    try {
+      const recent = await api('/scan/blocks?chain=public&page=1&page_size=10');
+      const blocks = recent.blocks || [];
+      if (blocks.length >= 2) {
+        const times = blocks.map(b => Number(b.timestamp)).filter(t => t > 0);
+        if (times.length >= 2) {
+          const avgTime = (times[0] - times[times.length - 1]) / (times.length - 1);
+          $('statBlockTime').textContent = avgTime.toFixed(1) + 's';
+        } else {
+          $('statBlockTime').textContent = '--';
+        }
+      }
+    } catch {
+      $('statBlockTime').textContent = '--';
+    }
+  } catch {
+    // silently fail
+  }
+}
+
+/* --- Block Detail Modal --- */
+function openBlockModal(block) {
+  const txs = block.transactions || block.data || [];
+  const txRows = txs.map((t, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td class="mono"><a class="link" data-modal-tx="${t.tx_id || t.id || ''}">${short(t.tx_id || t.id || '-', 22)}</a></td>
+      <td class="mono">${short(t.sender || t.from || '-', 16)}</td>
+      <td class="mono">${short(t.recipient || t.to || '-', 16)}</td>
+      <td>${t.amount ?? t.price ?? '-'}</td>
+    </tr>
+  `).join('');
+
+  $('blockModalTitle').textContent = `Block #${block.index ?? '?'}`;
+  $('blockModalContent').innerHTML = `
+    <div class="block-field">
+      <div class="bf-label">Block Index</div>
+      <div class="bf-value">${block.index ?? '-'}</div>
+      <div class="bf-label">Hash</div>
+      <div class="bf-value">${block.hash || '-'}</div>
+      <div class="bf-label">Previous Hash</div>
+      <div class="bf-value">${block.previous_hash || '-'}</div>
+      <div class="bf-label">Timestamp</div>
+      <div class="bf-value">${fmtTime(block.timestamp)}</div>
+      <div class="bf-label">Miner</div>
+      <div class="bf-value">${block.miner || block.validator || '-'}</div>
+      <div class="bf-label">Nonce</div>
+      <div class="bf-value">${block.nonce ?? block.proof ?? '-'}</div>
+      <div class="bf-label">Transactions</div>
+      <div class="bf-value">${txs.length} transaction(s)</div>
+    </div>
+    ${txs.length > 0 ? `
+      <div class="sectionTitle" style="margin-top:16px;"><span>Transactions in Block</span></div>
+      <table>
+        <thead><tr><th>#</th><th>Tx ID</th><th>Sender</th><th>Recipient</th><th>Amount</th></tr></thead>
+        <tbody>${txRows}</tbody>
+      </table>
+    ` : '<div class="small" style="margin-top:12px;">No transactions in this block.</div>'}
+  `;
+  $('blockModal').classList.add('open');
+}
+
+function closeBlockModal() {
+  $('blockModal').classList.remove('open');
+}
+
+async function fetchAndShowBlock(index, hash, chain) {
+  const c = chain || 'public';
+  const q = index !== '' && index !== undefined ? `index=${encodeURIComponent(index)}` : `hash=${encodeURIComponent(hash)}`;
+  try {
+    const out = await api(`/scan/block?chain=${c}&${q}`);
+    setDetail(out);
+    openBlockModal(out.block || out);
+  } catch (e) {
+    setDetail({ error: e.message });
+  }
+}
+
+/* --- Balance Lookup --- */
+async function lookupBalance() {
+  const address = $('balanceAddr').value.trim();
+  if (!address) return;
+
+  $('balanceResult').style.display = 'block';
+  $('balanceResult').innerHTML = '<div class="small">Loading...</div>';
+
+  try {
+    const [balData, txData] = await Promise.all([
+      api(`/public/balance/${encodeURIComponent(address)}`),
+      api(`/scan/address?address=${encodeURIComponent(address)}&include_private=true&limit=10`).catch(() => ({ transactions: [] })),
+    ]);
+
+    const balance = balData.balance ?? balData.amount ?? balData;
+    const txs = txData.transactions || [];
+
+    const txRows = txs.slice(0, 5).map(t => `
+      <tr>
+        <td><span class="pill ${t.chain === 'private' ? 'private' : ''}">${t.chain || 'public'}</span></td>
+        <td class="mono"><a class="link" data-open-tx="${t.tx_id}">${short(t.tx_id, 18)}</a></td>
+        <td class="mono">${short(t.from, 14)}</td>
+        <td class="mono">${short(t.to, 14)}</td>
+        <td>${t.amount ?? '-'}</td>
+      </tr>
+    `).join('');
+
+    $('balanceResult').innerHTML = `
+      <div style="display:flex;gap:20px;align-items:baseline;flex-wrap:wrap;margin-top:8px;">
+        <div>
+          <div class="small" style="margin-bottom:4px;">Balance</div>
+          <div class="balance-amount">${typeof balance === 'number' ? balance.toLocaleString(undefined, {maximumFractionDigits: 4}) : balance} NOVA</div>
+        </div>
+        <div>
+          <a class="link" style="font-size:13px;font-weight:600;" data-open-address="${address}">View full address details</a>
+        </div>
+      </div>
+      ${txs.length > 0 ? `
+        <div class="sectionTitle" style="margin-top:12px;"><span>Recent Transactions</span></div>
+        <table>
+          <thead><tr><th>Chain</th><th>Tx ID</th><th>From</th><th>To</th><th>Amount</th></tr></thead>
+          <tbody>${txRows}</tbody>
+        </table>
+      ` : '<div class="small" style="margin-top:8px;">No recent transactions found.</div>'}
+    `;
+  } catch (e) {
+    $('balanceResult').innerHTML = `<div class="small" style="color:#c0392b;margin-top:8px;">Error: ${e.message}</div>`;
+  }
+}
+
+/* --- Transaction Search (client-side filtering) --- */
+async function runTransactionSearch() {
+  const q = $('search').value.trim();
+  if (!q) {
+    clearSearchResults();
+    return;
+  }
+
+  // Check if it's a block number
+  if (/^[0-9]+$/.test(q)) {
+    await fetchAndShowBlock(q, '', 'public');
+    return;
+  }
+
+  // Check if it's an address - navigate to address view
+  if (q.startsWith('W') || q.startsWith('EVM:') || /^0x[a-fA-F0-9]{40}$/.test(q)) {
+    setHash('address', { address: q });
+    return;
+  }
+
+  // Check if it's a short symbol
+  if (/^[A-Za-z]{2,10}$/.test(q)) {
+    setHash('prices', { symbol: q.toUpperCase() });
+    return;
+  }
+
+  // Try to find it as a tx_id first
+  if (/^[a-fA-F0-9]{64}$/.test(q) || /^0x[a-fA-F0-9]{64}$/.test(q)) {
+    const id = q.startsWith('0x') ? q.slice(2) : q;
+    try {
+      const out = await api(`/scan/tx?id=${encodeURIComponent(id)}`);
+      setDetail(out);
+      showSearchInfo(`Found transaction: ${short(id, 24)}`, 1);
+      return;
+    } catch {
+      // not found as tx, continue to general search
+    }
+  }
+
+  // General search: fetch recent transactions and filter client-side
+  try {
+    const out = await api(`/scan/search?q=${encodeURIComponent(q)}&limit=100`);
+    setDetail(out);
+
+    // Also try filtering loaded data
+    const allTxOut = await api('/scan/transactions?chain=all&page=1&page_size=200');
+    const txs = allTxOut.transactions || [];
+    const ql = q.toLowerCase();
+    const filtered = txs.filter(t =>
+      (t.tx_id && t.tx_id.toLowerCase().includes(ql)) ||
+      (t.from && t.from.toLowerCase().includes(ql)) ||
+      (t.to && t.to.toLowerCase().includes(ql)) ||
+      (t.type && t.type.toLowerCase().includes(ql))
+    );
+
+    if (filtered.length > 0) {
+      searchActive = true;
+      $('clearSearch').style.display = '';
+      showFilteredTransactions(filtered, q);
+    } else {
+      showSearchInfo(`No matching transactions found for "${short(q, 30)}"`, 0);
+    }
+  } catch (e) {
+    setDetail({ error: e.message });
+  }
+}
+
+function showSearchInfo(message, count) {
+  $('searchResults').style.display = 'block';
+  $('searchResults').innerHTML = `
+    <div class="search-result-info">
+      <span>${message}${count > 0 ? ` (${count} result${count !== 1 ? 's' : ''})` : ''}</span>
+      <button id="clearSearchBtn">Clear</button>
+    </div>
+  `;
+}
+
+function showFilteredTransactions(txs, query) {
+  $('searchResults').style.display = 'block';
+  const rows = txs.map(t => `
+    <tr>
+      <td><span class="pill ${t.chain === 'private' ? 'private' : ''}">${t.chain}</span></td>
+      <td>${t.type || '-'}</td>
+      <td class="mono"><a class="link" data-open-tx="${t.tx_id}">${short(t.tx_id, 18)}</a></td>
+      <td>${t.block_index ?? '-'}</td>
+      <td class="mono"><a class="link" data-open-address="${t.from}">${short(t.from, 14)}</a></td>
+      <td class="mono"><a class="link" data-open-address="${t.to}">${short(t.to, 14)}</a></td>
+      <td>${t.amount ?? t.price ?? '-'}</td>
+    </tr>
+  `).join('');
+
+  $('searchResults').innerHTML = `
+    <div class="card" style="margin-bottom:10px;">
+      <div class="search-result-info">
+        <span>Search results for "${short(query, 30)}" - ${txs.length} transaction(s) found</span>
+        <button id="clearSearchBtn">Clear</button>
+      </div>
+      <table>
+        <thead><tr><th>Chain</th><th>Type</th><th>Tx ID</th><th>Block</th><th>From</th><th>To</th><th>Amount</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function clearSearchResults() {
+  searchActive = false;
+  $('search').value = '';
+  $('searchResults').style.display = 'none';
+  $('searchResults').innerHTML = '';
+  $('clearSearch').style.display = 'none';
 }
 
 function setDetail(value) {
@@ -713,35 +1215,11 @@ async function openTx(id) {
 }
 
 async function openBlock(index, hash, chain) {
-  const c = chain || 'public';
-  const q = index !== '' ? `index=${encodeURIComponent(index)}` : `hash=${encodeURIComponent(hash)}`;
-  const out = await api(`/scan/block?chain=${c}&${q}`);
-  setDetail(out);
+  await fetchAndShowBlock(index, hash, chain);
 }
 
 async function runSearch() {
-  const q = $('search').value.trim();
-  if (!q) return;
-  if (/^[0-9]+$/.test(q)) {
-    setHash('blocks', { chain: 'public', page: 1 });
-    await openBlock(q, '', 'public');
-    return;
-  }
-  if (q.startsWith('W') || q.startsWith('EVM:') || /^0x[a-fA-F0-9]{40}$/.test(q)) {
-    setHash('address', { address: q });
-    return;
-  }
-  if (/^[A-Za-z]{2,10}$/.test(q)) {
-    setHash('prices', { symbol: q.toUpperCase() });
-    return;
-  }
-  if (/^[a-fA-F0-9]{64}$/.test(q) || /^0x[a-fA-F0-9]{64}$/.test(q)) {
-    const id = q.startsWith('0x') ? q.slice(2) : q;
-    await openTx(id);
-    return;
-  }
-  const out = await api(`/scan/search?q=${encodeURIComponent(q)}&limit=100`);
-  setDetail(out);
+  await runTransactionSearch();
 }
 
 async function render() {
@@ -777,16 +1255,17 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
-  if (t.dataset.openTx) {
+  if (t.dataset.openTx || t.dataset.modalTx) {
     event.preventDefault();
-    await openTx(t.dataset.openTx);
+    const txId = t.dataset.openTx || t.dataset.modalTx;
+    await openTx(txId);
     return;
   }
 
   if (t.dataset.openBlock !== undefined || t.dataset.openBlockHash !== undefined) {
     event.preventDefault();
     const chain = t.dataset.openChain || 'public';
-    await openBlock(t.dataset.openBlock || '', t.dataset.openBlockHash || '', chain);
+    await fetchAndShowBlock(t.dataset.openBlock || '', t.dataset.openBlockHash || '', chain);
     return;
   }
 
@@ -838,6 +1317,26 @@ document.addEventListener('click', async (event) => {
     setHash('prices', symbol ? { symbol } : {});
     return;
   }
+
+  if (t.id === 'clearSearchBtn') {
+    clearSearchResults();
+    return;
+  }
+
+  if (t.id === 'blockModalClose' || t.classList.contains('modal-overlay')) {
+    closeBlockModal();
+    return;
+  }
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeBlockModal();
+});
+
+// Close modal when clicking overlay background
+$('blockModal').addEventListener('click', (e) => {
+  if (e.target === $('blockModal')) closeBlockModal();
 });
 
 $('saveJwt').onclick = () => {
@@ -847,12 +1346,21 @@ $('refresh').onclick = render;
 $('search').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') runSearch();
 });
+$('searchBtn').onclick = runSearch;
+$('clearSearch').onclick = clearSearchResults;
+$('balanceGo').onclick = lookupBalance;
+$('balanceAddr').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') lookupBalance();
+});
 window.addEventListener('hashchange', render);
 
 (function init() {
   $('jwt').value = localStorage.getItem('explorer.jwt') || '';
   if (!location.hash) location.hash = '/dashboard';
   render();
+  loadChainStats();
+  // Refresh stats every 30 seconds
+  setInterval(loadChainStats, 30000);
 })();
 </script>
 </body>

@@ -1,10 +1,13 @@
 """Local light-client runtime: queue, cache, and background sync for Nova."""
 
 import json
+import logging
 import os
 import threading
 import time
 from typing import Any, Dict, Optional
+
+logger = logging.getLogger(__name__)
 
 from .queue import PersistentEventQueue
 
@@ -37,7 +40,7 @@ class NovaLightClientNode:
             if isinstance(raw, dict):
                 return {"version": 1, "snapshots": dict(raw.get("snapshots", {}))}
         except Exception:
-            pass
+            logger.warning("Failed to load light client cache from %s", self.cache_path, exc_info=True)
         return {"version": 1, "snapshots": {}}
 
     def _save_cache(self) -> None:
@@ -102,7 +105,7 @@ class NovaLightClientNode:
             try:
                 self.flush()
             except Exception:
-                pass
+                logger.warning("Background flush failed", exc_info=True)
 
     def cache_snapshot(self, kind: str, key: str, data: Dict[str, Any]) -> None:
         with self._cache_lock:

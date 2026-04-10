@@ -1,10 +1,15 @@
 """Low-level HTTP client for the NOVA node API."""
 import json
+import math
+import re
+import ssl
 import urllib.request
 import urllib.error
 import urllib.parse
 from collections import defaultdict
 from typing import Dict, Any, Optional, List
+
+_SSL_CTX = ssl.create_default_context()
 
 from .crypto import (
     make_identity_claim_tx,
@@ -42,7 +47,10 @@ class NovaClient:
         if self.auth_token:
             req.add_header("Authorization", f"Bearer {self.auth_token}")
         try:
-            with urllib.request.urlopen(req, timeout=15) as r:
+            kwargs = {"timeout": 15}
+            if url.startswith("https"):
+                kwargs["context"] = _SSL_CTX
+            with urllib.request.urlopen(req, **kwargs) as r:
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
             raise RuntimeError(f"GET {path} failed {e.code}: {e.read().decode()[:200]}") from e
@@ -56,7 +64,10 @@ class NovaClient:
         if self.auth_token:
             req.add_header("Authorization", f"Bearer {self.auth_token}")
         try:
-            with urllib.request.urlopen(req, timeout=15) as r:
+            kwargs = {"timeout": 15}
+            if url.startswith("https"):
+                kwargs["context"] = _SSL_CTX
+            with urllib.request.urlopen(req, **kwargs) as r:
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
             raise RuntimeError(f"POST {path} failed {e.code}: {e.read().decode()[:200]}") from e
@@ -69,7 +80,21 @@ class NovaClient:
     def status(self) -> Dict:
         return self._get("/status")
 
+    @staticmethod
+    def _validate_amount(value: float, name: str = "amount") -> None:
+        """Reject NaN, Inf, and negative amounts."""
+        if not isinstance(value, (int, float)):
+            raise ValueError(f"{name} must be a number, got {type(value).__name__}")
+        if math.isnan(value) or math.isinf(value):
+            raise ValueError(f"{name} must be finite, got {value}")
+        if value < 0:
+            raise ValueError(f"{name} must be non-negative, got {value}")
+
     def balance(self, address: str) -> float:
+        if not isinstance(address, str) or not address.strip():
+            raise ValueError("address must be a non-empty string")
+        if len(address) > 128:
+            raise ValueError(f"address too long ({len(address)} chars, max 128)")
         return self._get(f"/public/balance?address={address}").get("balance", 0.0)
 
     def reputation(self, address: str) -> Dict:
@@ -80,14 +105,24 @@ class NovaClient:
 
     # ── Faucet ────────────────────────────────────────────────────────────
     def claim_faucet(self, address: str, amount: float = 0.0) -> Dict:
+        if amount:
+            self._validate_amount(amount)
         payload: Dict[str, Any] = {"address": address}
         if amount:
             payload["amount"] = amount
         return self._post("/public/faucet", payload)
 
     # ── Identity ──────────────────────────────────────────────────────────
+    _HANDLE_RE = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
+
     def claim_identity(self, wallet: Dict, handle: str, bio: str = "",
                         links: Optional[Dict] = None) -> Dict:
+        if not isinstance(handle, str) or not self._HANDLE_RE.match(handle):
+            raise ValueError(
+                "handle must be 1-64 characters, alphanumeric plus underscore/hyphen"
+            )
+        if bio and len(bio) > 256:
+            raise ValueError(f"bio too long ({len(bio)} chars, max 256)")
         tx = make_identity_claim_tx(wallet, handle=handle, bio=bio, links=links or {})
         return self._submit_tx(tx)
 
@@ -149,6 +184,7 @@ class NovaClient:
     def challenge_log(self, wallet: Dict, log_id: str,
                       stake_locked: float = 10.0, reason: str = "") -> Dict:
         """Challenge a specific activity log. Locks stake — fake logs are expensive."""
+        self._validate_amount(stake_locked, "stake_locked")
         tx = make_agent_challenge_tx(wallet, log_id=log_id,
                                      stake_locked=stake_locked, reason=reason)
         return self._submit_tx(tx)
@@ -166,6 +202,8 @@ class NovaClient:
         expires_at: float = 0.0,
         note: str = "",
     ) -> Dict:
+        if reward:
+            self._validate_amount(reward, "reward")
         tx = make_agent_intent_post_tx(
             wallet,
             agent_id=agent_id,
@@ -567,6 +605,8 @@ class NovaClient:
     def register_model(self, wallet: Dict, model_id: str, name: str,
                         description: str = "", capabilities: List[str] = None,
                         version_hash: str = "", inference_fee: float = 0.0) -> Dict:
+        if inference_fee:
+            self._validate_amount(inference_fee, "inference_fee")
         tx = make_model_register_tx(wallet, model_id=model_id, name=name,
                                      description=description,
                                      capabilities=capabilities or [],

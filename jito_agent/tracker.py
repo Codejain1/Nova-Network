@@ -24,10 +24,13 @@ Quick start:
 
 import hashlib
 import json
+import logging
 import os
 import time
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, List, Optional
+
+logger = logging.getLogger(__name__)
 
 from .client import NovaClient
 from .self_description import SelfDescription, derive_self_description
@@ -297,7 +300,7 @@ class NovaTracker:
                 )
                 output_hash = out_h  # ensure hash is set
             except Exception:
-                pass  # evidence saving is best-effort — never block the log
+                logger.warning("Evidence saving failed (best-effort)", exc_info=True)
 
         # Validate evidence_url scheme before logging
         _VALID_SCHEMES = ("ipfs://", "ar://", "http://", "https://", "file://")
@@ -409,7 +412,7 @@ class NovaTracker:
                             {"agent_id": self.agent_id, "action_type": action_type},
                         )
                     except Exception:
-                        pass  # evidence saving is best-effort — never break the work
+                        logger.warning("Evidence saving failed in track() (best-effort)", exc_info=True)
 
                 try:
                     self.log(
@@ -424,7 +427,7 @@ class NovaTracker:
                         evidence_url=final_evidence_url,
                     )
                 except Exception:
-                    pass  # Never let logging break the actual work
+                    logger.warning("Activity log submission failed in track()", exc_info=True)
 
     # ── Session Intelligence ───────────────────────────────────────────────
 
@@ -488,7 +491,7 @@ class NovaTracker:
                     note=ctx._note_for_log(),
                 )
             except Exception:
-                pass  # Never let logging break the actual work
+                logger.warning("Session log submission failed", exc_info=True)
 
     def attest(self, log_id: str, sentiment: str = "positive", note: str = "") -> Dict:
         """

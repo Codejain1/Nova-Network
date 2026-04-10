@@ -25,12 +25,15 @@ Usage:
 
 import json
 import os
+import ssl
 import time
 import urllib.request
 import urllib.error
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+_SSL_CTX = ssl.create_default_context()
 
 
 # ── Serialization (must match tracker._hash exactly) ──────────────────────────
@@ -175,7 +178,10 @@ class IpfsEvidenceStore(EvidenceStore):
         req = urllib.request.Request(url, data=body, method="POST")
         req.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
         try:
-            with urllib.request.urlopen(req, timeout=30) as r:
+            kwargs = {"timeout": 30}
+            if url.startswith("https"):
+                kwargs["context"] = _SSL_CTX
+            with urllib.request.urlopen(req, **kwargs) as r:
                 resp = json.loads(r.read())
                 return resp["Hash"]
         except urllib.error.URLError as e:
@@ -200,7 +206,10 @@ class IpfsEvidenceStore(EvidenceStore):
         req.add_header("Content-Type", "application/json")
         req.add_header("Authorization", jwt)
         try:
-            with urllib.request.urlopen(req, timeout=30) as r:
+            kwargs = {"timeout": 30}
+            if self._PINATA_PIN_URL.startswith("https"):
+                kwargs["context"] = _SSL_CTX
+            with urllib.request.urlopen(req, **kwargs) as r:
                 resp = json.loads(r.read())
                 return resp["IpfsHash"]
         except urllib.error.HTTPError as e:

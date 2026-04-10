@@ -1,10 +1,13 @@
 """Frictionless local runtime for auto-capture, local policy, and background sync."""
 
+import logging
 import os
 import time
 import uuid
 from contextlib import contextmanager
 from typing import Any, Dict, Generator, List, Optional
+
+logger = logging.getLogger(__name__)
 
 from .callbacks import NovaSessionCallbackHandler
 from .light_client import NovaLightClientNode
@@ -298,6 +301,7 @@ class NovaRuntime:
             if isinstance(response, dict):
                 native_intent_id = str(response.get("intent_id", "")).strip()
         except Exception:
+            logger.warning("Native intent post failed, falling back to log-only", exc_info=True)
             native_intent_id = ""
 
         log_id = self.log(
@@ -352,6 +356,7 @@ class NovaRuntime:
             )
             native_opened = bool(isinstance(response, dict) and response.get("session_id"))
         except Exception:
+            logger.warning("Native session open failed, continuing without native session", exc_info=True)
             native_opened = False
 
         sess: Optional[RuntimeSession] = None
@@ -392,7 +397,7 @@ class NovaRuntime:
                         note=sess.context._assessment_reason or sess.context._note_for_log(),
                     )
                 except Exception:
-                    pass
+                    logger.warning("Failed to close/commit native collab session %s", collab_id, exc_info=True)
 
     def callbacks(
         self,
